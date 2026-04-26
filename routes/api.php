@@ -5,6 +5,7 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\PositionController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\SectorController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\UserController;
@@ -30,4 +31,11 @@ Route::prefix('v1')->name('api.')->group(function () {
 
     // Utilizadores
     Route::apiResource('users', UserController::class);
+
+    // Relatórios
+    Route::get('reports/completed-trainings',   [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');
+    Route::get('reports/employees-trainings',   [ReportController::class, 'employeesWithTrainings'])->name('reports.employees-trainings');
+    Route::get('reports/training-employees',    [ReportController::class, 'trainingWithEmployees'])->name('reports.training-employees');
+    Route::get('reports/attendance',            [ReportController::class, 'attendance'])->name('reports.attendance');
+    Route::post('reports/send-email',           [ReportController::class, 'sendEmail'])->name('reports.send-email');
 });

@@ -24,6 +24,7 @@ class StoreEmployeeRequest extends FormRequest
             'nationality'   => 'nullable|string|max:100',
             'address'       => 'nullable|string|max:255',
             'work_location' => 'nullable|string|max:200',
+            'photo'         => 'nullable|string',
             'position_id'   => 'required|exists:positions,id',
             'department_id' => 'required|exists:departments,id',
             'sector_id'     => 'nullable|exists:sectors,id',

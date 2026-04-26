@@ -115,7 +115,7 @@
     <aside class="sidebar">
         <a href="{{ route('dashboard') }}" class="sidebar-logo">
             <img src="{{ asset('images/logo.jpg') }}" alt="Logo" onerror="this.style.display='none'">
-            <span>HR<em>Eminho</em></span>
+            <span>HR<em>Electrominho</em></span>
         </a>
 
         <nav class="sidebar-nav">
@@ -146,7 +146,12 @@
                 <span class="nav-icon">🌴</span> Férias & Licenças
             </a>
             <a href="{{ route('trainings.index') }}" class="nav-item {{ request()->routeIs('trainings.*') ? 'active' : '' }}">
-                <span class="nav-icon">🎓</span> Treinamentos
+                <span class="nav-icon">🎓</span> Formações
+            </a>
+
+            <p class="nav-section-label">Relatórios</p>
+            <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                <span class="nav-icon">📊</span> Relatórios
             </a>
 
             @if(auth()->user()->role === 'admin')
@@ -172,25 +177,20 @@
         </div>
     </aside>
 
-    {{-- ── Main Content ── --}}
-    <div class="main-content">
-        <header class="topbar">
-            <span class="topbar-title">@yield('page-title', 'Dashboard')</span>
-            <div class="topbar-right">
-                <span class="topbar-date" id="current-date"></span>
-            </div>
-        </header>
 
-        <main class="page-content">
+    {{-- Main content --}}
+    <main class="main-content">
+        <div class="page-header">
+            <h1 class="page-title">@yield('page-title')</h1>
+        </div>
+        <div class="page-content">
             @yield('content')
-        </main>
-    </div>
+        </div>
+    </main>
+
 </div>
 
-<script>
-    const d = new Date();
-    document.getElementById('current-date').textContent = d.toLocaleDateString('pt-PT', {weekday:'long', year:'numeric', month:'long', day:'numeric'});
-</script>
 @yield('scripts')
 </body>
 </html>
+tml>

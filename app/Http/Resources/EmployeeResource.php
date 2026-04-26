@@ -22,6 +22,7 @@ class EmployeeResource extends JsonResource
             'nationality'   => $this->nationality,
             'address'       => $this->address,
             'work_location' => $this->work_location,
+            'photo'         => $this->profile_photo,
             'hire_date'     => $this->hire_date?->toDateString(),
             'end_date'      => $this->end_date?->toDateString(),
             'status'        => $this->status,

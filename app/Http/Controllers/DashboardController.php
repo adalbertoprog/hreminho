@@ -18,7 +18,7 @@ class DashboardController extends Controller
     {
         $today = Carbon::today();
 
-        // ── Stats cards ───────────────────────────────────────
+        // Stats cards
         $stats = [
             'total_employees'   => Employee::where('status', 'active')->count(),
             'present_today'     => Attendance::whereDate('date', $today)->whereIn('status', ['present', 'late'])->count(),
@@ -31,7 +31,7 @@ class DashboardController extends Controller
                                     ->count(),
         ];
 
-        // ── Listas ────────────────────────────────────────────
+        // Listas
         $recent_employees = Employee::with(['position', 'department'])
             ->latest()->take(5)->get();
 
@@ -43,7 +43,7 @@ class DashboardController extends Controller
             ->where('status', 'enrolled')
             ->latest()->take(5)->get();
 
-        // ── Gráfico 1: Funcionários por departamento (Donut) ──
+        // Grafico 1: Funcionarios por departamento (Donut)
         $employees_by_dept = Department::withCount('employees')
             ->having('employees_count', '>', 0)
             ->orderByDesc('employees_count')
@@ -54,7 +54,7 @@ class DashboardController extends Controller
             'data'   => $employees_by_dept->pluck('employees_count')->toArray(),
         ];
 
-        // ── Gráfico 2: Funcionários por setor (Barras horizontais) ──
+        // Grafico 2: Funcionarios por setor (Barras horizontais)
         $employees_by_sector = Sector::withCount('employees')
             ->having('employees_count', '>', 0)
             ->orderByDesc('employees_count')
@@ -65,7 +65,7 @@ class DashboardController extends Controller
             'data'   => $employees_by_sector->pluck('employees_count')->toArray(),
         ];
 
-        // ── Gráfico 3 (ex-status): Funcionários por treinamento (Top 10) ──
+        // Grafico 3: Funcionarios por formacao (Top 10)
         $top_trainings_emp = Training::withCount('employeeTrainings')
             ->having('employee_trainings_count', '>', 0)
             ->orderByDesc('employee_trainings_count')
@@ -74,12 +74,12 @@ class DashboardController extends Controller
 
         $chart_training_employees = [
             'labels' => $top_trainings_emp->map(fn($t) =>
-                mb_strlen($t->title) > 30 ? mb_substr($t->title, 0, 30) . '…' : $t->title
+                mb_strlen($t->title) > 30 ? mb_substr($t->title, 0, 30) . '...' : $t->title
             )->toArray(),
             'data'   => $top_trainings_emp->pluck('employee_trainings_count')->toArray(),
         ];
 
-        // ── Gráfico 4: Taxa de conclusão por mês (últimos 6 meses) ──
+        // Grafico 4: Taxa de conclusao por mes (ultimos 6 meses)
         $months = collect(range(5, 0))->map(fn ($i) => Carbon::now()->subMonths($i));
 
         $completion_by_month = $months->map(function ($month) {
@@ -101,7 +101,7 @@ class DashboardController extends Controller
             'completed' => $completion_by_month->pluck('completed')->toArray(),
         ];
 
-        // ── Gráfico 5: Top 6 treinamentos — barras de progresso ──
+        // Grafico 5: Top 6 formacoes - barras de progresso
         $top_trainings = Training::withCount('employeeTrainings')
             ->having('employee_trainings_count', '>', 0)
             ->orderByDesc('employee_trainings_count')
@@ -115,7 +115,7 @@ class DashboardController extends Controller
                 ? round(($completed / $training->employee_trainings_count) * 100)
                 : 0;
             return [
-                'title'     => mb_strlen($training->title) > 28 ? mb_substr($training->title, 0, 28) . '…' : $training->title,
+                'title'     => mb_strlen($training->title) > 28 ? mb_substr($training->title, 0, 28) . '...' : $training->title,
                 'total'     => $training->employee_trainings_count,
                 'completed' => $completed,
                 'rate'      => $rate,
@@ -124,9 +124,10 @@ class DashboardController extends Controller
 
         $chart_top_trainings = [
             'labels'    => $top_trainings_chart->pluck('title')->toArray(),
-            'total'     => $top_trainings_chart->pluck('total')->toArray(),
+            'totals'    => $top_trainings_chart->pluck('total')->toArray(),
             'completed' => $top_trainings_chart->pluck('completed')->toArray(),
             'rates'     => $top_trainings_chart->pluck('rate')->toArray(),
+            'rows'      => $top_trainings_chart->values()->toArray(),
         ];
 
         return view('dashboard.index', compact(
@@ -138,7 +139,7 @@ class DashboardController extends Controller
             'chart_sector',
             'chart_training_employees',
             'chart_completion',
-            'chart_top_trainings'
+            'chart_top_trainings',
         ));
     }
 }

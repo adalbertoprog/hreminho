@@ -19,7 +19,6 @@ class EmployeeController extends Controller
     {
         $query = Employee::with(['position', 'department', 'sector']);
 
-        // Filtros opcionais
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -56,7 +55,12 @@ class EmployeeController extends Controller
      */
     public function store(StoreEmployeeRequest $request): EmployeeResource
     {
-        $employee = Employee::create($request->validated());
+        $data = $request->validated();
+        if (isset($data['photo'])) {
+            $data['profile_photo'] = $data['photo'];
+            unset($data['photo']);
+        }
+        $employee = Employee::create($data);
 
         return new EmployeeResource($employee->load(['position', 'department', 'sector']));
     }
@@ -74,7 +78,12 @@ class EmployeeController extends Controller
      */
     public function update(UpdateEmployeeRequest $request, Employee $employee): EmployeeResource
     {
-        $employee->update($request->validated());
+        $data = $request->validated();
+        if (isset($data['photo'])) {
+            $data['profile_photo'] = $data['photo'];
+            unset($data['photo']);
+        }
+        $employee->update($data);
 
         return new EmployeeResource($employee->fresh()->load(['position', 'department', 'sector']));
     }

@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\LeaveWebController;
 use App\Http\Controllers\Web\PositionWebController;
 use App\Http\Controllers\Web\SectorWebController;
 use App\Http\Controllers\Web\TrainingWebController;
+use App\Http\Controllers\Web\ReportWebController;
 use App\Http\Controllers\Web\UserWebController;
 use Illuminate\Support\Facades\Route;
 
@@ -44,4 +45,5 @@ Route::middleware('auth')->group(function () {
     Route::get('/leaves',      [LeaveWebController::class,      'index'])->name('leaves.index');
     Route::get('/trainings',   [TrainingWebController::class,   'index'])->name('trainings.index');
     Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
+    Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
 });

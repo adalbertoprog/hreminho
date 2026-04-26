@@ -26,6 +26,7 @@ class UpdateEmployeeRequest extends FormRequest
             'nationality'   => 'nullable|string|max:100',
             'address'       => 'nullable|string|max:255',
             'work_location' => 'nullable|string|max:200',
+            'photo'         => 'nullable|string',
             'position_id'   => 'sometimes|exists:positions,id',
             'department_id' => 'sometimes|exists:departments,id',
             'sector_id'     => 'nullable|exists:sectors,id',

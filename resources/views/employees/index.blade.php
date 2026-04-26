@@ -28,7 +28,8 @@ tbody tr:last-child td { border-bottom:none; }
 tbody tr:hover { background:rgba(255,255,255,.025); }
 
 /* Avatar */
-.avatar { width:33px; height:33px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#a78bfa); display:inline-flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:#fff; flex-shrink:0; }
+.avatar { width:33px; height:33px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#a78bfa); display:inline-flex; align-items:center; justify-content:center; font-size:.72rem; font-weight:700; color:#fff; flex-shrink:0; overflow:hidden; }
+.avatar img { width:100%; height:100%; object-fit:cover; }
 .emp-name { font-weight:600; font-size:.875rem; }
 .emp-sub  { font-size:.74rem; color:var(--text-muted); }
 
@@ -236,7 +237,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
     <form id="empForm" onsubmit="submitForm(event)">
         <div class="form-grid">
             <div class="section-sep">Dados Pessoais</div>
-            <div class="fg"><label>Código *</label><input name="code" required placeholder="EMP-001"></div>
+            <div class="fg"><label>Código *</label><input name="code" required placeholder="FUN-001"></div>
             <div class="fg"><label>Género</label>
                 <select name="gender">
                     <option value="">— Selecionar —</option>
@@ -253,6 +254,21 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
             <div class="fg"><label>Nacionalidade</label><input name="nationality"></div>
             <div class="fg full"><label>Morada</label><input name="address"></div>
             <div class="fg full"><label>Local de trabalho</label><input name="work_location" placeholder="Ex: Sede, Filial Norte, Remoto…"></div>
+            <div class="fg full">
+                <label>Foto de Perfil</label>
+                <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
+                    <div id="photoPreview" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0">
+                        <span id="photoInitials">?</span>
+                        <img id="photoImg" src="" style="display:none;width:100%;height:100%;object-fit:cover">
+                    </div>
+                    <div style="flex:1">
+                        <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="handlePhotoChange(this)">
+                        <button type="button" class="btn-cancel" style="font-size:.78rem;padding:6px 14px" onclick="document.getElementById('photoFile').click()">📷 Escolher foto</button>
+                        <button type="button" class="btn-cancel" style="font-size:.78rem;padding:6px 10px;margin-left:6px" onclick="clearPhoto()" id="photoClearBtn" style="display:none">✕</button>
+                        <div style="font-size:.72rem;color:var(--text-muted);margin-top:5px">JPG, PNG ou GIF · máx. 2MB</div>
+                    </div>
+                </div>
+            </div>
 
             <div class="section-sep">Contrato & Função</div>
             <div class="fg"><label>Departamento *</label><select name="department_id" id="fDeptModal" required><option value="">— Selecionar —</option></select></div>
@@ -317,10 +333,10 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
     </div>
 </div>
 
-<!-- ══ Modal: Treinamentos do Funcionário ══ -->
+<!-- ══ Modal: Formações do Funcionário ══ -->
 <div class="overlay" id="trainOverlay">
 <div class="modal training-modal">
-    <div class="modal-title">🎓 Treinamentos do Funcionário</div>
+    <div class="modal-title">🎓 Formações do Funcionário</div>
     <div class="training-header-info">
         <div class="avatar-lg" id="trAvatar"></div>
         <div>
@@ -332,7 +348,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
         <table class="tr-table">
             <thead>
                 <tr>
-                    <th>Treinamento</th>
+                    <th>Formação</th>
                     <th>Provedor</th>
                     <th>Status</th>
                     <th>Pontuação</th>
@@ -368,396 +384,259 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
 @section('scripts')
 <script>
-const API   = '/api/v1';
-const CSRF  = document.querySelector('meta[name="csrf-token"]').content;
-
-let state = { page:1, search:'', department_id:'', sector_id:'', position_id:'', status:'' };
-let editId = null, deleteId = null;
+const API  = '/api/v1';
+const CSRF = document.querySelector('meta[name="csrf-token"]').content;
+let state = {page:1,search:'',department_id:'',sector_id:'',position_id:'',status:''};
+let editId=null, deleteId=null;
 let depts=[], positions=[], sectors=[];
+let photoBase64=null;
+
+/* ── Photo ── */
+function handlePhotoChange(input){
+    const file=input.files[0]; if(!file) return;
+    if(file.size>2*1024*1024){alert('Max 2MB');input.value='';return;}
+    const r=new FileReader();
+    r.onload=e=>{photoBase64=e.target.result;setPhotoPreview(photoBase64,null);};
+    r.readAsDataURL(file);
+}
+function clearPhoto(){
+    photoBase64=null;
+    document.getElementById('photoFile').value='';
+    document.getElementById('photoImg').style.display='none';
+    document.getElementById('photoImg').src='';
+    document.getElementById('photoInitials').style.display='';
+    document.getElementById('photoClearBtn').style.display='none';
+}
+function setPhotoPreview(src,initials){
+    const img=document.getElementById('photoImg');
+    const ini=document.getElementById('photoInitials');
+    const btn=document.getElementById('photoClearBtn');
+    if(src){img.src=src;img.style.display='block';ini.style.display='none';btn.style.display='inline-flex';}
+    else{img.style.display='none';img.src='';ini.textContent=initials||'?';ini.style.display='';btn.style.display='none';}
+}
+
+/* ── Helpers ── */
+async function apiFetch(method,path,body){
+    const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
+    if(body)opts.body=JSON.stringify(body);
+    const r=await fetch(API+path,opts);
+    if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
+    return r.status===204?null:r.json();
+}
+function toast(msg,type='ok'){
+    const w=document.getElementById('toastWrap');
+    const t=document.createElement('div');t.className=`toast toast-${type}`;t.textContent=msg;
+    w.appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+function openOverlay(id){document.getElementById(id).classList.add('open');}
+function closeOverlay(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 
 /* ── Boot ── */
-async function boot() {
-    const [d, p, s] = await Promise.all([
-        api('GET', '/departments?per_page=200'),
-        api('GET', '/positions?per_page=200'),
-        api('GET', '/sectors?all=1').catch(()=>({data:[]})),
+async function boot(){
+    const [d,p,s]=await Promise.all([
+        apiFetch('GET','/departments?per_page=200').catch(()=>({data:[]})),
+        apiFetch('GET','/positions?per_page=200').catch(()=>({data:[]})),
+        apiFetch('GET','/sectors?per_page=200').catch(()=>({data:[]})),
     ]);
-    depts     = d.data ?? [];
-    positions = p.data ?? [];
-    sectors   = s.data ?? [];
-    fillSelect('fDept',    depts,     'id','department', 'Todos os depts.');
-    fillSelect('fSector',  sectors,   'id','sector',     'Todos os setores');
-    fillSelect('fPos',     positions, 'id','position',   'Todos os cargos');
-    fillSelect('fDeptModal', depts,   'id','department', '— Selecionar —');
-    fillSelect('fPosModal',  positions,'id','position',  '— Selecionar —');
-    fillSelect('fSecModal',  sectors,  'id','sector',    '— Selecionar —');
-    loadTable();
+    depts=d.data??[];positions=p.data??[];sectors=s.data??[];
+    ['fDept','fDeptModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;depts.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.department}</option>`);});
+    ['fPos','fPosModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;positions.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.position}</option>`);});
+    ['fSector','fSecModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;sectors.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.sector}</option>`);});
+    loadEmployees();
 }
 
-/* ── API helper ── */
-async function api(method, path, body) {
-    const opts = { method, headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'} };
-    if(body) opts.body = JSON.stringify(body);
-    const r = await fetch(API + path, opts);
-    if(!r.ok) { const e = await r.json().catch(()=>({message:'Erro'})); throw e; }
-    return r.status===204 ? null : r.json();
-}
-
-/* ── Load table ── */
-async function loadTable() {
-    const tbody = document.getElementById('empBody');
-    tbody.innerHTML = '<tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr>';
+/* ── Load & Render ── */
+async function loadEmployees(){
+    const tbody=document.getElementById('empBody');
+    tbody.innerHTML='<tr class="state-row"><td colspan="8"><span class="spinner"></span>A carregar...</td></tr>';
     document.getElementById('pagBar').style.display='none';
-    const q = new URLSearchParams({ page:state.page, per_page:15 });
-    if(state.search)        q.set('search',        state.search);
-    if(state.department_id) q.set('department_id', state.department_id);
-    if(state.sector_id)     q.set('sector_id',     state.sector_id);
-    if(state.position_id)   q.set('position_id',   state.position_id);
-    if(state.status)        q.set('status',        state.status);
-
-    try {
-        const res = await fetch(`${API}/employees?${q}`, {headers:{Accept:'application/json'}});
-        const json = await res.json();
-        renderTable(json.data ?? []);
-        renderPag(json.meta);
-    } catch(e) {
-        tbody.innerHTML = '<tr class="state-row"><td colspan="7">⚠️ Erro ao carregar dados.</td></tr>';
-    }
+    const params={page:state.page,per_page:15};
+    if(state.search)        params.search=state.search;
+    if(state.department_id) params.department_id=state.department_id;
+    if(state.position_id)   params.position_id=state.position_id;
+    if(state.sector_id)     params.sector_id=state.sector_id;
+    if(state.status)        params.status=state.status;
+    try{
+        const res=await fetch(`${API}/employees?${new URLSearchParams(params)}`,{headers:{Accept:'application/json'}});
+        const json=await res.json();
+        renderTable(json.data??[]);renderPag(json.meta);
+    }catch{tbody.innerHTML='<tr class="state-row"><td colspan="8">Erro ao carregar.</td></tr>';}
 }
 
-function renderTable(rows) {
-    const tbody = document.getElementById('empBody');
-    if(!rows.length) { tbody.innerHTML='<tr class="state-row"><td colspan="7">Nenhum funcionário encontrado.</td></tr>'; return; }
-    tbody.innerHTML = rows.map(emp => {
-        const initials = (emp.first_name[0]??'') + (emp.last_name[0]??'');
-        const badgeClass = { active:'badge-active', inactive:'badge-inactive', terminated:'badge-terminated' }[emp.status] ?? 'badge-inactive';
-        const badgeLabel = { active:'Ativo', inactive:'Inativo', terminated:'Desligado' }[emp.status] ?? emp.status;
-        const hireDate = emp.hire_date ? new Date(emp.hire_date+'T00:00:00').toLocaleDateString('pt-PT') : '—';
-        const tenure = emp.hire_date ? Math.floor((Date.now() - new Date(emp.hire_date+'T00:00:00').getTime()) / (1000*60*60*24*365.25)) : null;
-        const tenureLabel = tenure !== null ? (tenure === 1 ? '1 ano' : tenure + ' anos') : '—';
-        const empJson = JSON.stringify(emp).replace(/"/g,'&quot;');
-        return `<tr>
+const BG=['#6366f1','#8b5cf6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899'];
+const empMap={};
+function yearsAgo(dateStr){
+    if(!dateStr)return'—';
+    const diff=(new Date()-new Date(dateStr))/(1000*60*60*24*365.25);
+    return diff<1?'< 1 ano':Math.floor(diff)+' ano(s)';
+}
+function renderTable(rows){
+    const tbody=document.getElementById('empBody');
+    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="8">Nenhum funcionário encontrado.</td></tr>';return;}
+    rows.forEach(emp=>empMap[emp.id]=emp);
+    tbody.innerHTML=rows.map((emp,i)=>{
+        const ini=((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
+        const bg=BG[i%BG.length];
+        const av=emp.photo
+            ?`<div class="avatar"><img src="${emp.photo}" alt="${ini}"></div>`
+            :`<div class="avatar" style="background:${bg}">${ini}</div>`;
+        const sb={active:'<span class="badge badge-active">Ativo</span>',inactive:'<span class="badge badge-inactive">Inativo</span>',terminated:'<span class="badge badge-terminated">Desligado</span>'}[emp.status]??`<span class="badge">${emp.status}</span>`;
+        return`<tr>
+            <td>${av}</td>
             <td>
-                <div style="display:flex;align-items:center;gap:10px">
-                    <div class="avatar">${initials.toUpperCase()}</div>
-                    <div>
-                        <div class="emp-name-wrap" onmouseenter="showProfile(event, this)" onmouseleave="hideProfile()" data-emp="${empJson}">
-                            <div class="emp-name">${emp.full_name}</div>
-                        </div>
-                        <div class="emp-sub">${emp.code}</div>
-                    </div>
-                </div>
+                <span class="emp-name-wrap"
+                    onmouseenter="showHoverCard(event,${emp.id})"
+                    onmouseleave="hideHoverCard()">
+                    <span class="emp-name">${emp.full_name}</span>
+                </span>
+                <div class="emp-sub">${emp.code}</div>
             </td>
-            <td style="color:var(--text-muted)">${emp.sector?.sector ?? '—'}</td>
-            <td>${emp.department?.department ?? '—'}</td>
-            <td>${emp.position?.position ?? '—'}</td>
-            <td style="color:var(--text-muted)">${hireDate}</td>
-            <td style="color:var(--text-muted)">${tenureLabel}</td>
-            <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+            <td>${emp.sector?.sector??'—'}</td>
+            <td>${emp.department?.department??'—'}</td>
+            <td>${emp.position?.position??'—'}</td>
+            <td style="color:var(--text-muted);font-size:.82rem">${emp.hire_date?new Date(emp.hire_date+'T00:00:00').toLocaleDateString('pt-PT'):'—'}</td>
+            <td style="font-size:.82rem;color:var(--text-muted)">${yearsAgo(emp.hire_date)}</td>
+            <td>${sb}</td>
             <td style="white-space:nowrap">
-                <button class="btn-sm btn-train" onclick="openTrainings(${emp.id},'${emp.full_name.replace(/'/g,"\\'")}','${(emp.first_name[0]??'')+(emp.last_name[0]??'')}')">🎓</button>
-                <button class="btn-sm btn-edit"  onclick='openEdit(${JSON.stringify(emp)})'>✏️ Editar</button>
-                <button class="btn-sm btn-del"   onclick="openDelete(${emp.id},'${emp.full_name.replace(/'/g,"\\'")}')">🗑</button>
-            </td>
-        </tr>`;
+                <button class="btn-sm btn-edit" onclick="openEdit(${emp.id})">✏️ Editar</button>
+                <button class="btn-sm btn-del"  onclick="openDeleteModal(${emp.id},'${ini}')">🗑</button>
+            </td></tr>`;
     }).join('');
 }
 
-function renderPag(meta) {
-    if(!meta) return;
-    const bar = document.getElementById('pagBar');
-    bar.style.display='flex';
-    document.getElementById('pagInfo').textContent = `Exibindo ${meta.from ?? 0}–${meta.to ?? 0} de ${meta.total} funcionários`;
-    const btns = document.getElementById('pagBtns');
-    btns.innerHTML='';
-    const prev = document.createElement('button');
-    prev.textContent='‹'; prev.disabled = meta.current_page<=1;
-    prev.onclick=()=>{ state.page--; loadTable(); };
-    btns.appendChild(prev);
-
-    const total = Math.min(meta.last_page, 7);
-    const start = Math.max(1, meta.current_page - 3);
-    const end   = Math.min(meta.last_page, start + total - 1);
-    for(let i=start;i<=end;i++){
-        const b=document.createElement('button');
-        b.textContent=i; if(i===meta.current_page) b.classList.add('active');
-        b.onclick=(()=>{ const p=i; return()=>{ state.page=p; loadTable(); }; })();
-        btns.appendChild(b);
-    }
-    const next=document.createElement('button');
-    next.textContent='›'; next.disabled = meta.current_page>=meta.last_page;
-    next.onclick=()=>{ state.page++; loadTable(); };
-    btns.appendChild(next);
+function renderPag(meta){
+    if(!meta)return;
+    document.getElementById('pagBar').style.display='flex';
+    document.getElementById('pagInfo').textContent=`${meta.from??0}–${meta.to??0} de ${meta.total}`;
+    const btns=document.getElementById('pagBtns');btns.innerHTML='';
+    const prev=document.createElement('button');prev.textContent='‹';prev.disabled=meta.current_page<=1;
+    prev.onclick=()=>{state.page=meta.current_page-1;loadEmployees();};btns.appendChild(prev);
+    const s2=Math.max(1,meta.current_page-3),e2=Math.min(meta.last_page,s2+6);
+    for(let i=s2;i<=e2;i++){const b=document.createElement('button');b.textContent=i;if(i===meta.current_page)b.classList.add('active');b.onclick=(p=>()=>{state.page=p;loadEmployees();})(i);btns.appendChild(b);}
+    const next=document.createElement('button');next.textContent='›';next.disabled=meta.current_page>=meta.last_page;
+    next.onclick=()=>{state.page=meta.current_page+1;loadEmployees();};btns.appendChild(next);
 }
 
 /* ── Filters ── */
-function applyFilters() {
-    state.search        = document.getElementById('fSearch').value.trim();
-    state.department_id = document.getElementById('fDept').value;
-    state.sector_id     = document.getElementById('fSector').value;
-    state.position_id   = document.getElementById('fPos').value;
-    state.status        = document.getElementById('fStatus').value;
-    state.page = 1;
-    loadTable();
+function applyFilters(){
+    state.search=document.getElementById('fSearch').value.trim();
+    state.department_id=document.getElementById('fDept').value;
+    state.position_id=document.getElementById('fPos').value;
+    state.sector_id=document.getElementById('fSector').value;
+    state.status=document.getElementById('fStatus').value;
+    state.page=1;loadEmployees();
 }
-function resetFilters() {
-    document.getElementById('fSearch').value='';
-    document.getElementById('fDept').value='';
-    document.getElementById('fSector').value='';
-    document.getElementById('fPos').value='';
-    document.getElementById('fStatus').value='';
-    state={ page:1, search:'', department_id:'', sector_id:'', position_id:'', status:'' };
-    loadTable();
+function resetFilters(){
+    ['fSearch','fDept','fPos','fSector','fStatus'].forEach(id=>document.getElementById(id).value='');
+    state={page:1,search:'',department_id:'',sector_id:'',position_id:'',status:''};loadEmployees();
 }
+document.getElementById('fSearch').addEventListener('keydown',e=>{if(e.key==='Enter')applyFilters();});
 
-/* ── Modal helpers ── */
-function fillSelect(id, items, valKey, labelKey, placeholder) {
-    const sel = document.getElementById(id);
-    if(!sel) return;
-    const cur = sel.value;
-    sel.innerHTML = `<option value="">${placeholder}</option>` + items.map(i=>`<option value="${i[valKey]}">${i[labelKey]}</option>`).join('');
-    sel.value = cur;
+/* ── Hover Card ── */
+let hoverTimer=null, activeEmpId=null;
+function showHoverCard(event,empId){const emp=empMap[empId];if(!emp)return;
+    clearTimeout(hoverTimer);
+    const card=document.getElementById('profileCard');
+    // Avatar
+    const ini=((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
+    const av=document.getElementById('pcAvatar');
+    av.innerHTML=emp.photo?`<img src="${emp.photo}" alt="${ini}">`:`<span>${ini}</span>`;
+    // Info
+    document.getElementById('pcName').textContent=emp.full_name;
+    document.getElementById('pcSub').textContent=`${emp.position?.position??'—'} · ${emp.department?.department??'—'}`;
+    document.getElementById('pcDob').textContent=emp.date_of_birth?new Date(emp.date_of_birth+'T00:00:00').toLocaleDateString('pt-PT'):'—';
+    document.getElementById('pcAge').textContent=emp.date_of_birth?Math.floor((new Date()-new Date(emp.date_of_birth))/(1000*60*60*24*365.25))+' anos':'—';
+    document.getElementById('pcTenure').textContent=yearsAgo(emp.hire_date);
+    document.getElementById('pcContract').textContent=emp.contract_type||'—';
+    document.getElementById('pcWorkLocation').textContent=emp.work_location||'—';
+    document.getElementById('pcAddress').textContent=emp.address||'—';
+    document.getElementById('pcTrainings').innerHTML='<div class="pc-loading">A carregar...</div>';
+    // Position
+    positionCard(card,event);
+    card.classList.add('visible');
+    // Load trainings
+    if(activeEmpId!==emp.id){
+        activeEmpId=emp.id;
+        apiFetch('GET',`/enrollments?employee_id=${emp.id}&per_page=50`).then(res=>{
+            const rows=res.data??[];
+            if(!rows.length){document.getElementById('pcTrainings').innerHTML='<div class="pc-tr-empty">Sem formações registadas.</div>';return;}
+            const sC={enrolled:'pc-tr-enrolled',completed:'pc-tr-completed',failed:'pc-tr-failed'};
+            const sL={enrolled:'Inscrito',completed:'Concluído',failed:'Reprovado'};
+            document.getElementById('pcTrainings').innerHTML=rows.slice(0,4).map(r=>`
+                <div class="pc-training-item">
+                    <span class="pc-tr-name">${r.training?.title??'—'}</span>
+                    <span class="pc-tr-status ${sC[r.status]??''}">${sL[r.status]??r.status}</span>
+                </div>`).join('')+(rows.length>4?`<div class="pc-tr-empty">+${rows.length-4} mais...</div>`:'');
+        }).catch(()=>{document.getElementById('pcTrainings').innerHTML='<div class="pc-tr-empty">Erro ao carregar.</div>';});
+    }
 }
-function openOverlay(id) { document.getElementById(id).classList.add('open'); }
-function closeOverlay(id){ document.getElementById(id).classList.remove('open'); }
-
-function clearForm() {
-    document.getElementById('empForm').reset();
+function positionCard(card,event){
+    const vw=window.innerWidth,vh=window.innerHeight;
+    let x=event.clientX+16,y=event.clientY+16;
+    const w=320,h=380;
+    if(x+w>vw)x=event.clientX-w-8;
+    if(y+h>vh)y=vh-h-8;
+    card.style.left=x+'px';card.style.top=y+'px';
 }
+function hideHoverCard(){
+    hoverTimer=setTimeout(()=>{
+        document.getElementById('profileCard').classList.remove('visible');
+        activeEmpId=null;
+    },200);
+}
+document.getElementById('profileCard').addEventListener('mouseenter',()=>clearTimeout(hoverTimer));
+document.getElementById('profileCard').addEventListener('mouseleave',()=>hideHoverCard());
 
-function openCreate() {
-    editId = null;
-    clearForm();
-    document.getElementById('formTitle').textContent='➕ Novo Funcionário';
+/* ── Create / Edit ── */
+function openCreate(){
+    editId=null;document.getElementById('empForm').reset();clearPhoto();setPhotoPreview(null,'?');
+    document.getElementById('formTitle').textContent='Novo Funcionário';
     document.getElementById('formSubmitBtn').textContent='Criar Funcionário';
     openOverlay('formOverlay');
 }
-
-function openEdit(emp) {
-    editId = emp.id;
-    clearForm();
-    const form = document.getElementById('empForm');
-    const set = (name,val) => { const el=form.querySelector(`[name="${name}"]`); if(el) el.value=val??''; };
-    set('code',          emp.code);
-    set('first_name',    emp.first_name);
-    set('last_name',     emp.last_name);
-    set('email',         emp.email);
-    set('phone',         emp.phone);
-    set('date_of_birth', emp.date_of_birth);
-    set('gender',        emp.gender);
-    set('nationality',   emp.nationality);
-    set('address',       emp.address);
-    set('work_location', emp.work_location);
-    set('hire_date',     emp.hire_date);
-    set('end_date',      emp.end_date);
-    set('contract_type', emp.contract_type);
-    set('status',        emp.status);
-    set('department_id', emp.department?.id ?? '');
-    set('position_id',   emp.position?.id ?? '');
-    set('sector_id',     emp.sector?.id ?? '');
-    document.getElementById('formTitle').textContent='✏️ Editar Funcionário';
+function openEdit(empId){const emp=empMap[empId];if(!emp)return;
+    editId=emp.id;document.getElementById('empForm').reset();
+    const form=document.getElementById('empForm');
+    const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
+    set('code',emp.code);set('first_name',emp.first_name);set('last_name',emp.last_name);
+    set('email',emp.email);set('phone',emp.phone);set('date_of_birth',emp.date_of_birth);
+    set('gender',emp.gender);set('nationality',emp.nationality);set('address',emp.address);
+    set('work_location',emp.work_location);set('position_id',emp.position_id);
+    set('department_id',emp.department_id);set('sector_id',emp.sector_id??'');
+    set('hire_date',emp.hire_date);set('status',emp.status);set('contract_type',emp.contract_type);set('end_date',emp.end_date);
+    const ini=((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
+    photoBase64=null;setPhotoPreview(emp.photo??null,ini);
+    document.getElementById('formTitle').textContent='Editar Funcionário';
     document.getElementById('formSubmitBtn').textContent='Guardar Alterações';
     openOverlay('formOverlay');
 }
-
-async function submitForm(e) {
+async function submitForm(e){
     e.preventDefault();
-    const btn = document.getElementById('formSubmitBtn');
-    btn.disabled=true; btn.textContent='A guardar...';
-    const form = document.getElementById('empForm');
-    const data = {};
-    new FormData(form).forEach((v,k)=>{ if(v!=='') data[k]=v; });
-    try {
-        if(editId) {
-            await api('PUT', `/employees/${editId}`, data);
-            toast('Funcionário atualizado!', 'ok');
-        } else {
-            await api('POST', '/employees', data);
-            toast('Funcionário criado!', 'ok');
-        }
-        closeOverlay('formOverlay');
-        loadTable();
-    } catch(err) {
-        toast(err.message ?? 'Erro ao guardar.', 'err');
-    } finally {
-        btn.disabled=false; btn.textContent = editId ? 'Guardar Alterações' : 'Criar Funcionário';
-    }
+    const btn=document.getElementById('formSubmitBtn');btn.disabled=true;btn.textContent='A guardar...';
+    const data={};new FormData(document.getElementById('empForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
+    if(photoBase64)data.photo=photoBase64;
+    try{
+        if(editId)await apiFetch('PUT',`/employees/${editId}`,data);
+        else      await apiFetch('POST','/employees',data);
+        toast(editId?'Funcionário atualizado!':'Funcionário criado!','ok');
+        closeOverlay('formOverlay');loadEmployees();
+    }catch(err){
+        const msg=err.errors?Object.values(err.errors).flat().join('\n'):(err.message??'Erro.');
+        toast(msg,'err');
+    }finally{btn.disabled=false;btn.textContent=editId?'Guardar Alterações':'Criar Funcionário';}
 }
 
-function openDelete(id, name) {
-    deleteId = id;
-    document.getElementById('delMsg').textContent = `Tem certeza que deseja excluir «${name}»? Esta ação não pode ser desfeita.`;
+/* ── Delete ── */
+function openDeleteModal(id,name){
+    deleteId=id;
+    document.getElementById('delMsg').textContent=`Confirmar exclusão de "${name}"?`;
     openOverlay('delOverlay');
 }
-async function confirmDelete() {
-    try {
-        await api('DELETE', `/employees/${deleteId}`);
-        toast('Funcionário excluído.', 'ok');
-        closeOverlay('delOverlay');
-        loadTable();
-    } catch(err) {
-        toast(err.message ?? 'Erro ao excluir.', 'err');
-    }
+async function confirmDelete(){
+    try{await apiFetch('DELETE',`/employees/${deleteId}`);toast('Funcionário excluído.','ok');closeOverlay('delOverlay');loadEmployees();}
+    catch(err){toast(err.message??'Erro.','err');}
 }
-
-/* ── Toast ── */
-function toast(msg, type='ok') {
-    const wrap=document.getElementById('toastWrap');
-    const t=document.createElement('div');
-    t.className=`toast toast-${type}`; t.textContent=msg;
-    wrap.appendChild(t);
-    setTimeout(()=>t.remove(), 3500);
-}
-
-/* ── Profile Card ── */
-let profileHideTimer = null;
-let profileCache = {};
-
-function calcAge(dob) {
-    if (!dob) return '—';
-    const d = new Date(dob + 'T00:00:00');
-    const diff = Date.now() - d.getTime();
-    return Math.floor(diff / (1000 * 60 * 60 * 24 * 365.25)) + ' anos';
-}
-
-function calcTenure(hire) {
-    if (!hire) return '—';
-    const d = new Date(hire + 'T00:00:00');
-    const years  = Math.floor((Date.now() - d.getTime()) / (1000 * 60 * 60 * 24 * 365.25));
-    const months = Math.floor(((Date.now() - d.getTime()) % (1000 * 60 * 60 * 24 * 365.25)) / (1000 * 60 * 60 * 24 * 30.44));
-    if (years === 0) return months + ' mes' + (months !== 1 ? 'es' : '');
-    return years + ' ano' + (years !== 1 ? 's' : '') + (months > 0 ? ` e ${months} mes${months !== 1 ? 'es' : ''}` : '');
-}
-
-function fmtDate(d) {
-    if (!d) return '—';
-    return new Date(d + 'T00:00:00').toLocaleDateString('pt-PT');
-}
-
-function positionCard(card, anchorEl) {
-    const rect = anchorEl.getBoundingClientRect();
-    const cardW = 320, cardH = 480, margin = 10;
-    let left = rect.right + margin;
-    let top  = rect.top;
-    if (left + cardW > window.innerWidth - margin) left = rect.left - cardW - margin;
-    if (top + cardH > window.innerHeight - margin)  top  = window.innerHeight - cardH - margin;
-    if (top < margin) top = margin;
-    card.style.left = left + 'px';
-    card.style.top  = top  + 'px';
-}
-
-async function showProfile(e, el) {
-    clearTimeout(profileHideTimer);
-    const emp  = JSON.parse(el.dataset.emp);
-    const card = document.getElementById('profileCard');
-
-    // Fill static data immediately
-    const initials = (emp.first_name[0] ?? '') + (emp.last_name[0] ?? '');
-    document.getElementById('pcAvatar').textContent  = initials.toUpperCase();
-    document.getElementById('pcName').textContent    = emp.full_name;
-    document.getElementById('pcSub').textContent     = (emp.position?.position ?? '') + (emp.department?.department ? ' · ' + emp.department.department : '');
-    document.getElementById('pcDob').textContent     = fmtDate(emp.date_of_birth);
-    document.getElementById('pcAge').textContent     = calcAge(emp.date_of_birth);
-    document.getElementById('pcTenure').textContent  = calcTenure(emp.hire_date);
-    document.getElementById('pcContract').textContent     = emp.contract_type   || '—';
-    document.getElementById('pcWorkLocation').textContent = emp.work_location   || '—';
-    document.getElementById('pcAddress').textContent      = emp.address         || '—';
-    document.getElementById('pcTrainings').innerHTML = '<div class="pc-loading">⏳ A carregar…</div>';
-
-    positionCard(card, el);
-    card.classList.add('visible');
-
-    // Load trainings (cached)
-    if (!profileCache[emp.id]) {
-        try {
-            const res  = await fetch(`${API}/enrollments?employee_id=${emp.id}&per_page=200`, { headers:{ Accept:'application/json' } });
-            const json = await res.json();
-            profileCache[emp.id] = json.data ?? [];
-        } catch { profileCache[emp.id] = []; }
-    }
-
-    const rows = profileCache[emp.id];
-    const statusMap = {
-        enrolled:  ['pc-tr-enrolled',  'Inscrito'],
-        completed: ['pc-tr-completed', 'Concluído'],
-        failed:    ['pc-tr-failed',    'Reprovado'],
-    };
-    const trHtml = rows.length
-        ? rows.slice(0, 6).map(r => {
-            const [cls, label] = statusMap[r.status] ?? ['', r.status];
-            return `<div class="pc-training-item">
-                <span class="pc-tr-name">${r.training?.title ?? '—'}</span>
-                <span class="pc-tr-status ${cls}">${label}</span>
-            </div>`;
-          }).join('') + (rows.length > 6 ? `<div class="pc-tr-empty" style="margin-top:6px">+${rows.length - 6} mais…</div>` : '')
-        : '<div class="pc-tr-empty">Sem formações registadas.</div>';
-
-    document.getElementById('pcTrainings').innerHTML = trHtml;
-}
-
-function hideProfile() {
-    profileHideTimer = setTimeout(() => {
-        document.getElementById('profileCard').classList.remove('visible');
-    }, 200);
-}
-
-/* ── Treinamentos do Funcionário ── */
-async function openTrainings(empId, empName, empInitials) {
-    document.getElementById('trAvatar').textContent = empInitials.toUpperCase();
-    document.getElementById('trName').textContent   = empName;
-    document.getElementById('trMeta').textContent   = 'A carregar treinamentos…';
-    document.getElementById('trBody').innerHTML     = '<tr><td colspan="6" class="tr-loading">⏳ A carregar…</td></tr>';
-    openOverlay('trainOverlay');
-
-    try {
-        const res  = await fetch(`${API}/enrollments?employee_id=${empId}&per_page=200`, { headers:{ Accept:'application/json' } });
-        const json = await res.json();
-        const rows = json.data ?? [];
-        document.getElementById('trMeta').textContent = `${rows.length} treinamento(s) registado(s)`;
-        renderTrainings(rows);
-    } catch(e) {
-        document.getElementById('trMeta').textContent = 'Erro ao carregar.';
-        document.getElementById('trBody').innerHTML   = '<tr><td colspan="6" class="tr-empty">⚠️ Erro ao carregar os treinamentos.</td></tr>';
-    }
-}
-
-function renderTrainings(rows) {
-    const tbody = document.getElementById('trBody');
-    if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="tr-empty">🎓 Nenhum treinamento registado para este funcionário.</td></tr>';
-        return;
-    }
-
-    const statusMap = {
-        enrolled:  ['badge badge-enrolled',  'Inscrito'],
-        completed: ['badge badge-completed', 'Concluído'],
-        failed:    ['badge badge-failed',    'Reprovado'],
-    };
-
-    tbody.innerHTML = rows.map(r => {
-        const [badgeCls, badgeLabel] = statusMap[r.status] ?? ['badge', r.status ?? '—'];
-        const score = r.score !== null && r.score !== undefined
-            ? `<div class="score-bar-wrap">
-                 <div class="score-bar"><div class="score-bar-fill" style="width:${r.score}%"></div></div>
-                 <span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap">${r.score}%</span>
-               </div>`
-            : '<span style="color:var(--text-muted)">—</span>';
-        const fmt = d => d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-PT') : '—';
-        return `<tr>
-            <td style="font-weight:600">${r.training?.title ?? '—'}</td>
-            <td style="color:var(--text-muted)">${r.training?.provider ?? '—'}</td>
-            <td><span class="${badgeCls}">${badgeLabel}</span></td>
-            <td style="min-width:120px">${score}</td>
-            <td style="color:var(--text-muted);white-space:nowrap">${fmt(r.start_date)}</td>
-            <td style="color:var(--text-muted);white-space:nowrap">${fmt(r.end_date)}</td>
-        </tr>`;
-    }).join('');
-}
-
-/* ── Close on backdrop ── */
-document.querySelectorAll('.overlay').forEach(o=>{
-    o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); });
-});
 
 boot();
 </script>

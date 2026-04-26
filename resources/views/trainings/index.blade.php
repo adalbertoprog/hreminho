@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title','Treinamentos')
-@section('page-title','Treinamentos')
+@section('title','Formações')
+@section('page-title','Formações')
 
 @section('styles')
 <style>
@@ -69,9 +69,9 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 
 @section('content')
 <div class="toolbar">
-    <h2>🎓 Treinamentos</h2>
+    <h2>🎓 Formações</h2>
     <div style="display:flex;gap:10px">
-        <button class="btn-primary" id="btnNewTraining" onclick="openCreateTraining()" style="display:none">+ Novo Treinamento</button>
+        <button class="btn-primary" id="btnNewTraining" onclick="openCreateTraining()" style="display:none">+ Nova Formação</button>
         <button class="btn-primary" id="btnNewEnroll"   onclick="openCreateEnroll()">+ Nova Inscrição</button>
     </div>
 </div>
@@ -84,7 +84,7 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 
 <!-- Filtros Inscrições -->
 <div class="filters" id="filterEnroll">
-    <select id="fTraining" class="f-input" style="max-width:220px"><option value="">Todos os treinamentos</option></select>
+    <select id="fTraining" class="f-input" style="max-width:220px"><option value="">Todas as formações</option></select>
     <select id="fEmpEnroll" class="f-input" style="max-width:210px"><option value="">Todos os funcionários</option></select>
     <select id="fEnrollStatus" class="f-input" style="max-width:160px">
         <option value="">Todos os status</option>
@@ -107,7 +107,7 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 <div class="card" id="tableEnroll">
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Funcionário</th><th>Treinamento</th><th>Status</th><th>Pontuação</th><th>Início</th><th>Fim</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Funcionário</th><th>Formação</th><th>Status</th><th>Pontuação</th><th>Início</th><th>Fim</th><th>Ações</th></tr></thead>
             <tbody id="enrollBody"><tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr></tbody>
         </table>
     </div>
@@ -140,7 +140,7 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
     <form id="enrollForm" onsubmit="submitEnroll(event)">
         <div class="form-grid">
             <div class="fg full"><label>Funcionário *</label><select name="employee_id" id="empSelEnroll" required><option value="">— Selecionar —</option></select></div>
-            <div class="fg full"><label>Treinamento *</label><select name="training_id" id="trainingSelEnroll" required><option value="">— Selecionar —</option></select></div>
+            <div class="fg full"><label>Formação *</label><select name="training_id" id="trainingSelEnroll" required><option value="">— Selecionar —</option></select></div>
             <div class="fg"><label>Status</label>
                 <select name="status">
                     <option value="enrolled">Inscrito</option>
@@ -161,10 +161,10 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 </div>
 </div>
 
-<!-- Modal: Novo Treinamento / Editar Treinamento -->
+<!-- Modal: Nova Formação / Editar Formação -->
 <div class="overlay" id="trainingOverlay">
 <div class="modal">
-    <div class="modal-title" id="trainingTitle">Novo Treinamento</div>
+    <div class="modal-title" id="trainingTitle">Nova Formação</div>
     <form id="trainingForm" onsubmit="submitTraining(event)">
         <div class="fg" style="margin-bottom:13px"><label>Título *</label><input name="title" required placeholder="Ex: Excel Avançado"></div>
         <div class="fg" style="margin-bottom:13px"><label>Fornecedor *</label><input name="provider" required placeholder="Ex: Udemy, Coursera..."></div>
@@ -199,6 +199,7 @@ let currentTab='enrollments';
 let enrollEditId=null, trainingEditId=null, deleteTarget=null;
 let enrollPage=1, catalogPage=1, enrollFilters={}, catalogFilters={};
 let employees=[], trainings=[];
+let enrollMap={}, trainingMap={};
 
 const statusLabel={enrolled:'Inscrito',completed:'Concluído',failed:'Reprovado'};
 const statusClass={enrolled:'badge-enrolled',completed:'badge-completed',failed:'badge-failed'};
@@ -263,6 +264,8 @@ async function loadEnrollments(){
 function renderEnrollments(rows){
     const tbody=document.getElementById('enrollBody');
     if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="7">Nenhuma inscrição encontrada.</td></tr>';return;}
+    enrollMap={};
+    rows.forEach(e=>enrollMap[e.id]=e);
     tbody.innerHTML=rows.map(e=>{
         const sd=e.start_date?new Date(e.start_date+'T00:00:00').toLocaleDateString('pt-PT'):'—';
         const ed=e.end_date  ?new Date(e.end_date  +'T00:00:00').toLocaleDateString('pt-PT'):'—';
@@ -275,7 +278,7 @@ function renderEnrollments(rows){
             <td style="color:var(--text-muted)">${sd}</td>
             <td style="color:var(--text-muted)">${ed}</td>
             <td style="white-space:nowrap">
-                <button class="btn-sm btn-edit" onclick='openEditEnroll(${JSON.stringify(e)})'>✏️</button>
+                <button class="btn-sm btn-edit" onclick="openEditEnroll(${e.id})">✏️</button>
                 <button class="btn-sm btn-del"  onclick="openDelete('enrollment',${e.id})">🗑</button>
             </td>
         </tr>`;
@@ -298,7 +301,9 @@ async function loadCatalog(){
 
 function renderCatalog(rows){
     const tbody=document.getElementById('catalogBody');
-    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="5">Nenhum treinamento no catálogo.</td></tr>';return;}
+    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="5">Nenhuma formação no catálogo.</td></tr>';return;}
+    trainingMap={};
+    rows.forEach(t=>trainingMap[t.id]=t);
     tbody.innerHTML=rows.map(t=>{
         return `<tr>
             <td style="color:var(--text-muted)">${t.id}</td>
@@ -306,7 +311,7 @@ function renderCatalog(rows){
             <td>${t.provider}</td>
             <td><span class="badge-count">${t.employee_trainings_count??0}</span></td>
             <td style="white-space:nowrap">
-                <button class="btn-sm btn-edit" onclick='openEditTraining(${JSON.stringify(t)})'>✏️ Editar</button>
+                <button class="btn-sm btn-edit" onclick="openEditTraining(${t.id})">✏️ Editar</button>
                 <button class="btn-sm btn-del"  onclick="openDelete('training',${t.id})">🗑</button>
             </td>
         </tr>`;
@@ -348,7 +353,8 @@ function openCreateEnroll(){
     document.getElementById('enrollSubmitBtn').textContent='Inscrever';
     openOverlay('enrollOverlay');
 }
-function openEditEnroll(e){
+function openEditEnroll(id){
+    const e=enrollMap[id];if(!e)return;
     enrollEditId=e.id;document.getElementById('enrollForm').reset();
     const form=document.getElementById('enrollForm');
     const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
@@ -377,16 +383,17 @@ async function submitEnroll(ev){
 
 function openCreateTraining(){
     trainingEditId=null;document.getElementById('trainingForm').reset();
-    document.getElementById('trainingTitle').textContent='➕ Novo Treinamento';
+    document.getElementById('trainingTitle').textContent='➕ Nova Formação';
     document.getElementById('trainingSubmitBtn').textContent='Criar';
     openOverlay('trainingOverlay');
 }
-function openEditTraining(t){
+function openEditTraining(id){
+    const t=trainingMap[id];if(!t)return;
     trainingEditId=t.id;document.getElementById('trainingForm').reset();
     const form=document.getElementById('trainingForm');
     const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
     set('title',t.title);set('provider',t.provider);set('description',t.description);
-    document.getElementById('trainingTitle').textContent='✏️ Editar Treinamento';
+    document.getElementById('trainingTitle').textContent='✏️ Editar Formação';
     document.getElementById('trainingSubmitBtn').textContent='Guardar';
     openOverlay('trainingOverlay');
 }
@@ -397,7 +404,7 @@ async function submitTraining(ev){
     try{
         if(trainingEditId) await apiFetch('PUT',`/trainings/${trainingEditId}`,data);
         else               await apiFetch('POST','/trainings',data);
-        toast(trainingEditId?'Treinamento atualizado!':'Treinamento criado!','ok');
+        toast(trainingEditId?'Formação atualizada!':'Formação criada!','ok');
         closeOverlay('trainingOverlay');loadCatalog();
     }catch(err){toast(err.message??'Erro.','err');}
     finally{btn.disabled=false;btn.textContent=trainingEditId?'Guardar':'Criar';}
@@ -407,7 +414,7 @@ async function submitTraining(ev){
 function openDelete(type,id){
     deleteTarget={type,id};
     document.getElementById('delMsg').textContent=type==='training'
-        ?'Tem certeza que deseja excluir este treinamento? Todas as inscrições também serão removidas.'
+        ?'Tem certeza que deseja excluir esta formação? Todas as inscrições também serão removidas.'
         :'Tem certeza que deseja excluir esta inscrição?';
     openOverlay('delOverlay');
 }

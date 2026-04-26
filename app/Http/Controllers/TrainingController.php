@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 
 class TrainingController extends Controller
 {
-    // ── Treinamentos (catálogo) ──────────────────────────
+    // ── Formações (catálogo) ──────────────────────────
 
     public function index(Request $request): JsonResponse
     {
@@ -62,7 +62,7 @@ class TrainingController extends Controller
     public function destroy(Training $training): JsonResponse
     {
         $training->delete();
-        return response()->json(['message' => 'Treinamento excluído com sucesso.']);
+        return response()->json(['message' => 'Formação excluída com sucesso.']);
     }
 
     // ── Inscrições (employee_trainings) ─────────────────

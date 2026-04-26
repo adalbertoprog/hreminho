@@ -1,6 +1,6 @@
 @extends('layouts.guest')
 
-@section('title', 'HREminho')
+@section('title', 'HRElectrominho')
 
 @section('navbar-actions')
     <a href="{{ route('login') }}" class="btn btn-ghost">Entrar</a>
@@ -128,12 +128,12 @@
 
         <h1>Gerencie pessoas com <span>inteligência e eficiência</span></h1>
 
-        <p>HREminho centraliza funcionários, presenças, férias, treinamentos e muito mais em uma plataforma moderna e fácil de usar.</p>
+        <p>HRElectrominho centraliza funcionários, presenças, férias, formações e muito mais em uma plataforma moderna e fácil de usar.</p>
 
         <div class="hero-cta">
             <a href="{{ route('login') }}" class="btn btn-primary btn-lg">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"/></svg>
-                Acessar o sistema
+                Aceder ao sistema
             </a>
             <a href="#features" class="btn btn-ghost btn-lg">Ver funcionalidades</a>
         </div>
@@ -171,7 +171,7 @@
         <div class="feature-card">
             <div class="feature-icon" style="background: rgba(99,102,241,0.15); color: #818cf8;">👥</div>
             <h3>Gestão de Funcionários</h3>
-            <p>Cadastro completo com dados pessoais, cargo, departamento, contrato e histórico profissional.</p>
+            <p>Cadastro completo com dados pessoais, cargo, departamento, formações e histórico formativo.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon" style="background: rgba(34,197,94,0.15); color: #22c55e;">📅</div>
@@ -185,7 +185,7 @@
         </div>
         <div class="feature-card">
             <div class="feature-icon" style="background: rgba(239,68,68,0.15); color: #ef4444;">🎓</div>
-            <h3>Treinamentos</h3>
+            <h3>Formações</h3>
             <p>Controlo de formações, certificados, pontuações e progresso de cada colaborador.</p>
         </div>
         <div class="feature-card">
@@ -204,7 +204,7 @@
 {{-- ── CTA ─────────────────────────────────────────────── --}}
 <section class="cta-section">
     <h2>Pronto para começar?</h2>
-    <p>Acesse o sistema agora mesmo e tenha controlo total da sua equipa.</p>
+    <p>Aceda ao sistema agora mesmo e tenha controlo total da sua equipa.</p>
     <a href="{{ route('login') }}" class="btn btn-primary btn-lg">
         <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
         Entrar no sistema
@@ -212,7 +212,7 @@
 </section>
 
 <footer>
-    &copy; {{ date('Y') }} HREminho — Sistema de Gestão de Recursos Humanos
+    &copy; {{ date('Y') }} HRElectrominho — Sistema de Gestão de Recursos Humanos
 </footer>
 
 @endsection

@@ -141,6 +141,20 @@
         </div>
         <div class="stat-value">{{ $stats['present_today'] }}</div>
         <div class="stat-label">Presentes Hoje</div>
+        @php
+            $workforce = $stats['total_employees'] > 0
+                ? round($stats['present_today'] / $stats['total_employees'] * 100, 1)
+                : 0;
+        @endphp
+        <div style="margin-top:10px">
+            <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-muted);margin-bottom:4px">
+                <span>Força de trabalho</span>
+                <span style="color:{{ $workforce >= 80 ? '#22c55e' : ($workforce >= 60 ? '#f59e0b' : '#ef4444') }};font-weight:700">{{ $workforce }}%</span>
+            </div>
+            <div style="height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+                <div style="height:100%;width:{{ $workforce }}%;border-radius:3px;background:{{ $workforce >= 80 ? '#22c55e' : ($workforce >= 60 ? '#f59e0b' : '#ef4444') }};transition:width 1s ease"></div>
+            </div>
+        </div>
     </div>
     <div class="stat-card">
         <div class="stat-card-top">
@@ -156,15 +170,7 @@
             <span class="stat-badge badge-info">Ativos</span>
         </div>
         <div class="stat-value">{{ $stats['active_trainings'] }}</div>
-        <div class="stat-label">Treinamentos</div>
-    </div>
-    <div class="stat-card">
-        <div class="stat-card-top">
-            <div class="stat-icon" style="background:rgba(139,92,246,0.15)">🏢</div>
-            <span class="stat-badge badge-info">Total</span>
-        </div>
-        <div class="stat-value">{{ $stats['total_departments'] }}</div>
-        <div class="stat-label">Departamentos</div>
+        <div class="stat-label">Formações</div>
     </div>
     <div class="stat-card">
         <div class="stat-card-top">
@@ -206,11 +212,11 @@
 
 </div>
 
-{{-- Linha 2: Funcionários por Treinamento (largura total) --}}
+{{-- Linha 2: Funcionários por Formação (largura total) --}}
 <div style="margin-bottom:20px;">
     <div class="card">
         <div class="card-header">
-            <h3>🎓 Funcionários por Treinamento — Top 10</h3>
+            <h3>🎓 Funcionários por Formação — Top 10</h3>
         </div>
         <div class="card-chart">
             <div class="chart-wrap">
@@ -224,7 +230,7 @@
 <div style="margin-bottom:20px;">
     <div class="card">
         <div class="card-header">
-            <h3>📈 Evolução de Treinamentos — Últimos 6 Meses</h3>
+            <h3>📈 Evolução de Formações — Últimos 6 Meses</h3>
         </div>
         <div class="card-chart">
             <div class="chart-wrap">
@@ -237,10 +243,10 @@
 {{-- Linha 4: Top trainings + Listas --}}
 <div class="grid-2">
 
-    {{-- Barras de progresso: Top treinamentos --}}
+    {{-- Barras de progresso: Top formações --}}
     <div class="card">
         <div class="card-header">
-            <h3>🏆 Top Treinamentos — Taxa de Conclusão</h3>
+            <h3>🏆 Top Formações — Taxa de Conclusão</h3>
         </div>
         <div style="padding: 8px 0 4px;">
             @foreach($chart_top_trainings['labels'] as $i => $title)
@@ -248,7 +254,7 @@
             <div class="training-row">
                 <div class="training-row-top">
                     <span>{{ $title }}</span>
-                    <span>{{ $chart_top_trainings['completed'][$i] }}/{{ $chart_top_trainings['total'][$i] }} &nbsp;·&nbsp; <strong style="color:var(--accent-light)">{{ $rate }}%</strong></span>
+                    <span>{{ $chart_top_trainings['completed'][$i] }}/{{ $chart_top_trainings['totals'][$i] }} &nbsp;·&nbsp; <strong style="color:var(--accent-light)">{{ $rate }}%</strong></span>
                 </div>
                 <div class="progress-bar">
                     <div class="progress-fill" style="width:{{ $rate }}%; background: {{ $rate >= 70 ? '#22c55e' : ($rate >= 40 ? '#f59e0b' : '#ef4444') }}"></div>
@@ -256,7 +262,7 @@
             </div>
             @endforeach
             @if(empty($chart_top_trainings['labels']))
-                <div class="empty-state">Sem dados de treinamento.</div>
+                <div class="empty-state">Sem dados de formação.</div>
             @endif
         </div>
     </div>
@@ -293,7 +299,7 @@
                 <a href="{{ route('employees.index') }}"  class="quick-btn">➕ Novo Funcionário</a>
                 <a href="{{ route('attendances.index') }}" class="quick-btn">📅 Registar Presença</a>
                 <a href="{{ route('leaves.index') }}"     class="quick-btn">🌴 Nova Licença</a>
-                <a href="{{ route('trainings.index') }}"  class="quick-btn">🎓 Novo Treinamento</a>
+                <a href="{{ route('trainings.index') }}"  class="quick-btn">🎓 Nova Formação</a>
                 <a href="{{ route('departments.index') }}" class="quick-btn">🏢 Departamentos</a>
                 <a href="{{ route('positions.index') }}"  class="quick-btn">💼 Cargos</a>
             </div>
@@ -374,7 +380,7 @@ new Chart(document.getElementById('chartSector'), {
     }
 });
 
-// ── Gráfico 3: Barras — Funcionários por Treinamento (Top 10) ──
+// ── Gráfico 3: Barras — Funcionários por Formação (Top 10) ──
 const trEmpData = @json($chart_training_employees);
 new Chart(document.getElementById('chartTrainingEmp'), {
     type: 'bar',
@@ -401,65 +407,44 @@ new Chart(document.getElementById('chartTrainingEmp'), {
                 grid: { color: 'rgba(255,255,255,0.05)' },
                 ticks: { stepSize: 1 }
             },
-            x: {
-                grid: { display: false },
-                ticks: {
-                    maxRotation: 35,
-                    minRotation: 20,
-                    font: { size: 11 }
-                }
-            }
+                   x: { grid: { display: false } }
         }
     }
 });
 
-// ── Gráfico 4: Linha — Evolução Mensal ──
-const compData = @json($chart_completion);
-const ctx4 = document.getElementById('chartCompletion').getContext('2d');
-
-const gradEnrolled  = ctx4.createLinearGradient(0, 0, 0, 200);
-gradEnrolled.addColorStop(0, 'rgba(99,102,241,0.3)');
-gradEnrolled.addColorStop(1, 'rgba(99,102,241,0)');
-
-const gradCompleted = ctx4.createLinearGradient(0, 0, 0, 200);
-gradCompleted.addColorStop(0, 'rgba(34,197,94,0.3)');
-gradCompleted.addColorStop(1, 'rgba(34,197,94,0)');
-
-new Chart(ctx4, {
+// Grafico 4: Linha — Evolucao de Formacoes (6 meses)
+const completionData = @json($chart_completion);
+new Chart(document.getElementById('chartCompletion'), {
     type: 'line',
     data: {
-        labels: compData.labels,
+        labels: completionData.labels,
         datasets: [
             {
                 label: 'Inscritos',
-                data: compData.enrolled,
+                data: completionData.enrolled,
                 borderColor: '#6366f1',
-                backgroundColor: gradEnrolled,
-                borderWidth: 2,
+                backgroundColor: 'rgba(99,102,241,0.12)',
+                fill: true,
+                tension: 0.4,
                 pointBackgroundColor: '#6366f1',
                 pointRadius: 4,
-                tension: 0.4,
-                fill: true,
             },
             {
-                label: 'Concluídos',
-                data: compData.completed,
+                label: 'Concluidos',
+                data: completionData.completed,
                 borderColor: '#22c55e',
-                backgroundColor: gradCompleted,
-                borderWidth: 2,
+                backgroundColor: 'rgba(34,197,94,0.10)',
+                fill: true,
+                tension: 0.4,
                 pointBackgroundColor: '#22c55e',
                 pointRadius: 4,
-                tension: 0.4,
-                fill: true,
             }
         ]
     },
     options: {
         plugins: {
-            legend: {
-                position: 'top',
-                labels: { usePointStyle: true, pointStyle: 'circle', padding: 20, font: { size: 12 } }
-            }
+            legend: { labels: { boxWidth: 12, padding: 16 } },
+            tooltip: {}
         },
         scales: {
             y: {

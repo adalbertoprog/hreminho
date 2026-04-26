@@ -133,15 +133,15 @@
     <div class="login-left">
         <div class="login-left-bg"></div>
         <div class="login-left-content">
-            <div class="badge">✦ HREminho</div>
+            <div class="badge">✦ HRElectrominho</div>
             <h2>Bem-vindo ao seu <span>painel de RH</span></h2>
-            <p>Gerencie a sua equipa de forma simples, eficiente e segura — tudo num só lugar.</p>
+            <p>Administre a sua equipa de forma simples, eficiente e segura — tudo num só lugar.</p>
             <div class="feature-list">
                 <div class="feature-item">
                     <div class="feature-item-icon">👥</div>
                     <div class="feature-item-text">
                         <strong>Gestão completa de funcionários</strong>
-                        <span>Dados, contratos, cargos e departamentos</span>
+                        <span>Dados, formações, cargos e departamentos</span>
                     </div>
                 </div>
                 <div class="feature-item">
@@ -161,7 +161,7 @@
                 <div class="feature-item">
                     <div class="feature-item-icon">🎓</div>
                     <div class="feature-item-text">
-                        <strong>Treinamentos e certificados</strong>
+                        <strong>Formações e certificados</strong>
                         <span>Controlo de formações e progresso</span>
                     </div>
                 </div>
@@ -175,7 +175,7 @@
 
             <div class="login-logo">
                 <img src="{{ asset('images/logo.jpg') }}" alt="Logo" onerror="this.style.display='none'">
-                <span>HR<em>Eminho</em></span>
+                <span>HR<em>Electrominho</em></span>
             </div>
 
             <h1>Entrar na conta</h1>
