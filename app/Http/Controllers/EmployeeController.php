@@ -1,0 +1,91 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Http\Requests\Employee\StoreEmployeeRequest;
+use App\Http\Requests\Employee\UpdateEmployeeRequest;
+use App\Http\Resources\EmployeeResource;
+use App\Models\Employee;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+
+class EmployeeController extends Controller
+{
+    /**
+     * Listar todos os funcionários.
+     */
+    public function index(Request $request): AnonymousResourceCollection
+    {
+        $query = Employee::with(['position', 'department', 'sector']);
+
+        // Filtros opcionais
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('department_id')) {
+            $query->where('department_id', $request->department_id);
+        }
+
+        if ($request->filled('position_id')) {
+            $query->where('position_id', $request->position_id);
+        }
+
+        if ($request->filled('sector_id')) {
+            $query->where('sector_id', $request->sector_id);
+        }
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%")
+                  ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        $employees = $query->orderBy('first_name')->paginate($request->get('per_page', 15));
+
+        return EmployeeResource::collection($employees);
+    }
+
+    /**
+     * Criar um novo funcionário.
+     */
+    public function store(StoreEmployeeRequest $request): EmployeeResource
+    {
+        $employee = Employee::create($request->validated());
+
+        return new EmployeeResource($employee->load(['position', 'department', 'sector']));
+    }
+
+    /**
+     * Exibir um funcionário específico.
+     */
+    public function show(Employee $employee): EmployeeResource
+    {
+        return new EmployeeResource($employee->load(['position', 'department', 'sector']));
+    }
+
+    /**
+     * Atualizar um funcionário.
+     */
+    public function update(UpdateEmployeeRequest $request, Employee $employee): EmployeeResource
+    {
+        $employee->update($request->validated());
+
+        return new EmployeeResource($employee->fresh()->load(['position', 'department', 'sector']));
+    }
+
+    /**
+     * Remover um funcionário.
+     */
+    public function destroy(Employee $employee): JsonResponse
+    {
+        $employee->delete();
+
+        return response()->json(['message' => 'Funcionário excluído com sucesso.'], 200);
+    }
+}

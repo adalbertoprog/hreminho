@@ -1,0 +1,21 @@
+HREminho
+
+Employee(id, code, firstName, lastName, email, phone, date_of_birth, gender, nationality, address, profile_photo (nullable), position_id, department_id, hire_date, status (active, inactive, terminated), sector_id (optional), contract_type (full-time, part-time, freelance), end_date (nullable))
+
+Position(id, position, description (optional))
+
+Department(id, department, description, manager_id)
+
+Sector(id, sector, department_id, manager_id)
+
+Attendance(id, employee_id, date, check_in, check_out, status (present, absent, late, holiday, on_leave))
+
+Leaves(id, employee_id, leave_type (vacation, sick, unpaid), start_date, end_date, reason, status (pending, approved, rejected), manager_comment (optional))
+
+LeaveAttachments(id, leave_id, file_name, file_path, file_type (pdf, jpg, png), uploaded_at)
+
+Training(id, title, description, provider (e.g., company or institution))
+
+EmployeeTrainings(id, employee_id, training_id, status (enrolled, completed, failed), certificate_path (optional), score (optional), start_date (optional), end_date (optional), notes)
+
+Users(id, name, email, password, role (admin, HR, employee))
