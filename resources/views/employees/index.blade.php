@@ -191,7 +191,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
     <select id="fSector" class="f-input" style="max-width:180px"><option value="">Todos os setores</option></select>
     <select id="fPos"    class="f-input" style="max-width:180px"><option value="">Todos os cargos</option></select>
     <select id="fStatus" class="f-input" style="max-width:140px">
-        <option value="">Todos status</option>
+        <option value="">Todos estados</option>
         <option value="active">Ativo</option>
         <option value="inactive">Inativo</option>
         <option value="terminated">Desligado</option>
@@ -212,7 +212,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                     <th>Cargo</th>
                     <th>Admissão</th>
                     <th>Anos de casa</th>
-                    <th>Status</th>
+                    <th>Estado</th>
                     <th>Ações</th>
                 </tr>
             </thead>
@@ -274,7 +274,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
             <div class="fg"><label>Departamento *</label><select name="department_id" id="fDeptModal" required><option value="">— Selecionar —</option></select></div>
             <div class="fg"><label>Cargo *</label><select name="position_id" id="fPosModal" required><option value="">— Selecionar —</option></select></div>
             <div class="fg"><label>Setor</label><select name="sector_id" id="fSecModal"><option value="">— Selecionar —</option></select></div>
-            <div class="fg"><label>Status</label>
+            <div class="fg"><label>Estado</label>
                 <select name="status">
                     <option value="active">Ativo</option>
                     <option value="inactive">Inativo</option>
@@ -350,7 +350,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                 <tr>
                     <th>Formação</th>
                     <th>Provedor</th>
-                    <th>Status</th>
+                    <th>Estado</th>
                     <th>Pontuação</th>
                     <th>Início</th>
                     <th>Conclusão</th>
