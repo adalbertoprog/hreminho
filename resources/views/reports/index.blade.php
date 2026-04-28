@@ -142,7 +142,8 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
 
     .sidebar, .topbar, .report-tabs, .filter-bar,
     .btn-actions, .modal-overlay, .emp-search-bar,
-    .emp-view-toggle, .emp-sort-select, .emp-kpi-strip { display: none !important; }
+    .emp-view-toggle, .emp-sort-select, .emp-kpi-strip,
+    .v-kpi-strip, .report-header { display: none !important; }
 
     .main-content { margin-left: 0 !important; padding: 0 !important; }
     body, html { background: #fff !important; color: #1a1a2e !important; font-family: 'Inter', Arial, sans-serif !important; }
@@ -181,6 +182,27 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     body.printing-employees #e-print-table  { display: table !important; }
 }
 
+/* ── Validity badges (relatório) ── */
+.vbadge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:0.75rem; font-weight:700; }
+.vbadge-valid    { background:rgba(34,197,94,0.15);  color:var(--success); }
+.vbadge-expiring { background:rgba(245,158,11,0.15); color:var(--warning); }
+.vbadge-expired  { background:rgba(239,68,68,0.15);  color:var(--danger);  }
+/* KPIs de validade */
+.v-kpi-strip { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-bottom:24px; }
+.v-kpi { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; display:flex; flex-direction:column; gap:4px; cursor:pointer; transition:border-color .2s; }
+.v-kpi:hover { border-color:rgba(99,102,241,.4); }
+.v-kpi.active-filter { border-color:var(--accent)!important; box-shadow:0 0 0 2px rgba(99,102,241,.25); }
+.v-kpi .kpi-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); }
+.v-kpi .kpi-value { font-size:1.65rem; font-weight:800; line-height:1; }
+.v-kpi .kpi-sub   { font-size:.72rem; color:var(--text-muted); margin-top:2px; }
+@media print {
+    .vbadge { font-size:9px!important; padding:2px 8px!important; border-radius:12px!important; font-weight:700!important; }
+    .vbadge-valid    { background:#dcfce7!important; color:#166534!important; }
+    .vbadge-expiring { background:#fef3c7!important; color:#92400e!important; }
+    .vbadge-expired  { background:#fee2e2!important; color:#991b1b!important; }
+    tr.row-expired  { background:#fff5f5!important; }
+    tr.row-expiring { background:#fffbeb!important; }
+}
 /* ── Print Header ── */
 .print-header { display: none; margin-bottom: 24px; border-bottom: 2px solid #6366f1; padding-bottom: 14px; }
 .print-header-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
@@ -243,6 +265,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     <button class="report-tab active" onclick="switchTab('employees')">👥 Funcionários com Formações</button>
     <button class="report-tab" onclick="switchTab('trainings')">📚 Formações por Funcionários</button>
     <button class="report-tab" onclick="switchTab('attendance')">📅 Assiduidade</button>
+    <button class="report-tab" onclick="switchTab('validity')">⏳ Validade de Formações</button>
 </div>
 
 {{-- TAB 1: Funcionários com Formações --}}
@@ -346,6 +369,80 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     </div>
 </div>
 
+{{-- TAB 4: Validade de Formações --}}
+<div id="tab-validity" style="display:none">
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Estado de Validade</label>
+            <select id="v-status">
+                <option value="">Todos</option>
+                <option value="expired">⚠️ Expirada</option>
+                <option value="expiring">🔔 A Expirar (30 dias)</option>
+                <option value="valid">✅ Válida</option>
+            </select>
+        </div>
+        <div class="filter-group"><label>Funcionário</label><select id="v-employee" style="min-width:190px"><option value="">Todos</option></select></div>
+        <div class="filter-group"><label>Formação</label><select id="v-training" style="min-width:190px"><option value="">Todas</option></select></div>
+        <div class="filter-group"><label>Setor</label><select id="v-sector"><option value="">Todos</option></select></div>
+        <div class="filter-actions">
+            <button class="btn btn-primary" onclick="loadValidity()">🔍 Filtrar</button>
+            <button class="btn btn-secondary" onclick="resetValidity()">↺ Limpar</button>
+            <button class="btn btn-pdf" onclick="exportPdf('validity')">📄 Exportar PDF</button>
+            <button class="btn btn-success" onclick="openEmail('validity')">✉️ Enviar por Email</button>
+        </div>
+    </div>
+
+    {{-- KPIs clicáveis --}}
+    <div class="v-kpi-strip" id="v-kpi-strip">
+        <div class="v-kpi" id="vkpi-all"      onclick="vFilterKpi('')">
+            <span class="kpi-label">Total c/ Validade</span>
+            <span class="kpi-value" id="vkpi-total">—</span>
+            <span class="kpi-sub">registos com validade definida</span>
+        </div>
+        <div class="v-kpi" id="vkpi-expired"  onclick="vFilterKpi('expired')"  style="border-color:rgba(239,68,68,.3)">
+            <span class="kpi-label" style="color:#ef4444">⚠️ Expiradas</span>
+            <span class="kpi-value" id="vkpi-expired-val" style="color:#ef4444">—</span>
+            <span class="kpi-sub">precisam de renovação</span>
+        </div>
+        <div class="v-kpi" id="vkpi-expiring" onclick="vFilterKpi('expiring')" style="border-color:rgba(245,158,11,.3)">
+            <span class="kpi-label" style="color:#f59e0b">🔔 A Expirar</span>
+            <span class="kpi-value" id="vkpi-expiring-val" style="color:#f59e0b">—</span>
+            <span class="kpi-sub">nos próximos 30 dias</span>
+        </div>
+        <div class="v-kpi" id="vkpi-valid"    onclick="vFilterKpi('valid')"    style="border-color:rgba(34,197,94,.3)">
+            <span class="kpi-label" style="color:#22c55e">✅ Válidas</span>
+            <span class="kpi-value" id="vkpi-valid-val" style="color:#22c55e">—</span>
+            <span class="kpi-sub">dentro do prazo</span>
+        </div>
+    </div>
+
+    <div class="report-header">
+        <div><h2>Controlo de Validade de Formações</h2><span class="report-count" id="v-count">—</span></div>
+    </div>
+
+    <div class="table-wrap">
+        <table id="v-table">
+            <thead>
+                <tr>
+                    <th>Funcionário</th>
+                    <th>Código</th>
+                    <th>Setor</th>
+                    <th>Função</th>
+                    <th>Formação</th>
+                    <th>Fornecedor</th>
+                    <th>Data de Fim</th>
+                    <th>Validade</th>
+                    <th>Expira em</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody id="v-tbody">
+                <tr><td colspan="10" class="state-msg">A carregar…</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
 {{-- Print Footer --}}
 <div class="print-footer">
     <div class="print-footer-left">
@@ -387,32 +484,37 @@ async function loadDropdowns() {
     const positionList = positions.data ?? positions;
     const employeeList = employees.data ?? employees;
 
-    ['e-sector','t-sector','a-sector'].forEach(id => {
+    ['e-sector','t-sector','a-sector','v-sector'].forEach(id => {
         const el = document.getElementById(id);
         sectorList.forEach(s => el.add(new Option(s.sector, s.id)));
     });
-    const tTraining = document.getElementById('t-training');
-    trainingList.forEach(t => tTraining.add(new Option(t.title, t.id)));
+    ['t-training','v-training'].forEach(id => {
+        const el = document.getElementById(id);
+        trainingList.forEach(t => el.add(new Option(t.title, t.id)));
+    });
     const ePos = document.getElementById('e-position');
     positionList.forEach(p => ePos.add(new Option(p.position, p.id)));
-    const aEmp = document.getElementById('a-employee');
-    employeeList.forEach(e => {
-        const label = (e.full_name || (e.first_name + ' ' + e.last_name).trim()) + (e.code ? ' (' + e.code + ')' : '');
-        aEmp.add(new Option(label.trim(), e.id));
+    ['a-employee','v-employee'].forEach(id => {
+        const el = document.getElementById(id);
+        employeeList.forEach(e => {
+            const label = (e.full_name || (e.first_name + ' ' + e.last_name).trim()) + (e.code ? ' (' + e.code + ')' : '');
+            el.add(new Option(label.trim(), e.id));
+        });
     });
 }
 
 function switchTab(tab) {
     currentTab = tab;
-    ['employees','trainings','attendance'].forEach(t => {
+    ['employees','trainings','attendance','validity'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
     });
     document.querySelectorAll('.report-tab').forEach((btn, i) => {
-        btn.classList.toggle('active', ['employees','trainings','attendance'][i] === tab);
+        btn.classList.toggle('active', ['employees','trainings','attendance','validity'][i] === tab);
     });
     if (tab === 'employees'  && !document.getElementById('e-count').dataset.loaded) loadEmployees();
     if (tab === 'trainings'  && !document.getElementById('t-count').dataset.loaded) loadTrainings();
     if (tab === 'attendance' && !document.getElementById('a-count').dataset.loaded) loadAttendance();
+    if (tab === 'validity'   && !document.getElementById('v-count').dataset.loaded) loadValidity();
 }
 
 function qs(params) {
@@ -614,8 +716,133 @@ function resetAttendance() {
     loadAttendance();
 }
 
+/* ══════════════════════════════════════════
+   TAB VALIDADE
+══════════════════════════════════════════ */
+let validityData = [];
+let vActiveKpi   = '';
+
+const vLabel = { valid:'✅ Válida', expiring:'🔔 A expirar', expired:'⚠️ Expirada' };
+const vClass  = { valid:'vbadge-valid', expiring:'vbadge-expiring', expired:'vbadge-expired' };
+const vRowCls = { expired:'row-expired', expiring:'row-expiring', valid:'' };
+
+async function loadValidity() {
+    const tbody = document.getElementById('v-tbody');
+    tbody.innerHTML = '<tr><td colspan="10" class="state-msg">A carregar…</td></tr>';
+    document.getElementById('v-count').textContent = '—';
+    document.getElementById('v-count').dataset.loaded = '';
+
+    const params = qs({
+        validity_status : document.getElementById('v-status').value,
+        employee_id     : document.getElementById('v-employee').value,
+        training_id     : document.getElementById('v-training').value,
+        sector_id       : document.getElementById('v-sector').value,
+    });
+
+    const res = await fetch('/api/v1/reports/validity?' + params).then(r => r.json());
+    validityData = res.data || [];
+
+    // Atualizar KPIs
+    const kpi = res.kpi || {};
+    document.getElementById('vkpi-total').textContent        = kpi.total    ?? 0;
+    document.getElementById('vkpi-expired-val').textContent  = kpi.expired  ?? 0;
+    document.getElementById('vkpi-expiring-val').textContent = kpi.expiring ?? 0;
+    document.getElementById('vkpi-valid-val').textContent    = kpi.valid    ?? 0;
+
+    document.getElementById('v-count').textContent  = res.total + ' registo(s)';
+    document.getElementById('v-count').dataset.loaded = '1';
+
+    renderValidity(validityData);
+}
+
+function renderValidity(rows) {
+    const tbody = document.getElementById('v-tbody');
+    if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="10" class="state-msg">Nenhum registo encontrado.</td></tr>';
+        return;
+    }
+    tbody.innerHTML = rows.map(r => {
+        const vs    = r.validity_status;
+        const badge = vs ? `<span class="vbadge ${vClass[vs]??''}">${vLabel[vs]??vs}</span>` : '—';
+        const rowCls= vRowCls[vs] ?? '';
+        return `<tr class="${rowCls}">
+            <td style="font-weight:600">${r.employee}</td>
+            <td><span style="font-family:monospace;font-size:.78rem;color:var(--text-muted)">${r.employee_code}</span></td>
+            <td>${r.sector}</td>
+            <td>${r.position}</td>
+            <td>${r.training}</td>
+            <td style="color:var(--text-muted);font-size:.82rem">${r.provider}</td>
+            <td style="color:var(--text-muted)">${fmt(r.end_date)}</td>
+            <td style="font-size:.82rem">${r.validity_months ? r.validity_months + ' mês' + (r.validity_months > 1 ? 'es' : '') : '—'}</td>
+            <td style="font-weight:600">${fmt(r.expiry_date)}</td>
+            <td>${badge}</td>
+        </tr>`;
+    }).join('');
+}
+
+function vFilterKpi(status) {
+    // Toggle: clicar novamente no mesmo KPI limpa o filtro
+    vActiveKpi = vActiveKpi === status ? '' : status;
+    document.getElementById('v-status').value = vActiveKpi;
+    // Destacar KPI ativo
+    const kpiMap = { '':'vkpi-all', expired:'vkpi-expired', expiring:'vkpi-expiring', valid:'vkpi-valid' };
+    document.querySelectorAll('.v-kpi').forEach(el => el.classList.remove('active-filter'));
+    document.getElementById(kpiMap[vActiveKpi])?.classList.add('active-filter');
+    loadValidity();
+}
+
+function resetValidity() {
+    ['v-status','v-employee','v-training','v-sector'].forEach(id => { document.getElementById(id).value = ''; });
+    vActiveKpi = '';
+    document.querySelectorAll('.v-kpi').forEach(el => el.classList.remove('active-filter'));
+    loadValidity();
+}
+
+function buildValidityPrintTable(rows) {
+    const thStyle = 'background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left';
+    const header  = `<tr>
+        <th style="${thStyle}">Funcionário</th>
+        <th style="${thStyle}">Cód.</th>
+        <th style="${thStyle}">Setor</th>
+        <th style="${thStyle}">Função</th>
+        <th style="${thStyle}">Formação</th>
+        <th style="${thStyle}">Fornecedor</th>
+        <th style="${thStyle}">Data Fim</th>
+        <th style="${thStyle}">Val. (m)</th>
+        <th style="${thStyle}">Expira em</th>
+        <th style="${thStyle}">Estado</th>
+    </tr>`;
+    const bgMap   = { expired:'#fff5f5', expiring:'#fffbeb', valid:'', '':'' };
+    const badgeMap= {
+        valid    : 'background:#dcfce7;color:#166534',
+        expiring : 'background:#fef3c7;color:#92400e',
+        expired  : 'background:#fee2e2;color:#991b1b',
+    };
+    const tbody   = rows.map((r, i) => {
+        const bg  = bgMap[r.validity_status ?? ''] || (i % 2 === 1 ? '#f8f9fc' : '');
+        const vs  = r.validity_status;
+        const bdg = vs
+            ? `<span style="${badgeMap[vs]??''};padding:2px 8px;border-radius:12px;font-size:9px;font-weight:700">${vLabel[vs]}</span>`
+            : '—';
+        const td  = `padding:8px 11px;border-top:1px solid #e5e7eb;color:#1a1a2e`;
+        return `<tr style="background:${bg}">
+            <td style="${td};font-weight:600">${r.employee}</td>
+            <td style="${td};font-family:monospace;font-size:9px;color:#6b7280">${r.employee_code}</td>
+            <td style="${td}">${r.sector}</td>
+            <td style="${td}">${r.position}</td>
+            <td style="${td};font-weight:600">${r.training}</td>
+            <td style="${td};color:#6b7280;font-size:9px">${r.provider}</td>
+            <td style="${td}">${fmt(r.end_date)}</td>
+            <td style="${td};text-align:center">${r.validity_months ?? '—'}</td>
+            <td style="${td};font-weight:600">${fmt(r.expiry_date)}</td>
+            <td style="${td}">${bdg}</td>
+        </tr>`;
+    }).join('');
+    return `<table style="width:100%;border-collapse:collapse;font-size:10.5px"><thead>${header}</thead><tbody>${tbody}</tbody></table>`;
+}
+
 function exportPdf(tab) {
-    const titles = { employees:'Funcionários com Formações', trainings:'Formações por Funcionários', attendance:'Relatório de Assiduidade' };
+    const titles = { employees:'Funcionários com Formações', trainings:'Formações por Funcionários', attendance:'Relatório de Assiduidade', validity:'Validade de Formações' };
     document.getElementById('printTitle').textContent    = titles[tab];
     document.getElementById('printTabLabel').textContent = titles[tab];
     const now = new Date();
@@ -662,6 +889,28 @@ function exportPdf(tab) {
             </tr>`;
         }).join('');
         document.body.classList.add('printing-employees');
+    } else if (tab === 'validity') {
+        document.body.classList.remove('printing-employees');
+        const vs  = document.getElementById('v-status');
+        const ve  = document.getElementById('v-employee');
+        const vt  = document.getElementById('v-training');
+        const vsc = document.getElementById('v-sector');
+        if (vs.value)  fp.push('Estado: ' + vs.options[vs.selectedIndex].text);
+        if (ve.value)  fp.push('Funcionário: ' + ve.options[ve.selectedIndex].text);
+        if (vt.value)  fp.push('Formação: ' + vt.options[vt.selectedIndex].text);
+        if (vsc.value) fp.push('Setor: ' + vsc.options[vsc.selectedIndex].text);
+        // Injetar tabela de validade numa div temporária para impressão
+        let vPrintDiv = document.getElementById('v-print-block');
+        if (!vPrintDiv) { vPrintDiv = document.createElement('div'); vPrintDiv.id = 'v-print-block'; document.body.appendChild(vPrintDiv); }
+        vPrintDiv.innerHTML = buildValidityPrintTable(validityData);
+        vPrintDiv.style.display = 'block';
+        document.getElementById('v-table').style.display = 'none';
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => { vPrintDiv.style.display = 'none'; document.getElementById('v-table').style.display = ''; }, 500);
+        }, 300);
+        document.getElementById('printFilters').textContent = fp.length ? ' · ' + fp.join(' · ') : '';
+        return; // já chama window.print() acima
     } else {
         document.body.classList.remove('printing-employees');
     }
@@ -681,12 +930,18 @@ function closeEmail() { document.getElementById('emailModal').classList.remove('
 async function sendEmail() {
     const email = document.getElementById('emailAddr').value.trim();
     if (!email) { alert('Insira um endereço de email válido.'); return; }
-    const tabMap   = { employees:'tab-employees', trainings:'tab-trainings', attendance:'tab-attendance' };
-    const typeMap  = { employees:'employees_trainings', trainings:'training_employees', attendance:'attendance' };
-    const titleMap = { employees:'Funcionários com Formações', trainings:'Formações por Funcionários', attendance:'Relatório de Assiduidade' };
-    const tabEl    = document.getElementById(tabMap[emailTab]);
-    const tableEl  = emailTab === 'trainings' ? document.getElementById('t-list') : tabEl ? tabEl.querySelector('table') : null;
-    const tableHtml = tableEl ? tableEl.innerHTML : '<p>Sem dados</p>';
+    const tabMap   = { employees:'tab-employees', trainings:'tab-trainings', attendance:'tab-attendance', validity:'tab-validity' };
+    const typeMap  = { employees:'employees_trainings', trainings:'training_employees', attendance:'attendance', validity:'validity' };
+    const titleMap = { employees:'Funcionários com Formações', trainings:'Formações por Funcionários', attendance:'Relatório de Assiduidade', validity:'Validade de Formações' };
+    let tableHtml;
+    if (emailTab === 'trainings') {
+        tableHtml = document.getElementById('t-list')?.innerHTML ?? '<p>Sem dados</p>';
+    } else if (emailTab === 'validity') {
+        tableHtml = buildValidityPrintTable(validityData);
+    } else {
+        const tabEl = document.getElementById(tabMap[emailTab]);
+        tableHtml = tabEl ? (tabEl.querySelector('table')?.outerHTML ?? '<p>Sem dados</p>') : '<p>Sem dados</p>';
+    }
     const subject = document.getElementById('emailSubject').value.trim() || `HREminho — ${titleMap[emailTab]} — ${new Date().toLocaleDateString('pt-PT')}`;
     const html = `<html><body style="font-family:Arial,sans-serif;color:#333">
         <h2 style="color:#6366f1">HREminho — ${titleMap[emailTab]}</h2>
@@ -724,6 +979,10 @@ function showToast(msg, type = 'success') {
 // Restaurar UI após impressão (inclui cancelamento do diálogo)
 window.addEventListener('afterprint', () => {
     document.body.classList.remove('printing-employees');
+    const vb = document.getElementById('v-print-block');
+    if (vb) vb.style.display = 'none';
+    const vt = document.getElementById('v-table');
+    if (vt) vt.style.display = '';
 });
 
 

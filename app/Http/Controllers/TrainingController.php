@@ -74,6 +74,22 @@ class TrainingController extends Controller
         if ($request->filled('employee_id')) $query->where('employee_id', $request->employee_id);
         if ($request->filled('status'))      $query->where('status', $request->status);
 
+        // Filtro por estado de validade
+        if ($request->filled('validity_status')) {
+            $today = now()->toDateString();
+            match ($request->validity_status) {
+                'expired'  => $query->whereNotNull('validity_months')->whereNotNull('end_date')
+                                    ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) < ?", [$today]),
+                'expiring' => $query->whereNotNull('validity_months')->whereNotNull('end_date')
+                                    ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) >= ?", [$today])
+                                    ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) <= DATE_ADD(?, INTERVAL 30 DAY)", [$today]),
+                'valid'    => $query->whereNotNull('validity_months')->whereNotNull('end_date')
+                                    ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) > DATE_ADD(?, INTERVAL 30 DAY)", [$today]),
+                'none'     => $query->where(fn($q) => $q->whereNull('validity_months')->orWhereNull('end_date')),
+                default    => null,
+            };
+        }
+
         $rows = $query->orderByDesc('created_at')->paginate($request->get('per_page', 15));
 
         return response()->json([
@@ -96,8 +112,9 @@ class TrainingController extends Controller
             'status'      => 'nullable|in:enrolled,completed,failed',
             'score'       => 'nullable|numeric|min:0|max:100',
             'start_date'  => 'nullable|date',
-            'end_date'    => 'nullable|date|after_or_equal:start_date',
-            'notes'       => 'nullable|string|max:1000',
+            'end_date'        => 'nullable|date|after_or_equal:start_date',
+            'validity_months' => 'nullable|integer|min:1|max:120',
+            'notes'           => 'nullable|string|max:1000',
         ]);
         $enrollment = EmployeeTraining::create($data);
         return response()->json(['data' => $this->formatEnrollment($enrollment->load(['employee','training']))], 201);
@@ -111,8 +128,9 @@ class TrainingController extends Controller
             'status'      => 'sometimes|in:enrolled,completed,failed',
             'score'       => 'nullable|numeric|min:0|max:100',
             'start_date'  => 'nullable|date',
-            'end_date'    => 'nullable|date|after_or_equal:start_date',
-            'notes'       => 'nullable|string|max:1000',
+            'end_date'        => 'nullable|date|after_or_equal:start_date',
+            'validity_months' => 'nullable|integer|min:1|max:120',
+            'notes'           => 'nullable|string|max:1000',
         ]);
         $enrollment->update($data);
         return response()->json(['data' => $this->formatEnrollment($enrollment->fresh()->load(['employee','training']))]);
@@ -144,12 +162,15 @@ class TrainingController extends Controller
             'training_id' => $e->training_id,
             'employee'    => $e->employee ? ['id' => $e->employee->id, 'full_name' => $e->employee->full_name] : null,
             'training'    => $e->training  ? ['id' => $e->training->id,  'title'     => $e->training->title]    : null,
-            'status'      => $e->status,
-            'score'       => $e->score,
-            'start_date'  => $e->start_date?->toDateString(),
-            'end_date'    => $e->end_date?->toDateString(),
-            'notes'       => $e->notes,
-            'created_at'  => $e->created_at?->toDateTimeString(),
+            'status'          => $e->status,
+            'score'           => $e->score,
+            'start_date'      => $e->start_date?->toDateString(),
+            'end_date'        => $e->end_date?->toDateString(),
+            'validity_months' => $e->validity_months,
+            'expiry_date'     => $e->expiry_date?->toDateString(),
+            'validity_status' => $e->validity_status,
+            'notes'           => $e->notes,
+            'created_at'      => $e->created_at?->toDateTimeString(),
         ];
     }
 }

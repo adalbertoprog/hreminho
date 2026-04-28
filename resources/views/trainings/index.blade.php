@@ -28,6 +28,11 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 .badge-completed{background:rgba(34,197,94,.15);color:#22c55e}
 .badge-failed{background:rgba(239,68,68,.12);color:#ef4444}
 .badge-count{display:inline-flex;align-items:center;justify-content:center;background:rgba(99,102,241,.15);color:var(--accent-light);border-radius:6px;font-size:.74rem;font-weight:700;min-width:28px;height:22px;padding:0 8px}
+/* badges de validade */
+.badge-valid   {background:rgba(34,197,94,.15);color:#22c55e}
+.badge-expiring{background:rgba(245,158,11,.15);color:#f59e0b}
+.badge-expired {background:rgba(239,68,68,.12);color:#ef4444}
+.badge-noexp   {background:rgba(255,255,255,.07);color:var(--text-muted)}
 .btn-sm{padding:4px 11px;border-radius:7px;font-size:.76rem;font-weight:600;cursor:pointer;border:none;transition:.15s}
 .btn-edit{background:rgba(99,102,241,.15);color:var(--accent-light)}.btn-edit:hover{background:rgba(99,102,241,.3)}
 .btn-del{background:rgba(239,68,68,.12);color:#ef4444}.btn-del:hover{background:rgba(239,68,68,.25)}
@@ -48,7 +53,7 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);align-items:flex-start;justify-content:center;padding:28px 14px;overflow-y:auto}
 .overlay.open{display:flex}
-.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:540px;box-shadow:0 24px 80px rgba(0,0,0,.5);margin:auto}
+.modal{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:26px;width:100%;max-width:560px;box-shadow:0 24px 80px rgba(0,0,0,.5);margin:auto}
 .modal-title{font-size:1.05rem;font-weight:700;margin-bottom:18px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px}
 .full{grid-column:1/-1}
@@ -64,6 +69,17 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 .btn-danger:hover{background:#dc2626}
 .score-bar{height:5px;background:rgba(255,255,255,.08);border-radius:3px;margin-top:4px;overflow:hidden}
 .score-fill{height:100%;border-radius:3px}
+/* hint de validade no modal */
+.validity-hint{margin-top:6px;font-size:.75rem;color:var(--text-muted);min-height:18px}
+.validity-hint.expired {color:#ef4444}
+.validity-hint.expiring{color:#f59e0b}
+.validity-hint.valid   {color:#22c55e}
+/* Alertas de validade */
+.alert-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.alert-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.15s}
+.alert-chip:hover{opacity:.8}
+.chip-expired {background:rgba(239,68,68,.12);color:#ef4444;border-color:rgba(239,68,68,.25)}
+.chip-expiring{background:rgba(245,158,11,.12);color:#f59e0b;border-color:rgba(245,158,11,.25)}
 </style>
 @endsection
 
@@ -82,6 +98,16 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
     <button class="tab-btn"        id="tabCatalog"  onclick="switchTab('catalog')">📚 Catálogo</button>
 </div>
 
+<!-- Alertas de validade (clicáveis — filtram a tabela) -->
+<div class="alert-bar" id="alertBar" style="display:none">
+    <div class="alert-chip chip-expired"  id="chipExpired"  onclick="filterByValidity('expired')">
+        ⚠️ <span id="cntExpired">0</span> Expiradas
+    </div>
+    <div class="alert-chip chip-expiring" id="chipExpiring" onclick="filterByValidity('expiring')">
+        🔔 <span id="cntExpiring">0</span> A Expirar (30 dias)
+    </div>
+</div>
+
 <!-- Filtros Inscrições -->
 <div class="filters" id="filterEnroll">
     <select id="fTraining" class="f-input" style="max-width:220px"><option value="">Todas as formações</option></select>
@@ -91,6 +117,13 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
         <option value="enrolled">Inscrito</option>
         <option value="completed">Concluído</option>
         <option value="failed">Reprovado</option>
+    </select>
+    <select id="fValidityStatus" class="f-input" style="max-width:185px">
+        <option value="">Todas as validades</option>
+        <option value="valid">✅ Válida</option>
+        <option value="expiring">🔔 A Expirar (30 dias)</option>
+        <option value="expired">⚠️ Expirada</option>
+        <option value="none">— Sem validade def.</option>
     </select>
     <button class="btn-filter" onclick="applyFilters()">Filtrar</button>
     <button class="btn-reset"  onclick="resetFilters()">✕ Limpar</button>
@@ -107,8 +140,22 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 <div class="card" id="tableEnroll">
     <div class="table-wrap">
         <table>
-            <thead><tr><th>Funcionário</th><th>Formação</th><th>Status</th><th>Pontuação</th><th>Início</th><th>Fim</th><th>Ações</th></tr></thead>
-            <tbody id="enrollBody"><tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr></tbody>
+            <thead>
+                <tr>
+                    <th>Funcionário</th>
+                    <th>Formação</th>
+                    <th>Status</th>
+                    <th>Pontuação</th>
+                    <th>Início</th>
+                    <th>Fim</th>
+                    <th>Validade</th>
+                    <th>Expira em</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="enrollBody">
+                <tr class="state-row"><td colspan="9"><span class="spinner"></span>A carregar...</td></tr>
+            </tbody>
         </table>
     </div>
     <div class="pag" id="enrollPagBar" style="display:none">
@@ -150,7 +197,18 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
             </div>
             <div class="fg"><label>Pontuação (0–100)</label><input name="score" type="number" min="0" max="100" step="0.1" placeholder="Ex: 85.5"></div>
             <div class="fg"><label>Data de Início</label><input name="start_date" type="date"></div>
-            <div class="fg"><label>Data de Fim</label><input name="end_date" type="date"></div>
+            <div class="fg"><label>Data de Fim</label><input name="end_date" type="date" id="endDateInput" oninput="updateExpiryHint()"></div>
+            <div class="fg">
+                <label>Validade (meses)</label>
+                <input name="validity_months" type="number" min="1" max="120" step="1" id="validityInput"
+                       placeholder="Ex: 12" oninput="updateExpiryHint()">
+            </div>
+            <div class="fg" style="display:flex;align-items:flex-end">
+                <div style="width:100%">
+                    <label>Data de expiração</label>
+                    <div id="expiryHint" class="validity-hint" style="padding:9px 0;font-size:.85rem">— preencha fim e validade</div>
+                </div>
+            </div>
             <div class="fg full"><label>Notas</label><textarea name="notes" rows="2" placeholder="Opcional..."></textarea></div>
         </div>
         <div class="modal-foot">
@@ -201,8 +259,10 @@ let enrollPage=1, catalogPage=1, enrollFilters={}, catalogFilters={};
 let employees=[], trainings=[];
 let enrollMap={}, trainingMap={};
 
-const statusLabel={enrolled:'Inscrito',completed:'Concluído',failed:'Reprovado'};
-const statusClass={enrolled:'badge-enrolled',completed:'badge-completed',failed:'badge-failed'};
+const statusLabel   = {enrolled:'Inscrito', completed:'Concluído', failed:'Reprovado'};
+const statusClass   = {enrolled:'badge-enrolled', completed:'badge-completed', failed:'badge-failed'};
+const validityLabel = {valid:'✅ Válida', expiring:'🔔 A expirar', expired:'⚠️ Expirada'};
+const validityClass = {valid:'badge-valid', expiring:'badge-expiring', expired:'badge-expired'};
 
 async function apiFetch(method,path,body){
     const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
@@ -231,6 +291,30 @@ async function boot(){
         document.getElementById('fTraining').innerHTML+=`<option value="${t.id}">${t.title}</option>`;
     });
     loadEnrollments();
+    loadAlerts();
+}
+
+/* ── Alertas de validade ─────────────────────────── */
+async function loadAlerts(){
+    try{
+        const [rExp, rExpiring]=await Promise.all([
+            fetch(`${API}/enrollments?per_page=1&validity_status=expired`,{headers:{Accept:'application/json'}}).then(r=>r.json()),
+            fetch(`${API}/enrollments?per_page=1&validity_status=expiring`,{headers:{Accept:'application/json'}}).then(r=>r.json()),
+        ]);
+        const nExp   = rExp.meta?.total??0;
+        const nExpir = rExpiring.meta?.total??0;
+        document.getElementById('cntExpired').textContent  = nExp;
+        document.getElementById('cntExpiring').textContent = nExpir;
+        document.getElementById('alertBar').style.display  = (nExp>0||nExpir>0)?'flex':'none';
+    }catch(e){}
+}
+
+function filterByValidity(v){
+    document.getElementById('fValidityStatus').value=v;
+    enrollFilters={validity_status:v};
+    enrollPage=1;
+    loadEnrollments();
+    if(currentTab!=='enrollments') switchTab('enrollments');
 }
 
 /* ── Tabs ── */
@@ -238,19 +322,20 @@ function switchTab(tab){
     currentTab=tab;
     document.getElementById('tabEnroll').classList.toggle('active',tab==='enrollments');
     document.getElementById('tabCatalog').classList.toggle('active',tab==='catalog');
-    document.getElementById('tableEnroll').style.display=tab==='enrollments'?'':'none';
-    document.getElementById('tableCatalog').style.display=tab==='catalog'?'':'none';
-    document.getElementById('filterEnroll').style.display=tab==='enrollments'?'flex':'none';
-    document.getElementById('filterCatalog').style.display=tab==='catalog'?'flex':'none';
-    document.getElementById('btnNewTraining').style.display=tab==='catalog'?'inline-flex':'none';
-    document.getElementById('btnNewEnroll').style.display=tab==='enrollments'?'inline-flex':'none';
+    document.getElementById('tableEnroll').style.display   = tab==='enrollments'?'':'none';
+    document.getElementById('tableCatalog').style.display  = tab==='catalog'?'':'none';
+    document.getElementById('filterEnroll').style.display  = tab==='enrollments'?'flex':'none';
+    document.getElementById('filterCatalog').style.display = tab==='catalog'?'flex':'none';
+    document.getElementById('alertBar').style.display      = tab==='enrollments'?'':'none';
+    document.getElementById('btnNewTraining').style.display= tab==='catalog'?'inline-flex':'none';
+    document.getElementById('btnNewEnroll').style.display  = tab==='enrollments'?'inline-flex':'none';
     if(tab==='catalog') loadCatalog();
 }
 
 /* ── Enrollments ── */
 async function loadEnrollments(){
     const tbody=document.getElementById('enrollBody');
-    tbody.innerHTML='<tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr>';
+    tbody.innerHTML='<tr class="state-row"><td colspan="9"><span class="spinner"></span>A carregar...</td></tr>';
     document.getElementById('enrollPagBar').style.display='none';
     const q=new URLSearchParams({page:enrollPage,per_page:15,...enrollFilters});
     try{
@@ -258,18 +343,39 @@ async function loadEnrollments(){
         const json=await res.json();
         renderEnrollments(json.data??[]);
         renderPag(json.meta,'enrollPagBar','enrollPagInfo','enrollPagBtns',p=>{enrollPage=p;loadEnrollments();});
-    }catch(e){tbody.innerHTML='<tr class="state-row"><td colspan="7">⚠️ Erro ao carregar.</td></tr>';}
+    }catch(e){tbody.innerHTML='<tr class="state-row"><td colspan="9">⚠️ Erro ao carregar.</td></tr>';}
 }
 
 function renderEnrollments(rows){
     const tbody=document.getElementById('enrollBody');
-    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="7">Nenhuma inscrição encontrada.</td></tr>';return;}
+    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="9">Nenhuma inscrição encontrada.</td></tr>';return;}
     enrollMap={};
     rows.forEach(e=>enrollMap[e.id]=e);
     tbody.innerHTML=rows.map(e=>{
         const sd=e.start_date?new Date(e.start_date+'T00:00:00').toLocaleDateString('pt-PT'):'—';
         const ed=e.end_date  ?new Date(e.end_date  +'T00:00:00').toLocaleDateString('pt-PT'):'—';
-        const score=e.score!=null?`<div>${e.score}%<div class="score-bar"><div class="score-fill" style="width:${e.score}%;background:${e.score>=70?'#22c55e':e.score>=40?'#f59e0b':'#ef4444'}"></div></div></div>`:'—';
+        const score=e.score!=null
+            ?`<div>${e.score}%<div class="score-bar"><div class="score-fill" style="width:${e.score}%;background:${e.score>=70?'#22c55e':e.score>=40?'#f59e0b':'#ef4444'}"></div></div></div>`
+            :'—';
+
+        // Coluna validade (meses)
+        const validityCell = e.validity_months
+            ? `${e.validity_months} mês${e.validity_months>1?'es':''}`
+            : `<span style="color:var(--text-muted)">—</span>`;
+
+        // Coluna expiração com badge de estado
+        let expiryCell = `<span style="color:var(--text-muted)">—</span>`;
+        if(e.expiry_date){
+            const expiryFmt = new Date(e.expiry_date+'T00:00:00').toLocaleDateString('pt-PT');
+            const vs  = e.validity_status;
+            const cls = validityClass[vs]??'badge-noexp';
+            const lbl = validityLabel[vs]??'';
+            expiryCell=`<div style="line-height:1.6">
+                <span style="font-size:.82rem;color:var(--text-muted)">${expiryFmt}</span><br>
+                <span class="badge ${cls}">${lbl}</span>
+            </div>`;
+        }
+
         return `<tr>
             <td style="font-weight:600">${e.employee?.full_name??'—'}</td>
             <td>${e.training?.title??'—'}</td>
@@ -277,6 +383,8 @@ function renderEnrollments(rows){
             <td style="font-size:.82rem">${score}</td>
             <td style="color:var(--text-muted)">${sd}</td>
             <td style="color:var(--text-muted)">${ed}</td>
+            <td style="font-size:.82rem">${validityCell}</td>
+            <td>${expiryCell}</td>
             <td style="white-space:nowrap">
                 <button class="btn-sm btn-edit" onclick="openEditEnroll(${e.id})">✏️</button>
                 <button class="btn-sm btn-del"  onclick="openDelete('enrollment',${e.id})">🗑</button>
@@ -304,18 +412,16 @@ function renderCatalog(rows){
     if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="5">Nenhuma formação no catálogo.</td></tr>';return;}
     trainingMap={};
     rows.forEach(t=>trainingMap[t.id]=t);
-    tbody.innerHTML=rows.map(t=>{
-        return `<tr>
-            <td style="color:var(--text-muted)">${t.id}</td>
-            <td style="font-weight:600">${t.title}</td>
-            <td>${t.provider}</td>
-            <td><span class="badge-count">${t.employee_trainings_count??0}</span></td>
-            <td style="white-space:nowrap">
-                <button class="btn-sm btn-edit" onclick="openEditTraining(${t.id})">✏️ Editar</button>
-                <button class="btn-sm btn-del"  onclick="openDelete('training',${t.id})">🗑</button>
-            </td>
-        </tr>`;
-    }).join('');
+    tbody.innerHTML=rows.map(t=>`<tr>
+        <td style="color:var(--text-muted)">${t.id}</td>
+        <td style="font-weight:600">${t.title}</td>
+        <td>${t.provider}</td>
+        <td><span class="badge-count">${t.employee_trainings_count??0}</span></td>
+        <td style="white-space:nowrap">
+            <button class="btn-sm btn-edit" onclick="openEditTraining(${t.id})">✏️ Editar</button>
+            <button class="btn-sm btn-del"  onclick="openDelete('training',${t.id})">🗑</button>
+        </td>
+    </tr>`).join('');
 }
 
 /* ── Paginação genérica ── */
@@ -336,47 +442,86 @@ function applyFilters(){
     const t=document.getElementById('fTraining').value;
     const e=document.getElementById('fEmpEnroll').value;
     const s=document.getElementById('fEnrollStatus').value;
-    if(t)enrollFilters.training_id=t;if(e)enrollFilters.employee_id=e;if(s)enrollFilters.status=s;
+    const v=document.getElementById('fValidityStatus').value;
+    if(t)enrollFilters.training_id=t;
+    if(e)enrollFilters.employee_id=e;
+    if(s)enrollFilters.status=s;
+    if(v)enrollFilters.validity_status=v;
     enrollPage=1;loadEnrollments();
 }
-function resetFilters(){document.getElementById('fTraining').value='';document.getElementById('fEmpEnroll').value='';document.getElementById('fEnrollStatus').value='';enrollFilters={};enrollPage=1;loadEnrollments();}
+function resetFilters(){
+    ['fTraining','fEmpEnroll','fEnrollStatus','fValidityStatus'].forEach(id=>document.getElementById(id).value='');
+    enrollFilters={};enrollPage=1;loadEnrollments();
+}
 function applyCatalogFilters(){catalogFilters={};const s=document.getElementById('fCatalogSearch').value.trim();if(s)catalogFilters.search=s;catalogPage=1;loadCatalog();}
 function resetCatalogFilters(){document.getElementById('fCatalogSearch').value='';catalogFilters={};catalogPage=1;loadCatalog();}
+
+/* ── Cálculo dinâmico de expiração no modal ── */
+function updateExpiryHint(){
+    const endVal    = document.getElementById('endDateInput').value;
+    const monthsVal = parseInt(document.getElementById('validityInput').value);
+    const hint      = document.getElementById('expiryHint');
+    if(!endVal || !monthsVal || monthsVal < 1){
+        hint.textContent='— preencha fim e validade';
+        hint.className='validity-hint';
+        return;
+    }
+    const expiry = new Date(endVal);
+    expiry.setMonth(expiry.getMonth()+monthsVal);
+    const today  = new Date(); today.setHours(0,0,0,0);
+    const diff   = Math.round((expiry-today)/(1000*60*60*24));
+    const fmt    = expiry.toLocaleDateString('pt-PT');
+    if(diff < 0){
+        hint.textContent=`Expirou em ${fmt}`;
+        hint.className='validity-hint expired';
+    }else if(diff <= 30){
+        hint.textContent=`Expira em ${fmt} (faltam ${diff} dias)`;
+        hint.className='validity-hint expiring';
+    }else{
+        hint.textContent=`Válida até ${fmt}`;
+        hint.className='validity-hint valid';
+    }
+}
 
 /* ── Overlays ── */
 function openOverlay(id){document.getElementById(id).classList.add('open');}
 function closeOverlay(id){document.getElementById(id).classList.remove('open');}
 
 function openCreateEnroll(){
-    enrollEditId=null;document.getElementById('enrollForm').reset();
+    enrollEditId=null;
+    document.getElementById('enrollForm').reset();
+    document.getElementById('expiryHint').textContent='— preencha fim e validade';
+    document.getElementById('expiryHint').className='validity-hint';
     document.getElementById('enrollTitle').textContent='➕ Nova Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Inscrever';
     openOverlay('enrollOverlay');
 }
 function openEditEnroll(id){
     const e=enrollMap[id];if(!e)return;
-    enrollEditId=e.id;document.getElementById('enrollForm').reset();
+    enrollEditId=e.id;
+    document.getElementById('enrollForm').reset();
     const form=document.getElementById('enrollForm');
     const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
     set('employee_id',e.employee_id);set('training_id',e.training_id);set('status',e.status);
-    set('score',e.score);set('start_date',e.start_date);set('end_date',e.end_date);set('notes',e.notes);
+    set('score',e.score);set('start_date',e.start_date);set('end_date',e.end_date);
+    set('validity_months',e.validity_months);set('notes',e.notes);
     document.getElementById('enrollTitle').textContent='✏️ Editar Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Guardar';
+    setTimeout(updateExpiryHint,50);
     openOverlay('enrollOverlay');
 }
 async function submitEnroll(ev){
     ev.preventDefault();
     const btn=document.getElementById('enrollSubmitBtn');btn.disabled=true;btn.textContent='A guardar...';
-    const data={};new FormData(document.getElementById('enrollForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
+    const data={};
+    new FormData(document.getElementById('enrollForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
     try{
         if(enrollEditId) await apiFetch('PUT',`/enrollments/${enrollEditId}`,data);
         else             await apiFetch('POST','/enrollments',data);
         toast(enrollEditId?'Inscrição atualizada!':'Inscrição criada!','ok');
         closeOverlay('enrollOverlay');
-        // Atualizar lista de trainings para o select
-        const tr=await apiFetch('GET','/trainings?per_page=200').catch(()=>({data:[]}));
-        trainings=tr.data??[];
         loadEnrollments();
+        loadAlerts();
     }catch(err){toast(err.message??'Erro.','err');}
     finally{btn.disabled=false;btn.textContent=enrollEditId?'Guardar':'Inscrever';}
 }
@@ -423,13 +568,22 @@ async function confirmDelete(){
     try{
         if(type==='training') await apiFetch('DELETE',`/trainings/${id}`);
         else                  await apiFetch('DELETE',`/enrollments/${id}`);
-        toast('Excluído com sucesso.','ok');closeOverlay('delOverlay');
+        toast('Excluído com sucesso.','ok');
+        closeOverlay('delOverlay');
         if(type==='training') loadCatalog(); else loadEnrollments();
+        loadAlerts();
     }catch(err){toast(err.message??'Erro.','err');}
 }
 
-function toast(msg,type='ok'){const w=document.getElementById('toastWrap');const t=document.createElement('div');t.className=`toast toast-${type}`;t.textContent=msg;w.appendChild(t);setTimeout(()=>t.remove(),3500);}
-document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
+function toast(msg,type='ok'){
+    const w=document.getElementById('toastWrap');
+    const t=document.createElement('div');
+    t.className=`toast toast-${type}`;t.textContent=msg;
+    w.appendChild(t);setTimeout(()=>t.remove(),3500);
+}
+document.querySelectorAll('.overlay').forEach(o=>{
+    o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+});
 boot();
 </script>
 @endsection

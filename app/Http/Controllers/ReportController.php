@@ -173,12 +173,82 @@ class ReportController extends Controller
         ]);
     }
 
+    // ── 5. Validade de formações ─────────────────────────────────────────
+    public function validityReport(Request $request): JsonResponse
+    {
+        $today = now()->toDateString();
+
+        $query = EmployeeTraining::with(['employee.sector', 'employee.position', 'training'])
+            ->whereNotNull('validity_months')
+            ->whereNotNull('end_date')
+            ->where('status', 'completed');
+
+        if ($request->filled('employee_id')) {
+            $query->where('employee_id', $request->employee_id);
+        }
+        if ($request->filled('training_id')) {
+            $query->where('training_id', $request->training_id);
+        }
+        if ($request->filled('sector_id')) {
+            $query->whereHas('employee', fn($q) => $q->where('sector_id', $request->sector_id));
+        }
+
+        // Filtro por estado de validade (SQL nativo para suportar cálculo de data)
+        if ($request->filled('validity_status')) {
+            match ($request->validity_status) {
+                'expired'  => $query->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) < ?", [$today]),
+                'expiring' => $query->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) >= ?", [$today])
+                                    ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) <= DATE_ADD(?, INTERVAL 30 DAY)", [$today]),
+                'valid'    => $query->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) > DATE_ADD(?, INTERVAL 30 DAY)", [$today]),
+                default    => null,
+            };
+        }
+
+        $rows = $query->orderByRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) ASC")->get();
+
+        // KPIs totais (sem filtro de estado — sobre o conjunto filtrado por func/setor/formação)
+        $kpiQuery = EmployeeTraining::whereNotNull('validity_months')
+            ->whereNotNull('end_date')
+            ->where('status', 'completed');
+        if ($request->filled('employee_id')) $kpiQuery->where('employee_id', $request->employee_id);
+        if ($request->filled('training_id')) $kpiQuery->where('training_id', $request->training_id);
+        if ($request->filled('sector_id'))   $kpiQuery->whereHas('employee', fn($q) => $q->where('sector_id', $request->sector_id));
+
+        $kpiAll      = $kpiQuery->get();
+        $kpiExpired  = $kpiAll->filter(fn($r) => $r->validity_status === 'expired')->count();
+        $kpiExpiring = $kpiAll->filter(fn($r) => $r->validity_status === 'expiring')->count();
+        $kpiValid    = $kpiAll->filter(fn($r) => $r->validity_status === 'valid')->count();
+
+        return response()->json([
+            'data' => $rows->map(fn($r) => [
+                'id'              => $r->id,
+                'employee'        => $r->employee?->full_name ?? '—',
+                'employee_code'   => $r->employee?->code ?? '—',
+                'sector'          => $r->employee?->sector?->sector ?? '—',
+                'position'        => $r->employee?->position?->position ?? '—',
+                'training'        => $r->training?->title ?? '—',
+                'provider'        => $r->training?->provider ?? '—',
+                'end_date'        => $r->end_date?->toDateString(),
+                'validity_months' => $r->validity_months,
+                'expiry_date'     => $r->expiry_date?->toDateString(),
+                'validity_status' => $r->validity_status,
+            ]),
+            'kpi' => [
+                'expired'  => $kpiExpired,
+                'expiring' => $kpiExpiring,
+                'valid'    => $kpiValid,
+                'total'    => $kpiAll->count(),
+            ],
+            'total' => $rows->count(),
+        ]);
+    }
+
     // ── Enviar relatório por email ───────────────────────────────────────
     public function sendEmail(Request $request): JsonResponse
     {
         $request->validate([
             'email'   => 'required|email',
-            'type'    => 'required|in:completed_trainings,employees_trainings,attendance,training_employees',
+            'type'    => 'required|in:completed_trainings,employees_trainings,attendance,training_employees,validity',
             'subject' => 'nullable|string|max:200',
             'html'    => 'required|string',
         ]);

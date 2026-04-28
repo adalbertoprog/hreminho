@@ -37,5 +37,6 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::get('reports/employees-trainings',   [ReportController::class, 'employeesWithTrainings'])->name('reports.employees-trainings');
     Route::get('reports/training-employees',    [ReportController::class, 'trainingWithEmployees'])->name('reports.training-employees');
     Route::get('reports/attendance',            [ReportController::class, 'attendance'])->name('reports.attendance');
+    Route::get('reports/validity',              [ReportController::class, 'validityReport'])->name('reports.validity');
     Route::post('reports/send-email',           [ReportController::class, 'sendEmail'])->name('reports.send-email');
 });
