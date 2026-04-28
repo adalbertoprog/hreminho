@@ -126,7 +126,7 @@
             Sistema de Gestão de RH
         </div>
 
-        <h1>Gerencie pessoas com <span>inteligência e eficiência</span></h1>
+        <h1>Administre pessoas com <span>inteligência e eficiência</span></h1>
 
         <p>HRElectrominho centraliza funcionários, presenças, férias, formações e muito mais em uma plataforma moderna e fácil de usar.</p>
 
@@ -171,7 +171,7 @@
         <div class="feature-card">
             <div class="feature-icon" style="background: rgba(99,102,241,0.15); color: #818cf8;">👥</div>
             <h3>Gestão de Funcionários</h3>
-            <p>Cadastro completo com dados pessoais, cargo, departamento, formações e histórico formativo.</p>
+            <p>Cadastro completo com dados pessoais, função, departamento, formações e histórico formativo.</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon" style="background: rgba(34,197,94,0.15); color: #22c55e;">📅</div>

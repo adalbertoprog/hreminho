@@ -208,8 +208,8 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
 <div class="print-header" id="printHeaderBlock">
     <div class="print-header-top">
         <div class="print-header-logo">
-            <img src="{{ asset('images/logo.jpg') }}" alt="HREminho Logo">
-            <div class="print-header-logo-text">HR<span>Emi</span>nho</div>
+            <img src="{{ asset('images/logo.jpg') }}" alt="HRElectrominho Logo">
+            <div class="print-header-logo-text">HR<span>Electrominho</span></div>
         </div>
         <div class="print-header-meta">
             <strong id="printTitle">Relatório</strong>
@@ -229,7 +229,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
         <tr>
             <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left">Código</th>
             <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left">Funcionário</th>
-            <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left">Cargo</th>
+            <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left">Função</th>
             <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left">Setor</th>
             <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:center">Nº Form.</th>
             <th style="background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left">Formações Concluídas</th>
@@ -253,8 +253,8 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
             <select id="e-sector"><option value="">Todos</option></select>
         </div>
         <div class="filter-group">
-            <label>Cargo</label>
-            <select id="e-position"><option value="">Todos</option></select>
+            <label>Função</label>
+            <select id="e-position"><option value="">Todas</option></select>
         </div>
         <div class="filter-actions">
             <button class="btn btn-primary" onclick="loadEmployees()">🔍 Filtrar</button>
@@ -272,7 +272,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     <div class="emp-search-bar">
         <div class="emp-search-wrap">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-            <input class="emp-search-input" id="e-search" type="text" placeholder="Pesquisar funcionário, cargo ou setor…" oninput="renderCards()">
+            <input class="emp-search-input" id="e-search" type="text" placeholder="Pesquisar funcionário, função ou setor…" oninput="renderCards()">
         </div>
         <select class="emp-sort-select" id="e-sort" onchange="renderCards()">
             <option value="name">Ordenar: Nome</option>
@@ -562,7 +562,7 @@ async function loadTrainings() {
                 <span style="background:rgba(99,102,241,0.15);color:var(--accent-light);padding:3px 12px;border-radius:20px;font-size:.75rem;font-weight:700">${t.total} funcionário(s)</span>
             </div>
             <table>
-                <thead><tr><th>Código</th><th>Funcionário</th><th>Cargo</th><th>Setor</th><th>Pontuação</th><th>Concluído em</th></tr></thead>
+                <thead><tr><th>Código</th><th>Funcionário</th><th>Função</th><th>Setor</th><th>Pontuação</th><th>Concluído em</th></tr></thead>
                 <tbody>${t.employees.map(e => `<tr>
                     <td><span style="font-family:monospace;font-size:.78rem;color:var(--text-muted)">${e.code}</span></td>
                     <td>${e.name}</td><td>${e.position}</td><td>${e.sector}</td>
@@ -624,7 +624,7 @@ function exportPdf(tab) {
     if (tab === 'employees') {
         const sec = document.getElementById('e-sector'), pos = document.getElementById('e-position');
         if (sec.value) fp.push('Setor: ' + sec.options[sec.selectedIndex].text);
-        if (pos.value) fp.push('Cargo: ' + pos.options[pos.selectedIndex].text);
+        if (pos.value) fp.push('Função: ' + pos.options[pos.selectedIndex].text);
     } else if (tab === 'trainings') {
         const tr = document.getElementById('t-training'), sec = document.getElementById('t-sector');
         if (tr.value)  fp.push('Formação: ' + tr.options[tr.selectedIndex].text);

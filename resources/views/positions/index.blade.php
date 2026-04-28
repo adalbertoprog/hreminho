@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title', 'Cargos')
-@section('page-title', 'Cargos')
+@section('title', 'Funcões')
+@section('page-title', 'Funcões')
 
 @section('styles')
 <style>
@@ -55,8 +55,8 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
 @section('content')
 <div class="toolbar">
-    <h2>💼 Cargos</h2>
-    <button class="btn-primary" onclick="openCreate()">+ Novo Cargo</button>
+    <h2>💼 Funcões</h2>
+    <button class="btn-primary" onclick="openCreate()">+ Nova Função</button>
 </div>
 
 <div class="card">
@@ -65,7 +65,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
             <thead>
                 <tr>
                     <th>#</th>
-                    <th>Cargo</th>
+                    <th>Função</th>
                     <th>Descrição</th>
                     <th>Funcionários</th>
                     <th>Criado em</th>
@@ -84,13 +84,13 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 <!-- Modal Criar/Editar -->
 <div class="overlay" id="formOverlay">
 <div class="modal">
-    <div class="modal-title" id="formTitle">Novo Cargo</div>
+    <div class="modal-title" id="formTitle">Nova Função</div>
     <form id="posForm" onsubmit="submitForm(event)">
-        <div class="fg"><label>Nome do Cargo *</label><input name="position" required placeholder="Ex: Analista de RH"></div>
+        <div class="fg"><label>Nome da Função *</label><input name="position" required placeholder="Ex: Analista de RH"></div>
         <div class="fg"><label>Descrição</label><textarea name="description" rows="3" placeholder="Descreva as responsabilidades..."></textarea></div>
         <div class="modal-foot">
             <button type="button" class="btn-cancel" onclick="closeOverlay('formOverlay')">Cancelar</button>
-            <button type="submit" class="btn-primary" id="submitBtn">Criar Cargo</button>
+            <button type="submit" class="btn-primary" id="submitBtn">Criar Função</button>
         </div>
     </form>
 </div>
@@ -100,7 +100,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 <div class="overlay" id="delOverlay">
 <div class="modal confirm-modal">
     <div style="font-size:2.5rem">🗑️</div>
-    <div class="modal-title" style="margin-top:10px">Excluir Cargo</div>
+    <div class="modal-title" style="margin-top:10px">Excluir Função</div>
     <p id="delMsg"></p>
     <div class="modal-foot" style="justify-content:center">
         <button class="btn-cancel" onclick="closeOverlay('delOverlay')">Cancelar</button>
@@ -163,8 +163,8 @@ function closeOverlay(id){ document.getElementById(id).classList.remove('open');
 function openCreate() {
     editId=null;
     document.getElementById('posForm').reset();
-    document.getElementById('formTitle').textContent='➕ Novo Cargo';
-    document.getElementById('submitBtn').textContent='Criar Cargo';
+    document.getElementById('formTitle').textContent='➕ Nova Função';
+    document.getElementById('submitBtn').textContent='Criar Função';
     openOverlay('formOverlay');
 }
 function openEdit(p) {
@@ -173,7 +173,7 @@ function openEdit(p) {
     const form=document.getElementById('posForm');
     form.querySelector('[name="position"]').value   = p.position    ?? '';
     form.querySelector('[name="description"]').value= p.description ?? '';
-    document.getElementById('formTitle').textContent='✏️ Editar Cargo';
+    document.getElementById('formTitle').textContent='✏️ Editar Função';
     document.getElementById('submitBtn').textContent='Guardar Alterações';
     openOverlay('formOverlay');
 }
@@ -184,20 +184,20 @@ async function submitForm(e) {
     const data={};
     new FormData(document.getElementById('posForm')).forEach((v,k)=>{ if(v!=='') data[k]=v; });
     try {
-        if(editId) { await api('PUT',`/positions/${editId}`,data); toast('Cargo atualizado!','ok'); }
-        else       { await api('POST','/positions',data);          toast('Cargo criado!','ok'); }
+        if(editId) { await api('PUT',`/positions/${editId}`,data); toast('Função atualizada!','ok'); }
+        else       { await api('POST','/positions',data);          toast('Função criada!','ok'); }
         closeOverlay('formOverlay');
         loadTable();
     } catch(err) { toast(err.message??'Erro.','err'); }
-    finally { btn.disabled=false; btn.textContent=editId?'Guardar Alterações':'Criar Cargo'; }
+    finally { btn.disabled=false; btn.textContent=editId?'Guardar Alterações':'Criar Função'; }
 }
 function openDelete(id,name) {
     deleteId=id;
-    document.getElementById('delMsg').textContent=`Tem certeza que deseja excluir o cargo «${name}»?`;
+    document.getElementById('delMsg').textContent=`Tem certeza que deseja excluir a função «${name}»?`;
     openOverlay('delOverlay');
 }
 async function confirmDelete() {
-    try { await api('DELETE',`/positions/${deleteId}`); toast('Cargo excluído.','ok'); closeOverlay('delOverlay'); loadTable(); }
+    try { await api('DELETE',`/positions/${deleteId}`); toast('Função excluída.','ok'); closeOverlay('delOverlay'); loadTable(); }
     catch(err) { toast(err.message??'Erro ao excluir.','err'); }
 }
 function toast(msg,type='ok') {

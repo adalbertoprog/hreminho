@@ -237,7 +237,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
     <input id="fSearch" class="f-input" placeholder="🔍 Nome, email ou código..." onkeydown="if(event.key==='Enter')applyFilters()">
     <select id="fDept"   class="f-input" style="max-width:180px"><option value="">Todos os depts.</option></select>
     <select id="fSector" class="f-input" style="max-width:180px"><option value="">Todos os setores</option></select>
-    <select id="fPos"    class="f-input" style="max-width:180px"><option value="">Todos os cargos</option></select>
+    <select id="fPos"    class="f-input" style="max-width:180px"><option value="">Todas as funções</option></select>
     <select id="fStatus" class="f-input" style="max-width:140px">
         <option value="">Todos estados</option>
         <option value="active">Ativo</option>
@@ -257,7 +257,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                     <th>Funcionário</th>
                     <th>Setor</th>
                     <th>Departamento</th>
-                    <th>Cargo</th>
+                    <th>Função</th>
                     <th>Admissão</th>
                     <th>Anos de casa</th>
                     <th>Estado</th>
@@ -320,7 +320,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
             <div class="section-sep">Contrato & Função</div>
             <div class="fg"><label>Departamento *</label><select name="department_id" id="fDeptModal" required><option value="">— Selecionar —</option></select></div>
-            <div class="fg"><label>Cargo *</label><select name="position_id" id="fPosModal" required><option value="">— Selecionar —</option></select></div>
+            <div class="fg"><label>Função *</label><select name="position_id" id="fPosModal" required><option value="">— Selecionar —</option></select></div>
             <div class="fg"><label>Setor</label><select name="sector_id" id="fSecModal"><option value="">— Selecionar —</option></select></div>
             <div class="fg"><label>Estado</label>
                 <select name="status">
@@ -454,7 +454,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
         <div class="view-grid">
             <div class="view-field"><label>Departamento</label><span id="vDept">—</span></div>
             <div class="view-field"><label>Setor</label><span id="vSector">—</span></div>
-            <div class="view-field"><label>Cargo</label><span id="vPosition">—</span></div>
+            <div class="view-field"><label>Função       </label><span id="vPosition">—</span></div>
             <div class="view-field"><label>Data de Admissão</label><span id="vHireDate">—</span></div>
             <div class="view-field"><label>Anos de Casa</label><span id="vTenure">—</span></div>
             <div class="view-field"><label>Estado</label><span id="vStatus">—</span></div>
