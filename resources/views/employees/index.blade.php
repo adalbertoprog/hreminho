@@ -301,7 +301,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
             <div class="fg"><label>Data de Nascimento</label><input name="date_of_birth" type="date"></div>
             <div class="fg"><label>Nacionalidade</label><input name="nationality"></div>
             <div class="fg full"><label>Morada</label><input name="address"></div>
-            <div class="fg full"><label>Local de trabalho</label><input name="work_location" placeholder="Ex: Sede, Filial Norte, Remoto…"></div>
+            <div class="fg full"><label>Local de trabalho</label><input name="work_location" placeholder="Ex: Viana do Castelo, Guimarães"></div>
             <div class="fg full">
                 <label>Foto de Perfil</label>
                 <div style="display:flex;align-items:center;gap:14px;margin-top:4px">
@@ -876,7 +876,6 @@ async function openView(empId){
         document.getElementById('vTrainingsContent').innerHTML=`<div class="tr-empty">Erro ao carregar formações.</div>`;
     }
 }
-
 boot();
 </script>
 @endsection
