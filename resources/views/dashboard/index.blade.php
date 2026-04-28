@@ -67,7 +67,7 @@
         display: flex; align-items: center; gap: 12px;
         padding: 9px 20px; transition: background 0.15s;
     }
-    .list-item:hover { background: rgba(255,255,255,0.03); }
+    .list-item:hover { background: var(--nav-hover); }
     .list-avatar {
         width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
         display: flex; align-items: center; justify-content: center;
@@ -88,7 +88,7 @@
     .quick-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 14px; }
     .quick-btn {
         display: flex; align-items: center; gap: 9px;
-        background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+        background: var(--nav-hover); border: 1px solid var(--border);
         border-radius: 10px; padding: 11px 13px;
         text-decoration: none; color: var(--text-primary);
         font-size: 0.8rem; font-weight: 500; transition: all 0.15s;
@@ -108,7 +108,7 @@
     .training-row-top { display: flex; justify-content: space-between; margin-bottom: 6px; }
     .training-row-top span:first-child { font-size: 0.83rem; font-weight: 500; }
     .training-row-top span:last-child  { font-size: 0.78rem; color: var(--text-muted); }
-    .progress-bar { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; overflow: hidden; }
+    .progress-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
     .progress-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
 </style>
 @endsection
@@ -151,7 +151,7 @@
                 <span>Força de trabalho</span>
                 <span style="color:{{ $workforce >= 80 ? '#22c55e' : ($workforce >= 60 ? '#f59e0b' : '#ef4444') }};font-weight:700">{{ $workforce }}%</span>
             </div>
-            <div style="height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden">
+            <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
                 <div style="height:100%;width:{{ $workforce }}%;border-radius:3px;background:{{ $workforce >= 80 ? '#22c55e' : ($workforce >= 60 ? '#f59e0b' : '#ef4444') }};transition:width 1s ease"></div>
             </div>
         </div>
@@ -316,8 +316,14 @@
 const palette  = ['#6366f1','#8b5cf6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899','#14b8a6','#f97316','#a855f7'];
 const palette2 = palette.map(c => c + 'cc'); // semi-transparent variant
 
-Chart.defaults.color       = '#94a3b8';
-Chart.defaults.borderColor = 'rgba(255,255,255,0.06)';
+// Cores dinâmicas conforme o tema activo
+const isDark = () => document.documentElement.getAttribute('data-theme') === 'dark';
+const chartTextColor   = () => isDark() ? '#94a3b8' : '#64748b';
+const chartGridColor   = () => isDark() ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+const chartBorderColor = () => isDark() ? '#1a1d27' : '#ffffff';
+
+Chart.defaults.color       = chartTextColor();
+Chart.defaults.borderColor = chartGridColor();
 Chart.defaults.font.family = 'Inter, sans-serif';
 
 // ── Gráfico 1: Donut — Funcionários por Departamento ──
@@ -329,7 +335,7 @@ new Chart(document.getElementById('chartDept'), {
         datasets: [{
             data: deptData.data,
             backgroundColor: palette,
-            borderColor: '#1a1d27',
+            borderColor: chartBorderColor(),
             borderWidth: 3,
             hoverOffset: 8,
         }]
@@ -372,7 +378,7 @@ new Chart(document.getElementById('chartSector'), {
         scales: {
             x: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255,255,255,0.05)' },
+                grid: { color: chartGridColor() },
                 ticks: { stepSize: 1 }
             },
             y: { grid: { display: false } }
@@ -404,7 +410,7 @@ new Chart(document.getElementById('chartTrainingEmp'), {
         scales: {
             y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255,255,255,0.05)' },
+                grid: { color: chartGridColor() },
                 ticks: { stepSize: 1 }
             },
                    x: { grid: { display: false } }
@@ -449,7 +455,7 @@ new Chart(document.getElementById('chartCompletion'), {
         scales: {
             y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(255,255,255,0.05)' },
+                grid: { color: chartGridColor() },
                 ticks: { stepSize: 1 }
             },
             x: { grid: { display: false } }
