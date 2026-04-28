@@ -41,6 +41,8 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
 /* Row actions */
 .btn-sm { padding:4px 11px; border-radius:7px; font-size:.76rem; font-weight:600; cursor:pointer; border:none; transition:.15s; }
+.btn-view   { background:rgba(6,182,212,.12);   color:#06b6d4; }
+.btn-view:hover { background:rgba(6,182,212,.25); }
 .btn-edit   { background:rgba(99,102,241,.15); color:var(--accent-light); }
 .btn-edit:hover { background:rgba(99,102,241,.3); }
 .btn-del    { background:rgba(239,68,68,.12); color:#ef4444; }
@@ -162,18 +164,64 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 .training-header-info h4 { font-size:1rem; font-weight:700; margin-bottom:2px; }
 .training-header-info span { font-size:.8rem; color:var(--text-muted); }
 .tr-table { width:100%; border-collapse:collapse; font-size:.83rem; }
-.tr-table thead th { padding:9px 12px; text-align:left; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--text-muted); border-bottom:1px solid var(--border); background:rgba(255,255,255,.02); }
-.tr-table tbody td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; }
+.tr-table thead th { padding:9px 12px; text-align:left; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.8px; color:var(--text-muted); border-bottom:1px solid var(--border); background:var(--nav-hover); }
+.tr-table tbody td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
 .tr-table tbody tr:last-child td { border-bottom:none; }
-.tr-table tbody tr:hover td { background:rgba(255,255,255,.02); }
+.tr-table tbody tr:hover td { background:var(--nav-hover); }
 .score-bar-wrap { display:flex; align-items:center; gap:8px; }
-.score-bar { flex:1; height:6px; border-radius:3px; background:rgba(255,255,255,.08); overflow:hidden; }
+.score-bar { flex:1; height:6px; border-radius:3px; background:var(--border); overflow:hidden; }
 .score-bar-fill { height:100%; border-radius:3px; background:var(--accent); }
 .tr-empty { text-align:center; padding:40px; color:var(--text-muted); }
 .badge-enrolled  { background:rgba(99,102,241,.2);  color:var(--accent-light); }
 .badge-completed { background:rgba(34,197,94,.15);  color:#22c55e; }
 .badge-failed    { background:rgba(239,68,68,.12);  color:#ef4444; }
 .tr-loading { text-align:center; padding:40px; color:var(--text-muted); }
+
+/* ── View Modal ── */
+.view-modal { max-width:780px; }
+.view-banner {
+    margin:-26px -26px 0;
+    height:90px;
+    background:linear-gradient(135deg, var(--accent) 0%, #a78bfa 100%);
+    border-radius:16px 16px 0 0;
+    position:relative;
+    margin-bottom:52px;
+}
+.view-avatar-wrap {
+    position:absolute; bottom:-36px; left:28px;
+    width:72px; height:72px; border-radius:50%;
+    border:4px solid var(--bg-card);
+    background:linear-gradient(135deg,var(--accent),#a78bfa);
+    display:flex; align-items:center; justify-content:center;
+    font-size:1.4rem; font-weight:800; color:#fff;
+    overflow:hidden; flex-shrink:0;
+}
+.view-avatar-wrap img { width:100%; height:100%; object-fit:cover; }
+.view-header-actions { position:absolute; bottom:-36px; right:0; display:flex; gap:8px; }
+.view-name { font-size:1.15rem; font-weight:800; margin-bottom:2px; }
+.view-sub  { font-size:.82rem; color:var(--text-muted); margin-bottom:18px; }
+
+.view-section-title {
+    font-size:.68rem; font-weight:700; text-transform:uppercase;
+    letter-spacing:1px; color:var(--text-muted);
+    margin:20px 0 12px; padding-bottom:6px;
+    border-bottom:1px solid var(--border);
+}
+.view-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px 20px; margin-bottom:4px; }
+.view-grid-2 { display:grid; grid-template-columns:repeat(2,1fr); gap:12px 20px; }
+.view-field label { display:block; font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:var(--text-muted); margin-bottom:3px; }
+.view-field span  { font-size:.875rem; color:var(--text-primary); font-weight:500; }
+
+.view-tabs { display:flex; gap:4px; margin:20px 0 14px; border-bottom:1px solid var(--border); }
+.view-tab {
+    padding:7px 16px; border-radius:8px 8px 0 0; font-size:.82rem; font-weight:600;
+    cursor:pointer; border:none; background:none; color:var(--text-muted);
+    border-bottom:2px solid transparent; margin-bottom:-1px; transition:.15s;
+}
+.view-tab.active { color:var(--accent-light); border-bottom-color:var(--accent); }
+.view-tab:hover:not(.active) { color:var(--text-primary); background:var(--nav-hover); }
+.view-tab-panel { display:none; }
+.view-tab-panel.active { display:block; }
 </style>
 @endsection
 
@@ -217,7 +265,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                 </tr>
             </thead>
             <tbody id="empBody">
-                <tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr>
+                <tr class="state-row"><td colspan="8"><span class="spinner"></span>A carregar...</td></tr>
             </tbody>
         </table>
     </div>
@@ -367,6 +415,69 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 </div>
 </div>
 
+<!-- ══ Modal: Ver Funcionário ══ -->
+<div class="overlay" id="viewOverlay">
+<div class="modal view-modal">
+
+    <!-- Banner + Avatar -->
+    <div class="view-banner">
+        <div class="view-avatar-wrap" id="vAvatar"></div>
+        <div class="view-header-actions">
+            <button class="btn-sm btn-edit" id="vEditBtn" onclick="">✏️ Editar</button>
+        </div>
+    </div>
+
+    <!-- Nome / sub -->
+    <div class="view-name" id="vName">—</div>
+    <div class="view-sub"  id="vSub">—</div>
+
+    <!-- Tabs -->
+    <div class="view-tabs">
+        <button class="view-tab active" onclick="switchTab('vTabInfo',this)">📋 Informação</button>
+        <button class="view-tab"        onclick="switchTab('vTabTrainings',this)">🎓 Formações</button>
+    </div>
+
+    <!-- Tab: Info -->
+    <div class="view-tab-panel active" id="vTabInfo">
+        <div class="view-section-title">Dados Pessoais</div>
+        <div class="view-grid">
+            <div class="view-field"><label>Código</label><span id="vCode">—</span></div>
+            <div class="view-field"><label>Género</label><span id="vGender">—</span></div>
+            <div class="view-field"><label>Data de Nascimento</label><span id="vDob">—</span></div>
+            <div class="view-field"><label>Idade</label><span id="vAge">—</span></div>
+            <div class="view-field"><label>Nacionalidade</label><span id="vNationality">—</span></div>
+            <div class="view-field"><label>Telefone</label><span id="vPhone">—</span></div>
+            <div class="view-field" style="grid-column:1/-1"><label>Morada</label><span id="vAddress">—</span></div>
+        </div>
+
+        <div class="view-section-title">Contrato & Função</div>
+        <div class="view-grid">
+            <div class="view-field"><label>Departamento</label><span id="vDept">—</span></div>
+            <div class="view-field"><label>Setor</label><span id="vSector">—</span></div>
+            <div class="view-field"><label>Cargo</label><span id="vPosition">—</span></div>
+            <div class="view-field"><label>Data de Admissão</label><span id="vHireDate">—</span></div>
+            <div class="view-field"><label>Anos de Casa</label><span id="vTenure">—</span></div>
+            <div class="view-field"><label>Estado</label><span id="vStatus">—</span></div>
+            <div class="view-field"><label>Tipo de Contrato</label><span id="vContract">—</span></div>
+            <div class="view-field"><label>Data de Término</label><span id="vEndDate">—</span></div>
+            <div class="view-field"><label>Local de Trabalho</label><span id="vWorkLocation">—</span></div>
+            <div class="view-field"><label>Email</label><span id="vEmail">—</span></div>
+        </div>
+    </div>
+
+    <!-- Tab: Formações -->
+    <div class="view-tab-panel" id="vTabTrainings">
+        <div id="vTrainingsContent" style="margin-top:6px">
+            <div class="tr-loading">⏳ A carregar formações…</div>
+        </div>
+    </div>
+
+    <div class="modal-foot">
+        <button class="btn-cancel" onclick="closeOverlay('viewOverlay')">Fechar</button>
+    </div>
+</div>
+</div>
+
 <!-- ══ Modal: Confirmar exclusão ══ -->
 <div class="overlay" id="delOverlay">
 <div class="modal confirm-modal">
@@ -483,14 +594,18 @@ function renderTable(rows){
             :`<div class="avatar" style="background:${bg}">${ini}</div>`;
         const sb={active:'<span class="badge badge-active">Ativo</span>',inactive:'<span class="badge badge-inactive">Inativo</span>',terminated:'<span class="badge badge-terminated">Desligado</span>'}[emp.status]??`<span class="badge">${emp.status}</span>`;
         return`<tr>
-            <td>${av}</td>
             <td>
-                <span class="emp-name-wrap"
-                    onmouseenter="showHoverCard(event,${emp.id})"
-                    onmouseleave="hideHoverCard()">
-                    <span class="emp-name">${emp.full_name}</span>
-                </span>
-                <div class="emp-sub">${emp.code}</div>
+                <div style="display:flex;align-items:center;gap:10px">
+                    ${av}
+                    <div>
+                        <span class="emp-name-wrap"
+                            onmouseenter="showHoverCard(event,${emp.id})"
+                            onmouseleave="hideHoverCard()">
+                            <span class="emp-name">${emp.full_name}</span>
+                        </span>
+                        <div class="emp-sub">${emp.code}</div>
+                    </div>
+                </div>
             </td>
             <td>${emp.sector?.sector??'—'}</td>
             <td>${emp.department?.department??'—'}</td>
@@ -499,6 +614,7 @@ function renderTable(rows){
             <td style="font-size:.82rem;color:var(--text-muted)">${yearsAgo(emp.hire_date)}</td>
             <td>${sb}</td>
             <td style="white-space:nowrap">
+                <button class="btn-sm btn-view" onclick="openView(${emp.id})">👁 Ver</button>
                 <button class="btn-sm btn-edit" onclick="openEdit(${emp.id})">✏️ Editar</button>
                 <button class="btn-sm btn-del"  onclick="openDeleteModal(${emp.id},'${ini}')">🗑</button>
             </td></tr>`;
@@ -636,6 +752,129 @@ function openDeleteModal(id,name){
 async function confirmDelete(){
     try{await apiFetch('DELETE',`/employees/${deleteId}`);toast('Funcionário excluído.','ok');closeOverlay('delOverlay');loadEmployees();}
     catch(err){toast(err.message??'Erro.','err');}
+}
+
+/* ── View Modal ── */
+function switchTab(panelId, btn){
+    document.querySelectorAll('.view-tab-panel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById(panelId).classList.add('active');
+    btn.classList.add('active');
+}
+
+const genderLabel = {male:'Masculino', female:'Feminino', other:'Outro'};
+const statusLabel  = {active:'Ativo', inactive:'Inativo', terminated:'Desligado'};
+const statusBadge  = {
+    active:     '<span class="badge badge-active">Ativo</span>',
+    inactive:   '<span class="badge badge-inactive">Inativo</span>',
+    terminated: '<span class="badge badge-terminated">Desligado</span>',
+};
+
+async function openView(empId){
+    const emp = empMap[empId];
+    if(!emp) return;
+
+    // Reset tabs
+    document.querySelectorAll('.view-tab-panel').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('vTabInfo').classList.add('active');
+    document.querySelector('.view-tab').classList.add('active');
+    document.getElementById('vTrainingsContent').innerHTML='<div class="tr-loading">⏳ A carregar formações…</div>';
+
+    // Avatar
+    const ini = ((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
+    const av  = document.getElementById('vAvatar');
+    if(emp.photo){
+        av.innerHTML=`<img src="${emp.photo}" alt="${ini}">`;
+    } else {
+        av.innerHTML=`<span>${ini}</span>`;
+    }
+
+    // Botão editar no topo
+    document.getElementById('vEditBtn').onclick = ()=>{ closeOverlay('viewOverlay'); openEdit(empId); };
+
+    // Cabeçalho
+    document.getElementById('vName').textContent = emp.full_name;
+    document.getElementById('vSub').textContent  = [emp.position?.position, emp.department?.department].filter(Boolean).join(' · ') || '—';
+
+    // Dados pessoais
+    const fmt = d => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-PT') : '—';
+    document.getElementById('vCode').textContent        = emp.code || '—';
+    document.getElementById('vGender').textContent      = genderLabel[emp.gender] ?? (emp.gender || '—');
+    document.getElementById('vDob').textContent         = fmt(emp.date_of_birth);
+    document.getElementById('vAge').textContent         = emp.date_of_birth ? Math.floor((new Date()-new Date(emp.date_of_birth+'T00:00:00'))/(1000*60*60*24*365.25))+' anos' : '—';
+    document.getElementById('vNationality').textContent = emp.nationality || '—';
+    document.getElementById('vPhone').textContent       = emp.phone || '—';
+    document.getElementById('vAddress').textContent     = emp.address || '—';
+    document.getElementById('vEmail').textContent       = emp.email || '—';
+
+    // Contrato
+    document.getElementById('vDept').textContent         = emp.department?.department || '—';
+    document.getElementById('vSector').textContent       = emp.sector?.sector || '—';
+    document.getElementById('vPosition').textContent     = emp.position?.position || '—';
+    document.getElementById('vHireDate').textContent     = fmt(emp.hire_date);
+    document.getElementById('vTenure').textContent       = yearsAgo(emp.hire_date);
+    document.getElementById('vStatus').innerHTML         = statusBadge[emp.status] ?? `<span class="badge">${emp.status}</span>`;
+    document.getElementById('vContract').textContent     = emp.contract_type || '—';
+    document.getElementById('vEndDate').textContent      = fmt(emp.end_date);
+    document.getElementById('vWorkLocation').textContent = emp.work_location || '—';
+
+    openOverlay('viewOverlay');
+
+    // Carregar formações em background
+    try{
+        const res  = await apiFetch('GET',`/enrollments?employee_id=${empId}&per_page=100`);
+        const rows = res.data ?? [];
+        if(!rows.length){
+            document.getElementById('vTrainingsContent').innerHTML=`<div class="tr-empty">Sem formações registadas para este funcionário.</div>`;
+            return;
+        }
+        const sC={enrolled:'badge-enrolled',completed:'badge-completed',failed:'badge-failed'};
+        const sL={enrolled:'Inscrito',completed:'Concluído',failed:'Reprovado'};
+        const tbody = rows.map(r=>{
+            const scoreHtml = r.score != null
+                ? `<div class="score-bar-wrap"><div class="score-bar"><div class="score-bar-fill" style="width:${r.score}%"></div></div><span style="font-size:.75rem;color:var(--text-muted);min-width:28px">${r.score}%</span></div>`
+                : '—';
+            return `<tr>
+                <td style="font-weight:500">${r.training?.title??'—'}</td>
+                <td style="color:var(--text-muted);font-size:.8rem">${r.training?.provider??'—'}</td>
+                <td><span class="badge ${sC[r.status]??''}">${sL[r.status]??r.status}</span></td>
+                <td style="min-width:110px">${scoreHtml}</td>
+                <td style="color:var(--text-muted);font-size:.8rem">${r.start_date?new Date(r.start_date+'T00:00:00').toLocaleDateString('pt-PT'):'—'}</td>
+                <td style="color:var(--text-muted);font-size:.8rem">${r.completion_date?new Date(r.completion_date+'T00:00:00').toLocaleDateString('pt-PT'):'—'}</td>
+            </tr>`;
+        }).join('');
+
+        const completed = rows.filter(r=>r.status==='completed').length;
+        const enrolled  = rows.filter(r=>r.status==='enrolled').length;
+        const failed    = rows.filter(r=>r.status==='failed').length;
+
+        document.getElementById('vTrainingsContent').innerHTML = `
+            <div style="display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+                <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 18px;text-align:center">
+                    <div style="font-size:1.4rem;font-weight:800;color:#22c55e">${completed}</div>
+                    <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Concluídas</div>
+                </div>
+                <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:10px;padding:10px 18px;text-align:center">
+                    <div style="font-size:1.4rem;font-weight:800;color:var(--accent-light)">${enrolled}</div>
+                    <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Em curso</div>
+                </div>
+                <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:10px 18px;text-align:center">
+                    <div style="font-size:1.4rem;font-weight:800;color:#ef4444">${failed}</div>
+                    <div style="font-size:.72rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Reprovadas</div>
+                </div>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="tr-table">
+                    <thead><tr>
+                        <th>Formação</th><th>Provedor</th><th>Estado</th><th>Pontuação</th><th>Início</th><th>Conclusão</th>
+                    </tr></thead>
+                    <tbody>${tbody}</tbody>
+                </table>
+            </div>`;
+    } catch(e){
+        document.getElementById('vTrainingsContent').innerHTML=`<div class="tr-empty">Erro ao carregar formações.</div>`;
+    }
 }
 
 boot();
