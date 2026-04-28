@@ -18,6 +18,13 @@
 .btn-reset  { padding:9px 14px; border-radius:9px; background:rgba(255,255,255,.05); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-size:.86rem; }
 .btn-reset:hover { color:var(--text-primary); }
 
+/* ── Sort header ── */
+thead th.sortable { cursor:pointer; user-select:none; }
+thead th.sortable:hover { color:var(--text-primary); }
+thead th.sortable .sort-icon { margin-left:4px; opacity:.35; font-style:normal; font-size:.7rem; }
+thead th.sortable.sort-asc  .sort-icon,
+thead th.sortable.sort-desc .sort-icon { opacity:1; color:var(--accent-light); }
+
 /* ── Card / Table ── */
 .card { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
 .table-wrap { overflow-x:auto; }
@@ -254,9 +261,13 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
         <table>
             <thead>
                 <tr>
-                    <th>Funcionário</th>
+                    <th class="sortable" id="thName" onclick="setSort('name')">
+                        Funcionário <i class="sort-icon" id="siName">⇅</i>
+                    </th>
+                    <th class="sortable" id="thCode" onclick="setSort('code')">
+                        Código <i class="sort-icon" id="siCode">⇅</i>
+                    </th>
                     <th>Setor</th>
-                    <th>Departamento</th>
                     <th>Função</th>
                     <th>Admissão</th>
                     <th>Anos de casa</th>
@@ -497,7 +508,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 <script>
 const API  = '/api/v1';
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-let state = {page:1,search:'',department_id:'',sector_id:'',position_id:'',status:''};
+let state = {page:1,search:'',department_id:'',sector_id:'',position_id:'',status:'',sort:'name_asc'};
 let editId=null, deleteId=null;
 let depts=[], positions=[], sectors=[];
 let photoBase64=null;
@@ -568,10 +579,11 @@ async function loadEmployees(){
     if(state.position_id)   params.position_id=state.position_id;
     if(state.sector_id)     params.sector_id=state.sector_id;
     if(state.status)        params.status=state.status;
+    if(state.sort) params.sort=state.sort;
     try{
         const res=await fetch(`${API}/employees?${new URLSearchParams(params)}`,{headers:{Accept:'application/json'}});
         const json=await res.json();
-        renderTable(json.data??[]);renderPag(json.meta);
+        renderTable(json.data??[]);renderPag(json.meta);updateSortHeaders();
     }catch{tbody.innerHTML='<tr class="state-row"><td colspan="8">Erro ao carregar.</td></tr>';}
 }
 
@@ -603,12 +615,11 @@ function renderTable(rows){
                             onmouseleave="hideHoverCard()">
                             <span class="emp-name">${emp.full_name}</span>
                         </span>
-                        <div class="emp-sub">${emp.code}</div>
                     </div>
                 </div>
             </td>
+            <td><span style="font-family:monospace;font-size:.78rem;color:var(--text-muted)">${emp.code}</span></td>
             <td>${emp.sector?.sector??'—'}</td>
-            <td>${emp.department?.department??'—'}</td>
             <td>${emp.position?.position??'—'}</td>
             <td style="color:var(--text-muted);font-size:.82rem">${emp.hire_date?new Date(emp.hire_date+'T00:00:00').toLocaleDateString('pt-PT'):'—'}</td>
             <td style="font-size:.82rem;color:var(--text-muted)">${yearsAgo(emp.hire_date)}</td>
@@ -634,6 +645,28 @@ function renderPag(meta){
     next.onclick=()=>{state.page=meta.current_page+1;loadEmployees();};btns.appendChild(next);
 }
 
+/* ── Sort ── */
+function setSort(field){
+    // Alternar: asc → desc → asc
+    const cur = state.sort;
+    if(cur === field+'_asc')       state.sort = field+'_desc';
+    else if(cur === field+'_desc') state.sort = field+'_asc';
+    else                           state.sort = field+'_asc';
+    state.page=1; loadEmployees();
+}
+function updateSortHeaders(){
+    const cols = {name:'thName', code:'thCode'};
+    const icons= {name:'siName', code:'siCode'};
+    Object.keys(cols).forEach(field=>{
+        const th = document.getElementById(cols[field]);
+        const si = document.getElementById(icons[field]);
+        th.classList.remove('sort-asc','sort-desc');
+        si.textContent = '⇅';
+        if(state.sort === field+'_asc') { th.classList.add('sort-asc');  si.textContent='↑'; }
+        if(state.sort === field+'_desc'){ th.classList.add('sort-desc'); si.textContent='↓'; }
+    });
+}
+
 /* ── Filters ── */
 function applyFilters(){
     state.search=document.getElementById('fSearch').value.trim();
@@ -645,7 +678,8 @@ function applyFilters(){
 }
 function resetFilters(){
     ['fSearch','fDept','fPos','fSector','fStatus'].forEach(id=>document.getElementById(id).value='');
-    state={page:1,search:'',department_id:'',sector_id:'',position_id:'',status:''};loadEmployees();
+    state={page:1,search:'',department_id:'',sector_id:'',position_id:'',status:'',sort:'name_asc'};
+    loadEmployees();
 }
 document.getElementById('fSearch').addEventListener('keydown',e=>{if(e.key==='Enter')applyFilters();});
 

@@ -45,7 +45,15 @@ class EmployeeController extends Controller
             });
         }
 
-        $employees = $query->orderBy('first_name')->paginate($request->get('per_page', 15));
+        // Ordenação: sort=name_asc (default), name_desc, code_asc, code_desc
+        match ($request->get('sort', 'name_asc')) {
+            'name_desc' => $query->orderBy('first_name', 'desc')->orderBy('last_name', 'desc'),
+            'code_asc'  => $query->orderBy('code', 'asc'),
+            'code_desc' => $query->orderBy('code', 'desc'),
+            default     => $query->orderBy('first_name', 'asc')->orderBy('last_name', 'asc'),
+        };
+
+        $employees = $query->paginate($request->get('per_page', 15));
 
         return EmployeeResource::collection($employees);
     }
