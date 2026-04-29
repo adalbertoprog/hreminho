@@ -19,3 +19,8 @@ Training(id, title, description, provider (e.g., company or institution))
 EmployeeTrainings(id, employee_id, training_id, status (enrolled, completed, failed), certificate_path (optional), score (optional), start_date (optional), end_date (optional), notes)
 
 Users(id, name, email, password, role (admin, HR, employee))
+
+
+--------------------------------------------------------------------------------------------
+
+CRUD visual completo — interface SPA-style usando fetch() para consumir a API, sem reloads de página.
