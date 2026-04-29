@@ -18,6 +18,13 @@ class TrainingController extends Controller
             $s = $request->search;
             $query->where(fn($q) => $q->where('title','like',"%{$s}%")->orWhere('provider','like',"%{$s}%"));
         }
+        if ($request->boolean('all')) {
+            $rows = $query->orderBy('title')->get();
+            return response()->json([
+                'data' => $rows->map(fn($t) => $this->formatTraining($t)),
+            ]);
+        }
+
         $rows = $query->orderBy('title')->paginate($request->get('per_page', 15));
 
         return response()->json([

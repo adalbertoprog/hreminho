@@ -80,6 +80,17 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 .alert-chip:hover{opacity:.8}
 .chip-expired {background:rgba(239,68,68,.12);color:#ef4444;border-color:rgba(239,68,68,.25)}
 .chip-expiring{background:rgba(245,158,11,.12);color:#f59e0b;border-color:rgba(245,158,11,.25)}
+/* ── Combobox pesquisável ── */
+.cb-wrap{position:relative;flex:1;min-width:150px;max-width:210px}
+.cb-input{width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:9px 32px 9px 13px;color:var(--text-primary);font-size:.86rem;font-family:inherit;box-sizing:border-box;cursor:pointer}
+.cb-input:focus{outline:none;border-color:var(--accent)}
+.cb-arrow{position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;color:var(--text-muted);font-size:.7rem}
+.cb-dropdown{display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg-card);border:1px solid var(--border);border-radius:9px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.4)}
+.cb-dropdown.open{display:block}
+.cb-option{padding:9px 13px;font-size:.86rem;cursor:pointer;color:var(--text-primary);transition:background .1s}
+.cb-option:hover,.cb-option.focused{background:rgba(99,102,241,.15)}
+.cb-option.selected{color:var(--accent-light);font-weight:600}
+.cb-empty{padding:10px 13px;font-size:.83rem;color:var(--text-muted);text-align:center}
 </style>
 @endsection
 
@@ -110,22 +121,27 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 
 <!-- Filtros Inscrições -->
 <div class="filters" id="filterEnroll">
-    <select id="fTraining" class="f-input" style="max-width:220px"><option value="">Todas as formações</option></select>
-    <select id="fEmpEnroll" class="f-input" style="max-width:210px"><option value="">Todos os funcionários</option></select>
-    <select id="fEnrollStatus" class="f-input" style="max-width:160px">
+    <select id="fTraining" class="f-input" style="max-width:220px" onchange="applyFilters()"><option value="">Todas as formações</option></select>
+    <div class="cb-wrap" id="cbEmpWrap">
+        <input type="text" id="cbEmpInput" class="cb-input" placeholder="Todos os funcionários" autocomplete="off"
+               onkeydown="cbKeydown(event)">
+        <span class="cb-arrow">▼</span>
+        <div class="cb-dropdown" id="cbEmpDropdown"></div>
+    </div>
+    <input type="hidden" id="fEmpEnroll" value="">
+    <select id="fEnrollStatus" class="f-input" style="max-width:160px" onchange="applyFilters()">
         <option value="">Todos os status</option>
         <option value="enrolled">Inscrito</option>
         <option value="completed">Concluído</option>
         <option value="failed">Reprovado</option>
     </select>
-    <select id="fValidityStatus" class="f-input" style="max-width:185px">
+    <select id="fValidityStatus" class="f-input" style="max-width:185px" onchange="applyFilters()">
         <option value="">Todas as validades</option>
         <option value="valid">✅ Válida</option>
         <option value="expiring">🔔 A Expirar (30 dias)</option>
         <option value="expired">⚠️ Expirada</option>
         <option value="none">— Sem validade def.</option>
     </select>
-    <button class="btn-filter" onclick="applyFilters()">Filtrar</button>
     <button class="btn-reset"  onclick="resetFilters()">✕ Limpar</button>
 </div>
 
@@ -283,8 +299,8 @@ async function boot(){
     employees.forEach(e=>{
         const o=`<option value="${e.id}">${e.full_name} (${e.code})</option>`;
         document.getElementById('empSelEnroll').innerHTML+=o;
-        document.getElementById('fEmpEnroll').innerHTML+=`<option value="${e.id}">${e.full_name}</option>`;
     });
+    cbInit();
     trainings.forEach(t=>{
         const o=`<option value="${t.id}">${t.title}</option>`;
         document.getElementById('trainingSelEnroll').innerHTML+=o;
@@ -450,8 +466,88 @@ function applyFilters(){
     enrollPage=1;loadEnrollments();
 }
 function resetFilters(){
-    ['fTraining','fEmpEnroll','fEnrollStatus','fValidityStatus'].forEach(id=>document.getElementById(id).value='');
+    ['fTraining','fEnrollStatus','fValidityStatus'].forEach(id=>document.getElementById(id).value='');
+    cbClear();
     enrollFilters={};enrollPage=1;loadEnrollments();
+}
+
+/* ── Combobox funcionários ── */
+let cbItems=[], cbFocusIdx=-1;
+function cbInit(){
+    cbItems=[{id:'',label:'Todos os funcionários'},...employees.map(e=>({id:String(e.id),label:e.full_name+(e.code?' ('+e.code+')':'')}))];
+    const inp=document.getElementById('cbEmpInput');
+    inp.addEventListener('input',cbFilter);
+    inp.addEventListener('click',cbOpen);
+    // Fechar ao clicar fora — repor label anterior se não houve nova seleção
+    document.addEventListener('click',function(ev){
+        if(!document.getElementById('cbEmpWrap').contains(ev.target)){
+            document.getElementById('cbEmpDropdown').classList.remove('open');
+            const inp=document.getElementById('cbEmpInput');
+            if(inp.dataset.prev!==undefined && inp.value!==inp.dataset.prev){
+                inp.removeEventListener('input',cbFilter);
+                inp.value=inp.dataset.prev;
+                inp.addEventListener('input',cbFilter);
+                delete inp.dataset.prev;
+            }
+        }
+    });
+}
+function cbRenderDropdown(q){
+    const dd=document.getElementById('cbEmpDropdown');
+    const filtered=q?cbItems.filter(i=>i.label.toLowerCase().includes(q.toLowerCase())):cbItems;
+    if(!filtered.length){dd.innerHTML='<div class="cb-empty">Sem resultados</div>';cbFocusIdx=-1;return;}
+    const cur=document.getElementById('fEmpEnroll').value;
+    dd.innerHTML=filtered.map(i=>`<div class="cb-option${i.id===cur?' selected':''}" data-id="${i.id}">${i.label}</div>`).join('');
+    // Ligar click em cada opção
+    dd.querySelectorAll('.cb-option').forEach(function(opt){
+        opt.addEventListener('click',function(ev){
+            ev.stopPropagation();
+            const id=opt.dataset.id;
+            const label=opt.textContent;
+            document.getElementById('fEmpEnroll').value=id;
+            // Atualizar input sem disparar oninput
+            const inp=document.getElementById('cbEmpInput');
+            inp.removeEventListener('input',cbFilter);
+            inp.value=id?label:'';
+            delete inp.dataset.prev;
+            inp.addEventListener('input',cbFilter);
+            document.getElementById('cbEmpDropdown').classList.remove('open');
+            applyFilters();
+        });
+    });
+    cbFocusIdx=-1;
+}
+function cbFilter(){
+    const q=document.getElementById('cbEmpInput').value;
+    if(!q){document.getElementById('fEmpEnroll').value='';applyFilters();}
+    cbRenderDropdown(q);
+    document.getElementById('cbEmpDropdown').classList.add('open');
+}
+function cbOpen(){
+    // Limpar o input para permitir nova pesquisa, guardando o label atual
+    const inp=document.getElementById('cbEmpInput');
+    inp.dataset.prev=inp.value;
+    inp.removeEventListener('input',cbFilter);
+    inp.value='';
+    inp.addEventListener('input',cbFilter);
+    cbRenderDropdown('');
+    document.getElementById('cbEmpDropdown').classList.add('open');
+}
+function cbClear(){
+    document.getElementById('fEmpEnroll').value='';
+    const inp=document.getElementById('cbEmpInput');
+    inp.removeEventListener('input',cbFilter);
+    inp.value='';
+    inp.addEventListener('input',cbFilter);
+}
+function cbKeydown(e){
+    const dd=document.getElementById('cbEmpDropdown');
+    const opts=[...dd.querySelectorAll('.cb-option')];
+    if(!opts.length)return;
+    if(e.key==='ArrowDown'){e.preventDefault();cbFocusIdx=Math.min(cbFocusIdx+1,opts.length-1);opts.forEach((o,i)=>o.classList.toggle('focused',i===cbFocusIdx));}
+    else if(e.key==='ArrowUp'){e.preventDefault();cbFocusIdx=Math.max(cbFocusIdx-1,0);opts.forEach((o,i)=>o.classList.toggle('focused',i===cbFocusIdx));}
+    else if(e.key==='Enter'){if(cbFocusIdx>=0)opts[cbFocusIdx].click();}
+    else if(e.key==='Escape'){dd.classList.remove('open');}
 }
 function applyCatalogFilters(){catalogFilters={};const s=document.getElementById('fCatalogSearch').value.trim();if(s)catalogFilters.search=s;catalogPage=1;loadCatalog();}
 function resetCatalogFilters(){document.getElementById('fCatalogSearch').value='';catalogFilters={};catalogPage=1;loadCatalog();}

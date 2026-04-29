@@ -97,8 +97,8 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
 .emp-prog-bar { flex: 1; height: 4px; background: var(--border); border-radius: 3px; overflow: hidden; }
 .emp-prog-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
 .emp-prog-label { font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; }
-.emp-trainings-body { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
-.emp-card.open .emp-trainings-body { max-height: 800px; }
+.emp-trainings-body { max-height: 0; overflow: hidden; transition: max-height 0.5s ease; }
+.emp-card.open .emp-trainings-body { max-height: 10000px; }
 .emp-trainings-inner { border-top: 1px solid var(--border); padding: 14px 18px 16px; display: flex; flex-direction: column; gap: 8px; }
 .emp-training-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: rgba(255,255,255,0.025); border: 1px solid rgba(255,255,255,0.05); transition: background 0.15s; }
 .emp-training-row:hover { background: rgba(99,102,241,0.08); }

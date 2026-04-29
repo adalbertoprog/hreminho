@@ -241,7 +241,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
 <!-- Filtros -->
 <div class="filters" id="filterBar">
-    <input id="fSearch" class="f-input" placeholder="🔍 Nome, email ou código..." onkeydown="if(event.key==='Enter')applyFilters()">
+    <input id="fSearch" class="f-input" placeholder="🔍 Nome, email ou código..." oninput="debouncedSearch()" onkeydown="if(event.key==='Enter'){clearTimeout(_searchTimer);applyFilters();}">
     <select id="fDept"   class="f-input" style="max-width:180px"><option value="">Todos os depts.</option></select>
     <select id="fSector" class="f-input" style="max-width:180px"><option value="">Todos os setores</option></select>
     <select id="fPos"    class="f-input" style="max-width:180px"><option value="">Todas as funções</option></select>
@@ -510,6 +510,8 @@ const API  = '/api/v1';
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 let state = {page:1,search:'',department_id:'',sector_id:'',position_id:'',status:'',sort:'name_asc'};
 let editId=null, deleteId=null;
+let _searchTimer=null;
+function debouncedSearch(){clearTimeout(_searchTimer);_searchTimer=setTimeout(applyFilters,350);}
 let depts=[], positions=[], sectors=[];
 let photoBase64=null;
 
@@ -681,7 +683,6 @@ function resetFilters(){
     state={page:1,search:'',department_id:'',sector_id:'',position_id:'',status:'',sort:'name_asc'};
     loadEmployees();
 }
-document.getElementById('fSearch').addEventListener('keydown',e=>{if(e.key==='Enter')applyFilters();});
 
 /* ── Hover Card ── */
 let hoverTimer=null, activeEmpId=null;
