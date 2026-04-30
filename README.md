@@ -1,10 +1,11 @@
-# HREMINHO - HR Management System
+# HRELETROMINHO - HR Management System
 
-A comprehensive Human Resources Management System built with **Laravel 13** and **Blade templating**, featuring a modern web interface with **Tailwind CSS** and **Vite** for asset bundling.
+A modern and scalable Employee Management System built with Laravel 13 and **Blade templating**, featuring a modern web interface with **Tailwind CSS** and **Vite** for asset bundling, designed to streamline HR operations such as employee records, department management, attendance tracking, leave requests, career progression, and staff training.
+
 
 ## About
 
-**HREMINHO** is a full-featured HR management application designed to streamline employee management, attendance tracking, leave management, department organization, and training administration. This project is currently in early development stages and aims to provide a user-friendly solution for managing all aspects of human resources.
+**HRELETROMINHO** is a full-featured HR management application designed to streamline employee management, attendance tracking, leave management, department organization, and training administration. This project is currently in early development stages and aims to provide a user-friendly solution for managing all aspects of human resources.
 
 ## Tech Stack
 
@@ -167,21 +168,7 @@ This will clear config cache and run PHPUnit tests.
 └── storage/
 ```
 
-## Key Routes
 
-- `GET /` - Home page
-- `POST /login` - User login
-- `POST /logout` - User logout
-- `GET /dashboard` - Main dashboard (protected)
-- `GET/POST /employees` - Employee management
-- `GET/POST /departments` - Department management
-- `GET/POST /positions` - Position management
-- `GET /sectors` - Sector management
-- `GET /attendances` - Attendance tracking
-- `GET /leaves` - Leave management
-- `GET /trainings` - Training management
-- `GET /users` - User management
-- `GET /reports` - Reports and analytics
 
 ## Database Configuration
 
@@ -196,7 +183,7 @@ DB_CONNECTION=mysql
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_DATABASE=hreminho
-DB_USERNAME=root
+DB_USERNAME=****
 DB_PASSWORD=
 ```
 
@@ -237,11 +224,6 @@ php artisan pail        # Tail application logs
 ### Cache & Store
 - Default store: Database
 
-## Development Notes
-
-This project is currently in early development. The file `Levantamento.txt` contains development notes and pending decisions:
-
-> **Funcionários**: Is the employee ID format (FUNCXXXX) sequential? (if yes, we'll automate it in the system)
 
 ## Contributing
 
