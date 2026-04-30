@@ -1,9 +1,5 @@
 **To do**
 
-work\_location must be selected instead of being free writed
-
-
-
 
 
 Gestão de equipas(formação de equipas, elementos)
@@ -16,31 +12,25 @@ Exportação Excel nos relatórios
 
 
 
+tipo de contrato, deve ser selecionado - em funcionário
 
+
+
+\---------------------------------------------------------------------------------------------------------------------
 
 **Bugs**
 
-
-
-PDFs
-
-
-
-Relatórios
-
-Os cards de formações, quando expandidos não apresentam todas as formações quando o número de formações é grande,pelo que vi acima de 13
+Em inscrições, ao adiciona, no campo funcionários não apresenta todos os funcionários
 
 
 
-Filtros
-
-tornar filtros dinâmicos (sem necessidade de pressionar enter para dar resultados) - Em funcionários, formações
-
-Na tab "Formação por funcionários" e na "Validade de formações" o filtro de formações não apresenta todas as formações
-
-O filtro de funcionários da tab de "Validade de formações" dever permitir escrever e fazer uma busca dinâmica
 
 
+Ao fazer inscrição de um funcionário numa formação, se a mesma ainda não ter sido feita, ou seja, a data de início for posterior a data atual, ou melhor, se a data de conclusão for posterior a data atual, não permita indicar a pontuação da mesma
+
+
+
+Corrigir o plural de formação, que aparece formaçãooes - Em relatórios tab "Funcionários com formação"
 
 
 
@@ -52,7 +42,7 @@ O filtro de funcionários da tab de "Validade de formações" dever permitir esc
 
 
 
-\----------------------------------------------------------------
+\----------------------------------------------------------------------------------------------------------------------
 
 
 
