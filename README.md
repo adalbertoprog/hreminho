@@ -1,59 +1,246 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# HRELETROMINHO - HR Management System
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+A modern and scalable Employee Management System built with Laravel 13 and **Blade templating**, featuring a modern web interface with **Tailwind CSS** and **Vite** for asset bundling, designed to streamline HR operations such as employee records, department management, attendance tracking, leave requests, career progression, and staff training.
 
-## About Laravel
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## About
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+**HRELETROMINHO** is a full-featured HR management application designed to streamline employee management, attendance tracking, leave management, department organization, and training administration. This project is currently in early development stages and aims to provide a user-friendly solution for managing all aspects of human resources.
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Tech Stack
 
-## Learning Laravel
+- **Backend**: PHP 8.3+ with Laravel 13
+- **Frontend**: Blade Templates (35%) + Tailwind CSS 4.0
+- **Build Tool**: Vite 8.0 with Laravel Vite Plugin
+- **Database**: SQLite (default, configurable)
+- **Testing**: PHPUnit 12.5+
+- **Development Tools**: Laravel Pint, Faker, Mockery
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+## Key Features
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+### Employee Management
+- Create and manage employee records
+- Track employee details and assignments
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+### Department Management
+- Organize departments within the organization
+- Assign employees to departments
 
-## Agentic Development
+### Position Management
+- Define and manage job positions
+- Link positions to employees and departments
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+### Sectors
+- Organize company structure by sectors
 
+### Attendance Tracking
+- Monitor employee attendance records
+- Track attendance patterns
+
+### Leave Management
+- Manage leave requests and approvals
+- Track available leave days
+
+### Training Management
+- Organize and track employee training programs
+- Monitor training history
+
+### Reporting
+- Generate comprehensive HR reports
+- Access analytics and insights
+
+### User Management
+- Administrative user control
+- Role-based access management
+
+### Authentication
+- Secure login system
+- Session management
+
+## Getting Started
+
+### Prerequisites
+
+- PHP 8.3 or higher
+- Composer
+- Node.js and npm
+- Git
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/adalbertoprog/hreminho.git
+   cd hreminho
+   ```
+
+2. **Install dependencies**
+   ```bash
+   composer install
+   npm install
+   ```
+
+3. **Setup environment**
+   ```bash
+   cp .env.example .env
+   php artisan key:generate
+   ```
+
+4. **Database setup**
+   ```bash
+   php artisan migrate
+   ```
+
+5. **Build assets**
+   ```bash
+   npm run build
+   ```
+
+### Quick Setup Script
+
+The project includes a convenient setup script:
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+composer run setup
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+This will:
+- Install PHP dependencies
+- Copy `.env` file
+- Generate application key
+- Run migrations
+- Install npm packages
+- Build frontend assets
+
+## Development
+
+### Start Development Server
+
+Run the development command to start all services concurrently:
+
+```bash
+composer run dev
+```
+
+This command will start:
+- Laravel development server
+- Queue listener
+- Laravel Pail (logs)
+- Vite development server
+
+### Build for Production
+
+```bash
+npm run build
+```
+
+### Testing
+
+Run the test suite:
+```bash
+composer run test
+```
+
+This will clear config cache and run PHPUnit tests.
+
+## Project Structure
+
+```
+├── app/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── Auth/
+│   │   │   ├── Web/
+│   │   │   └── DashboardController.php
+│   │   └── Middleware/
+│   ├── Models/
+│   └── ...
+├── routes/
+│   └── web.php
+├── resources/
+│   ├── views/
+│   └── css/
+├── database/
+│   ├── migrations/
+│   ├── factories/
+│   └── seeders/
+├── config/
+├── public/
+└── storage/
+```
+
+
+
+## Database Configuration
+
+By default, HREMINHO uses SQLite. To configure a different database:
+
+1. Edit `.env` file
+2. Uncomment and configure `DB_*` variables for MySQL/PostgreSQL/etc
+3. Run migrations
+
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=hreminho
+DB_USERNAME=****
+DB_PASSWORD=
+```
+
+## Available Commands
+
+### Composer Scripts
+
+```bash
+composer run setup      # Complete project setup
+composer run dev        # Development mode with watchers
+composer run test       # Run tests
+```
+
+### Artisan Commands
+
+```bash
+php artisan serve       # Start development server
+php artisan migrate     # Run migrations
+php artisan tinker      # Interactive shell
+php artisan queue:listen    # Listen for queued jobs
+php artisan pail        # Tail application logs
+```
+
+## Configuration
+
+### Mail
+- Default mailer: Log driver (for development)
+- Configure `MAIL_*` variables in `.env` for production
+
+### Session
+- Driver: Database
+- Lifetime: 120 minutes
+
+### Queue
+- Connection: Database
+- Monitor with `php artisan queue:listen`
+
+### Cache & Store
+- Default store: Database
+
 
 ## Contributing
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-"# hreminho" 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support & Documentation
+
+- [Laravel Documentation](https://laravel.com/docs)
+- [Tailwind CSS Documentation](https://tailwindcss.com)
+- [Vite Documentation](https://vitejs.dev)
+
+---
+
+**Author**: Adalberto Prog  
+**Repository**: https://github.com/adalbertoprog/hreminho  
+**Created**: April 2026
