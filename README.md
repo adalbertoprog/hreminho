@@ -172,20 +172,12 @@ This will clear config cache and run PHPUnit tests.
 
 ## Database Configuration
 
-By default, HREMINHO uses SQLite. To configure a different database:
+By default, HREMINHO uses MySQL. To configure a different database:
 
 1. Edit `.env` file
-2. Uncomment and configure `DB_*` variables for MySQL/PostgreSQL/etc
+2. Uncomment and configure `DB_*` variables for SQLite/PostgreSQL/etc
 3. Run migrations
 
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=hreminho
-DB_USERNAME=****
-DB_PASSWORD=
-```
 
 ## Available Commands
 
@@ -207,23 +199,6 @@ php artisan queue:listen    # Listen for queued jobs
 php artisan pail        # Tail application logs
 ```
 
-## Configuration
-
-### Mail
-- Default mailer: Log driver (for development)
-- Configure `MAIL_*` variables in `.env` for production
-
-### Session
-- Driver: Database
-- Lifetime: 120 minutes
-
-### Queue
-- Connection: Database
-- Monitor with `php artisan queue:listen`
-
-### Cache & Store
-- Default store: Database
-
 
 ## Contributing
 
@@ -241,6 +216,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ---
 
-**Author**: Adalberto Prog  
+**Author**: Adalberto Prog 
 **Repository**: https://github.com/adalbertoprog/hreminho  
 **Created**: April 2026
