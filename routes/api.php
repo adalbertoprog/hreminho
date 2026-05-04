@@ -21,7 +21,7 @@ Route::prefix('v1')->name('api.')->group(function () {
     Route::apiResource('attendances', AttendanceController::class);
     Route::apiResource('leaves',      LeaveController::class);
 
-    // Treinamentos (catálogo)
+    // Formações (catálogo)
     Route::apiResource('trainings', TrainingController::class);
     // Inscrições
     Route::get('enrollments',                    [TrainingController::class, 'enrollments'])->name('enrollments.index');
