@@ -99,8 +99,8 @@
 
 <nav class="navbar">
     <a href="{{ url('/') }}" class="navbar-brand">
-        <img src="{{ asset('images/logo.jpg') }}" alt="HREminho Logo" onerror="this.style.display='none'">
-        <span>HR<em>Eminho</em></span>
+        <img src="{{ asset('images/logo.jpg') }}" alt="HRElectrominho Logo" onerror="this.style.display='none'">
+        <span>HR<em>Electrominho</em></span>
     </a>
     <div class="navbar-actions">
         @yield('navbar-actions')
