@@ -212,7 +212,7 @@
 </section>
 
 <footer>
-    &copy; {{ date('Y') }} HRElectrominho — Sistema de Gestão de Recursos Humanos
+    &copy; {{ date('Y') }} Electrominho — Sistema de Gestão de Recursos Humanos
 </footer>
 
 @endsection
