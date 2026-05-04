@@ -21,7 +21,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'admin@hreminho.com'],
             [
                 'name'     => 'Admin',
-                'password' => Hash::make('password'),
+                'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD')),
                 'role'     => 'admin',
             ]
         );
@@ -31,7 +31,7 @@ class DatabaseSeeder extends Seeder
             ['email' => 'hr@hreminho.com'],
             [
                 'name'     => 'HR Manager',
-                'password' => Hash::make('password'),
+                'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD')),
                 'role'     => 'hr',
             ]
         );
