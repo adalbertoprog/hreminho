@@ -1,5 +1,0 @@
-**************************************************
-Levantamento
-
-Funcionários:
-- O numero FUNCXXXX é sequencial? (se for vamos automatizar no sistema)
