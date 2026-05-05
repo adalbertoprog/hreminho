@@ -324,7 +324,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                         <input type="file" id="photoFile" accept="image/*" style="display:none" onchange="handlePhotoChange(this)">
                         <button type="button" class="btn-cancel" style="font-size:.78rem;padding:6px 14px" onclick="document.getElementById('photoFile').click()">📷 Escolher foto</button>
                         <button type="button" class="btn-cancel" style="font-size:.78rem;padding:6px 10px;margin-left:6px" onclick="clearPhoto()" id="photoClearBtn" style="display:none">✕</button>
-                        <div style="font-size:.72rem;color:var(--text-muted);margin-top:5px">JPG, PNG ou GIF · máx. 2MB</div>
+                        <div style="font-size:.72rem;color:var(--text-muted);margin-top:5px">JPG, JPEG ou PNG · máx. 2MB</div>
                     </div>
                 </div>
             </div>
