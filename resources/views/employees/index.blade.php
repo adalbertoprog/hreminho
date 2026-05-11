@@ -9,6 +9,8 @@
 .toolbar h2 { font-size:1.25rem; font-weight:700; }
 .btn-primary { display:inline-flex; align-items:center; gap:7px; background:var(--accent); color:#fff; border:none; padding:9px 20px; border-radius:9px; font-size:.875rem; font-weight:600; cursor:pointer; transition:.15s; }
 .btn-primary:hover { background:#4f46e5; }
+.btn-docsem { display:inline-flex; align-items:center; gap:7px; background:rgba(99,102,241,.12); color:var(--accent-light); border:1px solid rgba(99,102,241,.25); padding:9px 16px; border-radius:9px; font-size:.875rem; font-weight:600; cursor:pointer; transition:.15s; }
+.btn-docsem:hover { background:rgba(99,102,241,.22); border-color:var(--accent); }
 
 /* ── Filters ── */
 .filters { display:flex; flex-wrap:wrap; gap:10px; margin-bottom:18px; }
@@ -236,7 +238,90 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
 <div class="toolbar">
     <h2>👥 Funcionários</h2>
-    <button class="btn-primary" onclick="openCreate()">+ Novo Funcionário</button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+        {{-- Botão de sincronização com DocsElectro-Minho --}}
+        <button class="btn-docsem" onclick="openDocsEmSync()" title="Sincronizar com DocsElectro-Minho">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+            </svg>
+            DocsElectro-Minho
+        </button>
+        <button class="btn-primary" onclick="openCreate()">+ Novo Funcionário</button>
+    </div>
+</div>
+
+{{-- Modal de sincronização DocsElectro-Minho --}}
+<div class="overlay" id="docsEmOverlay" style="display:none;" onclick="if(event.target===this)closeDocsEmSync()">
+    <div class="modal" style="max-width:480px;width:100%;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#4f46e5);display:flex;align-items:center;justify-content:center;">
+                    <svg width="18" height="18" fill="none" stroke="white" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                </div>
+                <div>
+                    <div style="font-weight:700;font-size:1rem;">Sincronizar com DocsElectro-Minho</div>
+                    <div style="font-size:.75rem;color:var(--text-muted);">Enviar funcionários para o sistema documental</div>
+                </div>
+            </div>
+            <button onclick="closeDocsEmSync()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.3rem;line-height:1;">✕</button>
+        </div>
+
+        {{-- Estado da ligação --}}
+        <div id="docsEmStatus" style="padding:12px 14px;border-radius:10px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15);margin-bottom:18px;font-size:.84rem;display:flex;align-items:center;gap:8px;">
+            <span id="docsEmStatusDot" style="width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;"></span>
+            <span id="docsEmStatusText">A verificar ligação…</span>
+        </div>
+
+        {{-- Opções --}}
+        <form method="POST" action="{{ route('docsem.sync') }}" id="docsEmForm">
+            @csrf
+            <div style="margin-bottom:16px;">
+                <label style="font-size:.83rem;font-weight:600;color:var(--text-muted);display:block;margin-bottom:8px;">Funcionários a sincronizar</label>
+                <div style="display:flex;flex-direction:column;gap:8px;">
+                    <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;border:1px solid var(--border);cursor:pointer;font-size:.875rem;" id="optActive">
+                        <input type="radio" name="status" value="active" checked onchange="updateDocsEmOption(this)">
+                        <div>
+                            <div style="font-weight:600;">Apenas ativos</div>
+                            <div style="font-size:.75rem;color:var(--text-muted);">Sincroniza todos os funcionários com estado "active"</div>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:9px;border:1px solid var(--border);cursor:pointer;font-size:.875rem;" id="optAll">
+                        <input type="radio" name="status" value="all" onchange="updateDocsEmOption(this)">
+                        <div>
+                            <div style="font-weight:600;">Todos os funcionários</div>
+                            <div style="font-size:.75rem;color:var(--text-muted);">Inclui ativos, inativos e terminados</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            {{-- Resultado da última sincronização --}}
+            @if(session('docsem_sucesso'))
+                <div style="padding:10px 14px;border-radius:9px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#22c55e;font-size:.83rem;margin-bottom:14px;">
+                    {{ session('docsem_sucesso') }}
+                </div>
+            @endif
+            @if(session('docsem_erro'))
+                <div style="padding:10px 14px;border-radius:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#ef4444;font-size:.83rem;margin-bottom:14px;">
+                    {{ session('docsem_erro') }}
+                </div>
+            @endif
+
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+                <button type="button" onclick="closeDocsEmSync()" style="padding:9px 18px;border-radius:9px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-size:.875rem;font-weight:600;">
+                    Cancelar
+                </button>
+                <button type="submit" id="docsEmSubmitBtn" style="padding:9px 20px;border-radius:9px;background:var(--accent);border:none;color:#fff;cursor:pointer;font-size:.875rem;font-weight:600;display:flex;align-items:center;gap:7px;">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Sincronizar
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- Filtros -->
@@ -911,6 +996,53 @@ async function openView(empId){
         document.getElementById('vTrainingsContent').innerHTML=`<div class="tr-empty">Erro ao carregar formações.</div>`;
     }
 }
+/* ── DocsElectro-Minho Modal ────────────────────────────────────────────── */
+function openDocsEmSync() {
+    document.getElementById('docsEmOverlay').style.display = 'flex';
+    checkDocsEmStatus();
+}
+function closeDocsEmSync() {
+    document.getElementById('docsEmOverlay').style.display = 'none';
+}
+async function checkDocsEmStatus() {
+    const dot  = document.getElementById('docsEmStatusDot');
+    const text = document.getElementById('docsEmStatusText');
+    dot.style.background = '#94a3b8';
+    text.textContent = 'A verificar ligação…';
+    try {
+        const res  = await fetch('{{ route("docsem.ping") }}', {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json();
+        if (data.online) {
+            dot.style.background = '#22c55e';
+            text.textContent = '✓ DocsElectro-Minho está acessível e pronto a receber.';
+        } else {
+            dot.style.background = '#ef4444';
+            text.textContent = '✗ Não foi possível ligar ao DocsElectro-Minho.';
+            document.getElementById('docsEmSubmitBtn').disabled = true;
+        }
+    } catch(e) {
+        dot.style.background = '#ef4444';
+        text.textContent = '✗ Erro ao verificar ligação.';
+    }
+}
+function updateDocsEmOption(radio) {
+    document.getElementById('optActive').style.borderColor = 'var(--border)';
+    document.getElementById('optAll').style.borderColor    = 'var(--border)';
+    const parent = radio.closest('label');
+    if (parent) parent.style.borderColor = 'var(--accent)';
+}
+document.getElementById('docsEmForm').addEventListener('submit', function() {
+    const btn = document.getElementById('docsEmSubmitBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;"></span> A sincronizar…';
+});
+// Abrir modal automaticamente se houve sincronização (flash session)
+@if(session('docsem_sucesso') || session('docsem_erro'))
+    window.addEventListener('DOMContentLoaded', () => openDocsEmSync());
+@endif
+
 boot();
 </script>
 @endsection
