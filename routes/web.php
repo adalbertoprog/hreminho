@@ -10,6 +10,7 @@ use App\Http\Controllers\Web\PositionWebController;
 use App\Http\Controllers\Web\SectorWebController;
 use App\Http\Controllers\Web\TrainingWebController;
 use App\Http\Controllers\Web\ReportWebController;
+use App\Http\Controllers\Web\DocsElectroMinhoWebController;
 use App\Http\Controllers\Web\UserWebController;
 use Illuminate\Support\Facades\Route;
 
@@ -46,4 +47,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/trainings',   [TrainingWebController::class,   'index'])->name('trainings.index');
     Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
     Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
+
+    // ── DocsElectro-Minho — Integração ────────────────────────────────────────
+    Route::prefix('docsem')->name('docsem.')->group(function () {
+        Route::get('/',                                      [DocsElectroMinhoWebController::class, 'index'])->name('index');
+        Route::post('/sync',                                 [DocsElectroMinhoWebController::class, 'syncTodos'])->name('sync');
+        Route::post('/sync/{employee}',                      [DocsElectroMinhoWebController::class, 'syncFuncionario'])->name('sync.employee');
+        Route::get('/employee/{employee}/documentos',        [DocsElectroMinhoWebController::class, 'documentosFuncionario'])->name('employee.documentos');
+        Route::get('/ping',                                  [DocsElectroMinhoWebController::class, 'ping'])->name('ping');
+    });
 });

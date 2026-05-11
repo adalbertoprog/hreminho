@@ -35,4 +35,11 @@ return [
         ],
     ],
 
+    // ── DocsElectro-Minho ─────────────────────────────────────────────────────
+    'docselectrominho' => [
+        'url'     => env('DOCSEM_API_URL',     'http://docselectrominho.test/api'),
+        'token'   => env('DOCSEM_API_TOKEN',   ''),
+        'enabled' => env('DOCSEM_SYNC_ENABLED', true),
+    ],
+
 ];
