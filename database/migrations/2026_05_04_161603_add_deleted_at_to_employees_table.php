@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             $table->softDeletes();
-});
+        });
     }
 
     /**
@@ -22,7 +22,7 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('employees', function (Blueprint $table) {
-            //
+            $table->dropSoftDeletes();
         });
     }
 };
