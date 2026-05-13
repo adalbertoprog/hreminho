@@ -355,13 +355,14 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                     <th>Setor</th>
                     <th>Função</th>
                     <th>Admissão</th>
+                    <th>Idade</th>
                     <th>Anos de casa</th>
                     <th>Estado</th>
                     <th>Ações</th>
                 </tr>
             </thead>
             <tbody id="empBody">
-                <tr class="state-row"><td colspan="8"><span class="spinner"></span>A carregar...</td></tr>
+                <tr class="state-row"><td colspan="9"><span class="spinner"></span>A carregar...</td></tr>
             </tbody>
         </table>
     </div>
@@ -552,6 +553,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
             <div class="view-field"><label>Setor</label><span id="vSector">—</span></div>
             <div class="view-field"><label>Função       </label><span id="vPosition">—</span></div>
             <div class="view-field"><label>Data de Admissão</label><span id="vHireDate">—</span></div>
+            <div class="view-field"><label>Idade</label><span id="vAgeContract">—</span></div>
             <div class="view-field"><label>Anos de Casa</label><span id="vTenure">—</span></div>
             <div class="view-field"><label>Estado</label><span id="vStatus">—</span></div>
             <div class="view-field"><label>Tipo de Contrato</label><span id="vContract">—</span></div>
@@ -658,7 +660,7 @@ async function boot(){
 /* ── Load & Render ── */
 async function loadEmployees(){
     const tbody=document.getElementById('empBody');
-    tbody.innerHTML='<tr class="state-row"><td colspan="8"><span class="spinner"></span>A carregar...</td></tr>';
+    tbody.innerHTML='<tr class="state-row"><td colspan="9"><span class="spinner"></span>A carregar...</td></tr>';
     document.getElementById('pagBar').style.display='none';
     const params={page:state.page,per_page:15};
     if(state.search)        params.search=state.search;
@@ -671,7 +673,7 @@ async function loadEmployees(){
         const res=await fetch(`${API}/employees?${new URLSearchParams(params)}`,{headers:{Accept:'application/json'}});
         const json=await res.json();
         renderTable(json.data??[]);renderPag(json.meta);updateSortHeaders();
-    }catch{tbody.innerHTML='<tr class="state-row"><td colspan="8">Erro ao carregar.</td></tr>';}
+    }catch{tbody.innerHTML='<tr class="state-row"><td colspan="9">Erro ao carregar.</td></tr>';}
 }
 
 const BG=['#6366f1','#8b5cf6','#06b6d4','#22c55e','#f59e0b','#ef4444','#ec4899'];
@@ -683,7 +685,7 @@ function yearsAgo(dateStr){
 }
 function renderTable(rows){
     const tbody=document.getElementById('empBody');
-    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="8">Nenhum funcionário encontrado.</td></tr>';return;}
+    if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="9">Nenhum funcionário encontrado.</td></tr>';return;}
     rows.forEach(emp=>empMap[emp.id]=emp);
     tbody.innerHTML=rows.map((emp,i)=>{
         const ini=((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
@@ -709,6 +711,7 @@ function renderTable(rows){
             <td>${emp.sector?.sector??'—'}</td>
             <td>${emp.position?.position??'—'}</td>
             <td style="color:var(--text-muted);font-size:.82rem">${emp.hire_date?new Date(emp.hire_date+'T00:00:00').toLocaleDateString('pt-PT'):'—'}</td>
+            <td style="font-size:.82rem;color:var(--text-muted)">${emp.date_of_birth?Math.floor((new Date()-new Date(emp.date_of_birth+'T00:00:00'))/(1000*60*60*24*365.25))+' anos':'—'}</td>
             <td style="font-size:.82rem;color:var(--text-muted)">${yearsAgo(emp.hire_date)}</td>
             <td>${sb}</td>
             <td style="white-space:nowrap">
@@ -933,6 +936,7 @@ async function openView(empId){
     document.getElementById('vSector').textContent       = emp.sector?.sector || '—';
     document.getElementById('vPosition').textContent     = emp.position?.position || '—';
     document.getElementById('vHireDate').textContent     = fmt(emp.hire_date);
+    document.getElementById('vAgeContract').textContent  = emp.date_of_birth ? Math.floor((new Date()-new Date(emp.date_of_birth+'T00:00:00'))/(1000*60*60*24*365.25))+' anos' : '—';
     document.getElementById('vTenure').textContent       = yearsAgo(emp.hire_date);
     document.getElementById('vStatus').innerHTML         = statusBadge[emp.status] ?? `<span class="badge">${emp.status}</span>`;
     document.getElementById('vContract').textContent     = emp.contract_type || '—';
