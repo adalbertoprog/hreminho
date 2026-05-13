@@ -28,6 +28,12 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 .badge-completed{background:rgba(34,197,94,.15);color:#22c55e}
 .badge-failed{background:rgba(239,68,68,.12);color:#ef4444}
 .badge-count{display:inline-flex;align-items:center;justify-content:center;background:rgba(99,102,241,.15);color:var(--accent-light);border-radius:6px;font-size:.74rem;font-weight:700;min-width:28px;height:22px;padding:0 8px}
+/* ── Sort header catálogo ── */
+thead th.sortable{cursor:pointer;user-select:none;transition:color .15s}
+thead th.sortable:hover{color:var(--text-primary)}
+thead th.sortable .sort-arrow{margin-left:4px;opacity:.3;font-style:normal;font-size:.68rem}
+thead th.sortable.sort-asc .sort-arrow,
+thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
 /* badges de validade */
 .badge-valid   {background:rgba(34,197,94,.15);color:#22c55e}
 .badge-expiring{background:rgba(245,158,11,.15);color:#f59e0b}
@@ -91,6 +97,17 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 .cb-option:hover,.cb-option.focused{background:rgba(99,102,241,.15)}
 .cb-option.selected{color:var(--accent-light);font-weight:600}
 .cb-empty{padding:10px 13px;font-size:.83rem;color:var(--text-muted);text-align:center}
+/* ── Stat card formações ── */
+.training-stat-row{margin-bottom:16px}
+.training-stat-card{
+    display:inline-flex;align-items:center;gap:14px;
+    background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+    padding:16px 24px;transition:.2s;
+}
+.training-stat-card:hover{border-color:rgba(99,102,241,.3);transform:translateY(-1px)}
+.tsc-icon{width:40px;height:40px;border-radius:10px;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:1.15rem;flex-shrink:0}
+.tsc-num{font-size:1.7rem;font-weight:800;letter-spacing:-1px;line-height:1;color:var(--accent-light)}
+.tsc-label{font-size:.78rem;color:var(--text-muted);font-weight:500;margin-top:3px}
 </style>
 @endsection
 
@@ -145,6 +162,17 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
     <button class="btn-reset"  onclick="resetFilters()">✕ Limpar</button>
 </div>
 
+<!-- Card total formações (catálogo) -->
+<div class="training-stat-row" id="catalogStatRow" style="display:none">
+    <div class="training-stat-card">
+        <div class="tsc-icon">📚</div>
+        <div>
+            <div class="tsc-num" id="statTotalTrainings">—</div>
+            <div class="tsc-label">Formações no Catálogo</div>
+        </div>
+    </div>
+</div>
+
 <!-- Filtros Catálogo -->
 <div class="filters" id="filterCatalog" style="display:none">
     <input id="fCatalogSearch" class="f-input" placeholder="🔍 Pesquisar título ou fornecedor...">
@@ -184,7 +212,13 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 <div class="card" id="tableCatalog" style="display:none">
     <div class="table-wrap">
         <table>
-            <thead><tr><th>#</th><th>Título</th><th>Fornecedor</th><th>Inscrições</th><th>Ações</th></tr></thead>
+            <thead><tr>
+                <th>#</th>
+                <th class="sortable" id="sortTitleTh" onclick="setCatalogSort('title')">Título <em class="sort-arrow" id="sortTitleArrow">⇅</em></th>
+                <th>Fornecedor</th>
+                <th class="sortable" id="sortInscTh" onclick="setCatalogSort('inscricoes')">Inscrições <em class="sort-arrow" id="sortInscArrow">⇅</em></th>
+                <th>Ações</th>
+            </tr></thead>
             <tbody id="catalogBody"><tr class="state-row"><td colspan="5"><span class="spinner"></span>A carregar...</td></tr></tbody>
         </table>
     </div>
@@ -273,6 +307,7 @@ let currentTab='enrollments';
 let enrollEditId=null, trainingEditId=null, deleteTarget=null;
 let enrollPage=1, catalogPage=1, enrollFilters={}, catalogFilters={};
 let employees=[], trainings=[];
+let catalogSort='title_asc'; // title_asc | title_desc | inscricoes_asc | inscricoes_desc
 let enrollMap={}, trainingMap={};
 
 const statusLabel   = {enrolled:'Inscrito', completed:'Concluído', failed:'Reprovado'};
@@ -343,8 +378,9 @@ function switchTab(tab){
     document.getElementById('filterEnroll').style.display  = tab==='enrollments'?'flex':'none';
     document.getElementById('filterCatalog').style.display = tab==='catalog'?'flex':'none';
     document.getElementById('alertBar').style.display      = tab==='enrollments'?'':'none';
-    document.getElementById('btnNewTraining').style.display= tab==='catalog'?'inline-flex':'none';
-    document.getElementById('btnNewEnroll').style.display  = tab==='enrollments'?'inline-flex':'none';
+    document.getElementById('btnNewTraining').style.display  = tab==='catalog'?'inline-flex':'none';
+    document.getElementById('btnNewEnroll').style.display    = tab==='enrollments'?'inline-flex':'none';
+    document.getElementById('catalogStatRow').style.display  = tab==='catalog'?'':'none';
     if(tab==='catalog') loadCatalog();
 }
 
@@ -409,18 +445,46 @@ function renderEnrollments(rows){
     }).join('');
 }
 
+/* ── Catalog Sort ── */
+function setCatalogSort(col){
+    // toggle asc/desc se já estiver nesta coluna
+    const cur=catalogSort;
+    if(cur===col+'_asc')  catalogSort=col+'_desc';
+    else if(cur===col+'_desc') catalogSort=col+'_asc';
+    else catalogSort=col+'_asc';
+    catalogPage=1;
+    updateCatalogSortHeaders();
+    loadCatalog();
+}
+function updateCatalogSortHeaders(){
+    const cols={title:'sortTitleTh',inscricoes:'sortInscTh'};
+    const arrows={title:'sortTitleArrow',inscricoes:'sortInscArrow'};
+    Object.entries(cols).forEach(([col,thId])=>{
+        const th=document.getElementById(thId);
+        const ar=document.getElementById(arrows[col]);
+        if(!th)return;
+        th.classList.remove('sort-asc','sort-desc');
+        if(catalogSort===col+'_asc'){th.classList.add('sort-asc');if(ar)ar.textContent='↑';}
+        else if(catalogSort===col+'_desc'){th.classList.add('sort-desc');if(ar)ar.textContent='↓';}
+        else{if(ar)ar.textContent='⇅';}
+    });
+}
+
 /* ── Catalog ── */
 async function loadCatalog(){
     const tbody=document.getElementById('catalogBody');
-    tbody.innerHTML='<tr class="state-row"><td colspan="6"><span class="spinner"></span>A carregar...</td></tr>';
+    tbody.innerHTML='<tr class="state-row"><td colspan="5"><span class="spinner"></span>A carregar...</td></tr>';
     document.getElementById('catalogPagBar').style.display='none';
-    const q=new URLSearchParams({page:catalogPage,per_page:15,...catalogFilters});
+    const q=new URLSearchParams({page:catalogPage,per_page:15,sort:catalogSort,...catalogFilters});
     try{
         const res=await fetch(`${API}/trainings?${q}`,{headers:{Accept:'application/json'}});
         const json=await res.json();
         renderCatalog(json.data??[]);
+        updateCatalogSortHeaders();
         renderPag(json.meta,'catalogPagBar','catalogPagInfo','catalogPagBtns',p=>{catalogPage=p;loadCatalog();});
-    }catch(e){tbody.innerHTML='<tr class="state-row"><td colspan="6">⚠️ Erro ao carregar.</td></tr>';}
+        const el=document.getElementById('statTotalTrainings');
+        if(el&&json.meta?.total!=null) el.textContent=json.meta.total;
+    }catch(e){tbody.innerHTML='<tr class="state-row"><td colspan="5">⚠️ Erro ao carregar.</td></tr>';}
 }
 
 function renderCatalog(rows){

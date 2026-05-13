@@ -18,14 +18,24 @@ class TrainingController extends Controller
             $s = $request->search;
             $query->where(fn($q) => $q->where('title','like',"%{$s}%")->orWhere('provider','like',"%{$s}%"));
         }
+
+        // Ordenação
+        $sort = $request->get('sort', 'title_asc');
+        match ($sort) {
+            'title_desc'      => $query->orderBy('title', 'desc'),
+            'inscricoes_asc'  => $query->orderBy('employee_trainings_count', 'asc'),
+            'inscricoes_desc' => $query->orderBy('employee_trainings_count', 'desc'),
+            default           => $query->orderBy('title', 'asc'),
+        };
+
         if ($request->boolean('all')) {
-            $rows = $query->orderBy('title')->get();
+            $rows = $query->get();
             return response()->json([
                 'data' => $rows->map(fn($t) => $this->formatTraining($t)),
             ]);
         }
 
-        $rows = $query->orderBy('title')->paginate($request->get('per_page', 15));
+        $rows = $query->paginate($request->get('per_page', 15));
 
         return response()->json([
             'data' => $rows->map(fn($t) => $this->formatTraining($t)),
