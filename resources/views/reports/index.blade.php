@@ -19,6 +19,44 @@
 .filter-group input:focus, .filter-group select:focus { outline: none; border-color: var(--accent); }
 .filter-actions { display: flex; gap: 8px; margin-left: auto; align-items: flex-end; }
 
+/* ── Multi-select ── */
+.ms-wrap { position: relative; min-width: 190px; }
+.ms-trigger {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary);
+    border-radius: 8px; padding: 7px 12px; font-size: 0.85rem; font-family: inherit;
+    cursor: pointer; user-select: none; min-width: 190px; white-space: nowrap;
+    transition: border-color .15s;
+}
+.ms-trigger:hover, .ms-trigger.open { border-color: var(--accent); }
+.ms-trigger .ms-arrow { font-size: .65rem; opacity: .5; flex-shrink: 0; transition: transform .2s; }
+.ms-trigger.open .ms-arrow { transform: rotate(180deg); }
+.ms-label { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+.ms-badge { background: var(--accent); color: #fff; font-size: .68rem; font-weight: 700; padding: 1px 7px; border-radius: 10px; flex-shrink: 0; }
+.ms-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
+    background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0,0,0,.35); min-width: 100%; max-width: 340px;
+    overflow: hidden;
+}
+.ms-dropdown.open { display: block; }
+.ms-search-wrap { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.ms-search { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 6px; padding: 5px 9px; font-size: .82rem; font-family: inherit; color: var(--text-primary); }
+.ms-search:focus { outline: none; border-color: var(--accent); }
+.ms-list { max-height: 220px; overflow-y: auto; padding: 4px 0; }
+.ms-item {
+    display: flex; align-items: center; gap: 9px;
+    padding: 7px 12px; font-size: .84rem; cursor: pointer;
+    transition: background .1s; color: var(--text-primary);
+}
+.ms-item:hover { background: rgba(99,102,241,.1); }
+.ms-item.selected { background: rgba(99,102,241,.08); color: var(--accent-light); }
+.ms-item input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; flex-shrink: 0; cursor: pointer; }
+.ms-footer { padding: 7px 10px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ms-footer-info { font-size: .74rem; color: var(--text-muted); }
+.ms-clear { font-size: .74rem; color: var(--accent-light); background: none; border: none; cursor: pointer; padding: 0; }
+.ms-clear:hover { text-decoration: underline; }
+
 /* ── Card header ── */
 .report-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
 .report-header h2 { font-size: 1rem; font-weight: 600; }
@@ -133,6 +171,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
    PDF / PRINT STYLES
 ════════════════════════════════════════════ */
 .print-header { display: none; }
+#t-print-block, #v-print-block { display: none; }
 #e-print-table { display: none; }
 .print-footer  { display: none; }
 
@@ -149,7 +188,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     body, html { background: #fff !important; color: #1a1a2e !important; font-family: 'Inter', Arial, sans-serif !important; }
 
     .print-header { display: block !important; }
-    .print-footer  { display: flex  !important; }
+    .print-footer  { display: flex !important; position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; margin: 0 !important; padding: 8px 14mm !important; background: #fff !important; }
 
     .table-wrap { page-break-inside: avoid; overflow: visible !important; border: 1px solid #d1d5db !important; border-radius: 6px !important; margin-bottom: 20px !important; }
     .emp-card   { page-break-inside: avoid; }
@@ -180,6 +219,16 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     #e-print-table                          { display: none  !important; }
     body.printing-employees #e-cards-grid   { display: none  !important; }
     body.printing-employees #e-print-table  { display: table !important; }
+
+    /* Tab trainings: tabela gerada dinamicamente */
+    #t-print-block { display: none !important; }
+    body.printing-trainings #t-print-block { display: block !important; }
+    body.printing-trainings #t-list        { display: none  !important; }
+
+    /* Tab validity: tabela gerada dinamicamente */
+    #v-print-block { display: none !important; }
+    body.printing-validity #v-print-block { display: block !important; }
+    body.printing-validity #v-table       { display: none  !important; }
 }
 
 /* ── Validity badges (relatório) ── */
@@ -245,6 +294,10 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     </div>
 </div>
 
+{{-- Hidden print blocks for trainings/validity PDFs --}}
+<div id="t-print-block"></div>
+<div id="v-print-block"></div>
+
 {{-- Hidden flat table for Employees PDF --}}
 <table id="e-print-table" style="display:none;width:100%;border-collapse:collapse">
     <thead>
@@ -277,7 +330,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
         </div>
         <div class="filter-group">
             <label>Função</label>
-            <select id="e-position"><option value="">Todas</option></select>
+            <div class="ms-wrap" id="ms-e-position-wrap"></div>
         </div>
         <div class="filter-actions">
             <button class="btn btn-primary" onclick="loadEmployees()">🔍 Filtrar</button>
@@ -315,7 +368,14 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
 {{-- TAB 2: Formações por Funcionários --}}
 <div id="tab-trainings" style="display:none">
     <div class="filter-bar">
-        <div class="filter-group"><label>Formação</label><select id="t-training"><option value="">Todas</option></select></div>
+        <div class="filter-group">
+            <label>Formação</label>
+            <div class="ms-wrap" id="ms-t-training-wrap"></div>
+        </div>
+        <div class="filter-group">
+            <label>Função</label>
+            <div class="ms-wrap" id="ms-t-position-wrap"></div>
+        </div>
         <div class="filter-group"><label>Setor</label><select id="t-sector"><option value="">Todos</option></select></div>
         <div class="filter-actions">
             <button class="btn btn-primary" onclick="loadTrainings()">🔍 Filtrar</button>
@@ -472,6 +532,121 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 let currentTab = 'employees';
 
+/* ══════════════════════════════════════════
+   COMPONENTE MULTI-SELECT
+══════════════════════════════════════════ */
+class MultiSelect {
+    constructor(wrapId, placeholder = 'Todos') {
+        this.wrap        = document.getElementById(wrapId);
+        this.placeholder = placeholder;
+        this.selected    = new Set();
+        this.items       = []; // [{value, label}]
+        this._build();
+    }
+    _build() {
+        this.wrap.innerHTML = `
+            <div class="ms-trigger" tabindex="0">
+                <span class="ms-label">${this.placeholder}</span>
+                <span class="ms-arrow">▼</span>
+            </div>
+            <div class="ms-dropdown">
+                <div class="ms-search-wrap">
+                    <input class="ms-search" type="text" placeholder="Pesquisar…">
+                </div>
+                <div class="ms-list"></div>
+                <div class="ms-footer">
+                    <span class="ms-footer-info">0 selecionado(s)</span>
+                    <button class="ms-clear" type="button">Limpar</button>
+                </div>
+            </div>`;
+        this._trigger  = this.wrap.querySelector('.ms-trigger');
+        this._dropdown = this.wrap.querySelector('.ms-dropdown');
+        this._list     = this.wrap.querySelector('.ms-list');
+        this._search   = this.wrap.querySelector('.ms-search');
+        this._info     = this.wrap.querySelector('.ms-footer-info');
+        this._clearBtn = this.wrap.querySelector('.ms-clear');
+
+        this._trigger.addEventListener('click', e => { e.stopPropagation(); this.toggle(); });
+        this._search.addEventListener('input', () => this._renderItems(this._search.value));
+        this._clearBtn.addEventListener('click', () => { this.selected.clear(); this._renderItems(); this._updateTrigger(); });
+        document.addEventListener('click', e => { if (!this.wrap.contains(e.target)) this.close(); });
+        this._trigger.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.toggle(); } if (e.key === 'Escape') this.close(); });
+    }
+    setItems(items) {
+        this.items = items;
+        this._renderItems();
+        this._updateTrigger();
+    }
+    _renderItems(query = '') {
+        const q = query.toLowerCase();
+        const filtered = q ? this.items.filter(i => i.label.toLowerCase().includes(q)) : this.items;
+        if (!filtered.length) {
+            this._list.innerHTML = '<div style="padding:10px 12px;font-size:.82rem;color:var(--text-muted)">Sem resultados</div>';
+            return;
+        }
+        this._list.innerHTML = filtered.map(i => `
+            <div class="ms-item ${this.selected.has(i.value) ? 'selected' : ''}" data-val="${i.value}">
+                <input type="checkbox" ${this.selected.has(i.value) ? 'checked' : ''} tabindex="-1">
+                <span>${i.label}</span>
+            </div>`).join('');
+        this._list.querySelectorAll('.ms-item').forEach(el => {
+            el.addEventListener('click', e => {
+                e.stopPropagation();
+                const v = el.dataset.val;
+                if (this.selected.has(v)) this.selected.delete(v);
+                else this.selected.add(v);
+                el.classList.toggle('selected', this.selected.has(v));
+                el.querySelector('input').checked = this.selected.has(v);
+                this._updateTrigger();
+            });
+        });
+        this._info.textContent = this.selected.size + ' selecionado(s)';
+    }
+    _updateTrigger() {
+        const n = this.selected.size;
+        const label = this._trigger.querySelector('.ms-label');
+        const badge = this._trigger.querySelector('.ms-badge');
+        if (badge) badge.remove();
+        if (n === 0) {
+            label.textContent = this.placeholder;
+        } else if (n === 1) {
+            const item = this.items.find(i => i.value === [...this.selected][0]);
+            label.textContent = item ? item.label : this.placeholder;
+            this._appendBadge(n);
+        } else {
+            label.textContent = this.placeholder;
+            this._appendBadge(n);
+        }
+        this._info.textContent = n + ' selecionado(s)';
+    }
+    _appendBadge(n) {
+        const b = document.createElement('span');
+        b.className = 'ms-badge';
+        b.textContent = n;
+        this._trigger.appendChild(b);
+    }
+    toggle() {
+        if (this._dropdown.classList.contains('open')) this.close();
+        else this.open();
+    }
+    open() {
+        this._trigger.classList.add('open');
+        this._dropdown.classList.add('open');
+        this._search.value = '';
+        this._renderItems();
+        this._search.focus();
+    }
+    close() {
+        this._trigger.classList.remove('open');
+        this._dropdown.classList.remove('open');
+    }
+    getValues() { return [...this.selected]; }
+    reset() { this.selected.clear(); this._renderItems(); this._updateTrigger(); }
+}
+
+/* Instâncias globais */
+let msEPosition, msTTraining, msTPosition;
+
 async function loadDropdowns() {
     const [sectors, trainings, positions, employees] = await Promise.all([
         fetch('/api/v1/sectors?all=1').then(r => r.json()),
@@ -488,12 +663,23 @@ async function loadDropdowns() {
         const el = document.getElementById(id);
         sectorList.forEach(s => el.add(new Option(s.sector, s.id)));
     });
-    ['t-training','v-training'].forEach(id => {
-        const el = document.getElementById(id);
-        trainingList.forEach(t => el.add(new Option(t.title, t.id)));
-    });
-    const ePos = document.getElementById('e-position');
-    positionList.forEach(p => ePos.add(new Option(p.position, p.id)));
+
+    // Multi-select: Formação (tab trainings)
+    msTTraining = new MultiSelect('ms-t-training-wrap', 'Todas as formações');
+    msTTraining.setItems(trainingList.map(t => ({ value: String(t.id), label: t.title })));
+
+    // Multi-select: Função (tab trainings)
+    msTPosition = new MultiSelect('ms-t-position-wrap', 'Todas as funções');
+    msTPosition.setItems(positionList.map(p => ({ value: String(p.id), label: p.position })));
+
+    // Multi-select: Função (tab employees)
+    msEPosition = new MultiSelect('ms-e-position-wrap', 'Todas as funções');
+    msEPosition.setItems(positionList.map(p => ({ value: String(p.id), label: p.position })));
+
+    // Validade — selects simples
+    const vt = document.getElementById('v-training');
+    trainingList.forEach(t => vt.add(new Option(t.title, t.id)));
+
     ['a-employee','v-employee'].forEach(id => {
         const el = document.getElementById(id);
         employeeList.forEach(e => {
@@ -518,7 +704,16 @@ function switchTab(tab) {
 }
 
 function qs(params) {
-    return Object.entries(params).filter(([,v]) => v).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+    const parts = [];
+    for (const [k, v] of Object.entries(params)) {
+        if (!v && v !== 0) continue;
+        if (Array.isArray(v)) {
+            v.forEach(item => parts.push(`${k}[]=${encodeURIComponent(item)}`));
+        } else {
+            parts.push(`${k}=${encodeURIComponent(v)}`);
+        }
+    }
+    return parts.join('&');
 }
 function fmt(d) { return d ? new Date(d + 'T00:00:00').toLocaleDateString('pt-PT') : '—'; }
 function statusBadge(s) {
@@ -561,7 +756,10 @@ async function loadEmployees() {
     showSkeletons();
     document.getElementById('e-count').textContent = '—';
     document.getElementById('e-count').dataset.loaded = '';
-    const params = qs({ sector_id: document.getElementById('e-sector').value, position_id: document.getElementById('e-position').value });
+    const params = qs({
+        sector_id:   document.getElementById('e-sector').value,
+        position_id: msEPosition ? msEPosition.getValues() : [],
+    });
     const res = await fetch('/api/v1/reports/employees-trainings?' + params).then(r => r.json());
     empData = res.data || [];
     const totalTrainings = empData.reduce((s,e) => s + (e.total_completed||0), 0);
@@ -640,21 +838,29 @@ function setView(v) {
     document.getElementById('btn-list').classList.toggle('active', v === 'list');
 }
 function resetEmployees() {
-    ['e-sector','e-position'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('e-sector').value = '';
+    if (msEPosition) msEPosition.reset();
     document.getElementById('e-search').value = '';
     loadEmployees();
 }
 
+let trainingsData = [];
+
 async function loadTrainings() {
     const list = document.getElementById('t-list');
     list.innerHTML = '<div class="state-msg">A carregar…</div>';
-    const params = qs({ training_id: document.getElementById('t-training').value, sector_id: document.getElementById('t-sector').value });
+    const params = qs({
+        training_id:  msTTraining  ? msTTraining.getValues()  : [],
+        position_id:  msTPosition  ? msTPosition.getValues()  : [],
+        sector_id:    document.getElementById('t-sector').value,
+    });
     const res = await fetch('/api/v1/reports/training-employees?' + params).then(r => r.json());
+    trainingsData = res.data || [];
     const count = document.getElementById('t-count');
     count.textContent = res.total + ' formação(ões)';
     count.dataset.loaded = '1';
-    if (!res.data || !res.data.length) { list.innerHTML = '<div class="state-msg">Sem resultados.</div>'; return; }
-    list.innerHTML = res.data.map(t => `
+    if (!trainingsData.length) { list.innerHTML = '<div class="state-msg">Sem resultados.</div>'; return; }
+    list.innerHTML = trainingsData.map(t => `
         <div class="table-wrap" style="margin-bottom:20px">
             <div style="padding:12px 16px;background:rgba(99,102,241,0.08);border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
                 <div>
@@ -674,7 +880,9 @@ async function loadTrainings() {
         </div>`).join('');
 }
 function resetTrainings() {
-    ['t-training','t-sector'].forEach(id => { document.getElementById(id).value = ''; });
+    document.getElementById('t-sector').value = '';
+    if (msTTraining) msTTraining.reset();
+    if (msTPosition) msTPosition.reset();
     loadTrainings();
 }
 
@@ -849,12 +1057,22 @@ function exportPdf(tab) {
     document.getElementById('printDate').textContent = 'Gerado em ' + now.toLocaleDateString('pt-PT', {day:'2-digit',month:'long',year:'numeric'}) + ' às ' + now.toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'});
     let fp = [];
     if (tab === 'employees') {
-        const sec = document.getElementById('e-sector'), pos = document.getElementById('e-position');
+        const sec = document.getElementById('e-sector');
         if (sec.value) fp.push('Setor: ' + sec.options[sec.selectedIndex].text);
-        if (pos.value) fp.push('Função: ' + pos.options[pos.selectedIndex].text);
+        if (msEPosition && msEPosition.getValues().length) {
+            const labels = msEPosition.getValues().map(v => msEPosition.items.find(i=>i.value===v)?.label).filter(Boolean);
+            if (labels.length) fp.push('Função: ' + labels.join(', '));
+        }
     } else if (tab === 'trainings') {
-        const tr = document.getElementById('t-training'), sec = document.getElementById('t-sector');
-        if (tr.value)  fp.push('Formação: ' + tr.options[tr.selectedIndex].text);
+        const sec = document.getElementById('t-sector');
+        if (msTTraining && msTTraining.getValues().length) {
+            const labels = msTTraining.getValues().map(v => msTTraining.items.find(i=>i.value===v)?.label).filter(Boolean);
+            if (labels.length) fp.push('Formação: ' + labels.join(', '));
+        }
+        if (msTPosition && msTPosition.getValues().length) {
+            const labels = msTPosition.getValues().map(v => msTPosition.items.find(i=>i.value===v)?.label).filter(Boolean);
+            if (labels.length) fp.push('Função: ' + labels.join(', '));
+        }
         if (sec.value) fp.push('Setor: ' + sec.options[sec.selectedIndex].text);
     } else {
         const emp = document.getElementById('a-employee'), sec = document.getElementById('a-sector'), sta = document.getElementById('a-status');
@@ -889,6 +1107,47 @@ function exportPdf(tab) {
             </tr>`;
         }).join('');
         document.body.classList.add('printing-employees');
+    } else if (tab === 'trainings') {
+        document.body.classList.remove('printing-employees');
+        // Gerar tabela plana a partir dos dados em memória (trainingsData)
+        const thS = 'background:#6366f1;color:#fff;padding:9px 11px;font-size:9.5px;font-weight:700;text-transform:uppercase;text-align:left';
+        const tdS = 'padding:8px 11px;border-top:1px solid #e5e7eb;color:#1a1a2e';
+        let rows = '';
+        trainingsData.forEach(t => {
+            rows += `<tr><td colspan="6" style="background:#eef2ff;padding:10px 11px;border-top:2px solid #6366f1">
+                <strong style="font-size:10.5px;color:#1a1a2e">📚 ${t.title}</strong>
+                <span style="color:#6b7280;font-size:9.5px;margin-left:8px">${t.provider}</span>
+                <span style="background:#e0e7ff;color:#4338ca;padding:2px 9px;border-radius:12px;font-size:9px;font-weight:700;float:right">${t.total} funcionário(s)</span>
+            </td></tr>`;
+            (t.employees || []).forEach((e, i) => {
+                const bg = i % 2 === 1 ? 'background:#f8f9fc;' : '';
+                rows += `<tr>
+                    <td style="${bg}${tdS};font-family:monospace;font-size:9px;color:#6b7280">${e.code}</td>
+                    <td style="${bg}${tdS};font-weight:600">${e.name}</td>
+                    <td style="${bg}${tdS}">${e.position}</td>
+                    <td style="${bg}${tdS}">${e.sector}</td>
+                    <td style="${bg}${tdS};text-align:center">${e.score ?? '—'}</td>
+                    <td style="${bg}${tdS}">${fmt(e.completed_at)}</td>
+                </tr>`;
+            });
+        });
+        const tableHtml = `<table style="width:100%;border-collapse:collapse;font-size:10.5px">
+            <thead><tr>
+                <th style="${thS}">Código</th><th style="${thS}">Funcionário</th>
+                <th style="${thS}">Função</th><th style="${thS}">Setor</th>
+                <th style="${thS}">Pontuação</th><th style="${thS}">Concluído em</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+        const tPrintDiv = document.getElementById('t-print-block');
+        tPrintDiv.innerHTML = tableHtml;
+        document.getElementById('printFilters').textContent = fp.length ? ' · ' + fp.join(' · ') : '';
+        document.body.classList.add('printing-trainings');
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => { document.body.classList.remove('printing-trainings'); }, 500);
+        }, 300);
+        return;
     } else if (tab === 'validity') {
         document.body.classList.remove('printing-employees');
         const vs  = document.getElementById('v-status');
@@ -899,17 +1158,14 @@ function exportPdf(tab) {
         if (ve.value)  fp.push('Funcionário: ' + ve.options[ve.selectedIndex].text);
         if (vt.value)  fp.push('Formação: ' + vt.options[vt.selectedIndex].text);
         if (vsc.value) fp.push('Setor: ' + vsc.options[vsc.selectedIndex].text);
-        // Injetar tabela de validade numa div temporária para impressão
-        let vPrintDiv = document.getElementById('v-print-block');
-        if (!vPrintDiv) { vPrintDiv = document.createElement('div'); vPrintDiv.id = 'v-print-block'; document.body.appendChild(vPrintDiv); }
-        vPrintDiv.innerHTML = buildValidityPrintTable(validityData);
-        vPrintDiv.style.display = 'block';
-        document.getElementById('v-table').style.display = 'none';
+        // Injetar tabela de validade no bloco fixo de impressão
+        document.getElementById('v-print-block').innerHTML = buildValidityPrintTable(validityData);
+        document.getElementById('printFilters').textContent = fp.length ? ' · ' + fp.join(' · ') : '';
+        document.body.classList.add('printing-validity');
         setTimeout(() => {
             window.print();
-            setTimeout(() => { vPrintDiv.style.display = 'none'; document.getElementById('v-table').style.display = ''; }, 500);
+            setTimeout(() => { document.body.classList.remove('printing-validity'); }, 500);
         }, 300);
-        document.getElementById('printFilters').textContent = fp.length ? ' · ' + fp.join(' · ') : '';
         return; // já chama window.print() acima
     } else {
         document.body.classList.remove('printing-employees');
@@ -978,11 +1234,7 @@ function showToast(msg, type = 'success') {
 
 // Restaurar UI após impressão (inclui cancelamento do diálogo)
 window.addEventListener('afterprint', () => {
-    document.body.classList.remove('printing-employees');
-    const vb = document.getElementById('v-print-block');
-    if (vb) vb.style.display = 'none';
-    const vt = document.getElementById('v-table');
-    if (vt) vt.style.display = '';
+    document.body.classList.remove('printing-employees', 'printing-trainings', 'printing-validity');
 });
 
 

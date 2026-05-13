@@ -57,8 +57,9 @@ class ReportController extends Controller
         if ($request->filled('sector_id')) {
             $query->where('sector_id', $request->sector_id);
         }
-        if ($request->filled('position_id')) {
-            $query->where('position_id', $request->position_id);
+        $positionIds = array_filter((array) $request->input('position_id', []));
+        if (!empty($positionIds)) {
+            $query->whereIn('position_id', $positionIds);
         }
 
         $rows = $query->orderBy('first_name')->get();
@@ -144,15 +145,37 @@ class ReportController extends Controller
                 ->with(['employee.sector', 'employee.position']),
         ])->whereHas('employeeTrainings', fn($q) => $q->where('status', 'completed'));
 
-        if ($request->filled('sector_id')) {
-            $query->whereHas('employeeTrainings', fn($q) => $q->where('status', 'completed')
-                ->whereHas('employee', fn($eq) => $eq->where('sector_id', $request->sector_id)));
+        $trainingIds = array_filter((array) $request->input('training_id', []));
+        if (!empty($trainingIds)) {
+            $query->whereIn('id', $trainingIds);
         }
-        if ($request->filled('training_id')) {
-            $query->where('id', $request->training_id);
+
+        $positionIds = array_filter((array) $request->input('position_id', []));
+
+        if ($request->filled('sector_id') || !empty($positionIds)) {
+            $query->whereHas('employeeTrainings', function ($q) use ($request, $positionIds) {
+                $q->where('status', 'completed')
+                  ->whereHas('employee', function ($eq) use ($request, $positionIds) {
+                      if ($request->filled('sector_id')) {
+                          $eq->where('sector_id', $request->sector_id);
+                      }
+                      if (!empty($positionIds)) {
+                          $eq->whereIn('position_id', $positionIds);
+                      }
+                  });
+            });
         }
 
         $rows = $query->orderBy('title')->get();
+
+        // Filtrar os employeeTrainings por setor/função dentro de cada formação
+        $rows->each(function ($t) use ($request, $positionIds) {
+            $t->employeeTrainings = $t->employeeTrainings->filter(function ($et) use ($request, $positionIds) {
+                if ($request->filled('sector_id') && $et->employee?->sector_id != $request->sector_id) return false;
+                if (!empty($positionIds) && !in_array((string)($et->employee?->position_id), $positionIds)) return false;
+                return true;
+            });
+        });
 
         return response()->json([
             'data' => $rows->map(fn($t) => [
@@ -160,7 +183,7 @@ class ReportController extends Controller
                 'title'    => $t->title,
                 'provider' => $t->provider ?? '—',
                 'total'    => $t->employeeTrainings->count(),
-                'employees' => $t->employeeTrainings->map(fn($et) => [
+                'employees' => $t->employeeTrainings->values()->map(fn($et) => [
                     'name'         => $et->employee?->full_name ?? '—',
                     'code'         => $et->employee?->code ?? '—',
                     'sector'       => $et->employee?->sector?->sector ?? '—',
