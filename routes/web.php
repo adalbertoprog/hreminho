@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\TrainingWebController;
 use App\Http\Controllers\Web\ReportWebController;
 use App\Http\Controllers\Web\DocsElectroMinhoWebController;
 use App\Http\Controllers\Web\UserWebController;
+use App\Http\Controllers\Web\PasswordWebController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn() => view('home'))->name('home');
@@ -47,6 +48,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/trainings',   [TrainingWebController::class,   'index'])->name('trainings.index');
     Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
     Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
+
+    // ── Palavra-passe ─────────────────────────────────────────────────────────
+    Route::put('/password', [PasswordWebController::class, 'update'])->name('password.update');
 
     // ── DocsElectro-Minho — Integração ────────────────────────────────────────
     Route::prefix('docsem')->name('docsem.')->group(function () {

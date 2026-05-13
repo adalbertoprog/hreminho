@@ -126,6 +126,53 @@
             transition: all 0.15s; display: flex;
         }
         .logout-btn:hover { color: var(--danger); background: rgba(239,68,68,0.1); }
+        .pwd-btn {
+            background: none; border: none; cursor: pointer;
+            color: var(--text-muted); padding: 6px; border-radius: 6px;
+            transition: all 0.15s; display: flex;
+        }
+        .pwd-btn:hover { color: var(--accent-light); background: var(--accent-glow); }
+
+        /* ── Modal Palavra-passe ── */
+        .pwd-overlay {
+            display: none; position: fixed; inset: 0; z-index: 200;
+            background: rgba(0,0,0,0.55); align-items: center; justify-content: center;
+        }
+        .pwd-overlay.open { display: flex; }
+        .pwd-modal {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 16px; padding: 32px; width: 100%; max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+        }
+        .pwd-modal h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 20px; }
+        .pwd-field { margin-bottom: 16px; }
+        .pwd-field label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: .5px; }
+        .pwd-field input {
+            width: 100%; padding: 10px 14px; background: var(--bg-dark);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text-primary); font-size: 0.9rem; font-family: inherit;
+            transition: border-color .2s;
+        }
+        .pwd-field input:focus { outline: none; border-color: var(--accent); }
+        .pwd-field .field-error { font-size: 0.78rem; color: var(--danger); margin-top: 4px; }
+        .pwd-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+        .btn-pwd-cancel {
+            padding: 9px 20px; border-radius: 8px; border: 1px solid var(--border);
+            background: none; color: var(--text-muted); font-size: 0.875rem; cursor: pointer;
+            transition: all .15s;
+        }
+        .btn-pwd-cancel:hover { background: var(--nav-hover); color: var(--text-primary); }
+        .btn-pwd-save {
+            padding: 9px 20px; border-radius: 8px; border: none;
+            background: var(--accent); color: #fff; font-size: 0.875rem; font-weight: 600; cursor: pointer;
+            transition: opacity .15s;
+        }
+        .btn-pwd-save:hover { opacity: .85; }
+        .pwd-success {
+            background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3);
+            color: var(--success); border-radius: 8px; padding: 10px 14px;
+            font-size: 0.85rem; margin-bottom: 16px;
+        }
 
         /* ── Main ── */
         .main-content {
@@ -222,6 +269,9 @@
                 <strong>{{ auth()->user()->name }}</strong>
                 <span>{{ ucfirst(auth()->user()->role) }}</span>
             </div>
+            <button type="button" class="pwd-btn" onclick="openPwdModal()" title="Mudar palavra-passe">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" style="width:18px;height:18px"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"/></svg>
+            </button>
             <form method="POST" action="{{ route('logout') }}">
                 @csrf
                 <button type="submit" class="logout-btn" title="Terminar sessão">
@@ -230,6 +280,48 @@
             </form>
         </div>
     </aside>
+
+    {{-- ── Modal Mudar Palavra-passe ── --}}
+    <div class="pwd-overlay {{ (session('pwd_modal_open') || $errors->hasAny(['current_password','password'])) ? 'open' : '' }}" id="pwdOverlay" onclick="if(event.target===this)closePwdModal()">
+        <div class="pwd-modal">
+            <h3>🔑 Mudar Palavra-passe</h3>
+
+            @if(session('success_password'))
+                <div class="pwd-success">{{ session('success_password') }}</div>
+            @endif
+
+            <form method="POST" action="{{ route('password.update') }}">
+                @csrf
+                @method('PUT')
+
+                <div class="pwd-field">
+                    <label>Palavra-passe atual</label>
+                    <input type="password" name="current_password" autocomplete="current-password" required>
+                    @error('current_password')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="pwd-field">
+                    <label>Nova palavra-passe</label>
+                    <input type="password" name="password" autocomplete="new-password" required>
+                    @error('password')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="pwd-field">
+                    <label>Confirmar nova palavra-passe</label>
+                    <input type="password" name="password_confirmation" autocomplete="new-password" required>
+                </div>
+
+                <div class="pwd-actions">
+                    <button type="button" class="btn-pwd-cancel" onclick="closePwdModal()">Cancelar</button>
+                    <button type="submit" class="btn-pwd-save">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 
     {{-- Main content --}}
@@ -269,6 +361,15 @@
             el.textContent = new Date().toLocaleDateString('pt-PT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         }
     })();
+
+    // Modal Palavra-passe
+    function openPwdModal()  { document.getElementById('pwdOverlay').classList.add('open'); }
+    function closePwdModal() { document.getElementById('pwdOverlay').classList.remove('open'); }
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closePwdModal(); });
+    @if(session('pwd_modal_open'))
+    // Re-abrir modal se houve erro de validação
+    document.addEventListener('DOMContentLoaded', openPwdModal);
+    @endif
 
     // Alternar tema e guardar em cookie (365 dias)
     document.getElementById('theme-toggle').addEventListener('click', function() {
