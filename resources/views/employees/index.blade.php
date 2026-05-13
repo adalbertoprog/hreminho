@@ -231,6 +231,24 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 .view-tab:hover:not(.active) { color:var(--text-primary); background:var(--nav-hover); }
 .view-tab-panel { display:none; }
 .view-tab-panel.active { display:block; }
+
+/* ── Stats Employees ── */
+.emp-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:18px; }
+.emp-stat-card {
+    background:var(--bg-card); border:1px solid var(--border); border-radius:12px;
+    padding:16px 20px; display:flex; align-items:center; gap:14px; transition:.2s;
+}
+.emp-stat-card:hover { border-color:rgba(99,102,241,.3); transform:translateY(-1px); }
+.emp-stat-icon { width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.15rem; flex-shrink:0; }
+.emp-stat-icon.all    { background:rgba(99,102,241,.15); }
+.emp-stat-icon.active { background:rgba(34,197,94,.15); }
+.emp-stat-icon.inactive { background:rgba(239,68,68,.12); }
+.emp-stat-num { font-size:1.7rem; font-weight:800; letter-spacing:-1px; line-height:1; }
+.emp-stat-num.all    { color:var(--accent-light); }
+.emp-stat-num.active { color:#22c55e; }
+.emp-stat-num.inactive { color:#ef4444; }
+.emp-stat-label { font-size:.78rem; color:var(--text-muted); font-weight:500; margin-top:3px; }
+@media (max-width:600px) { .emp-stats { grid-template-columns:1fr; } }
 </style>
 @endsection
 
@@ -321,6 +339,31 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                 </button>
             </div>
         </form>
+    </div>
+</div>
+
+<!-- Stats cards -->
+<div class="emp-stats" id="empStatsRow">
+    <div class="emp-stat-card">
+        <div class="emp-stat-icon all">👥</div>
+        <div>
+            <div class="emp-stat-num all" id="statTotal">—</div>
+            <div class="emp-stat-label">Total de Funcionários</div>
+        </div>
+    </div>
+    <div class="emp-stat-card">
+        <div class="emp-stat-icon active">✅</div>
+        <div>
+            <div class="emp-stat-num active" id="statActive">—</div>
+            <div class="emp-stat-label">Funcionários Ativos</div>
+        </div>
+    </div>
+    <div class="emp-stat-card">
+        <div class="emp-stat-icon inactive">🔴</div>
+        <div>
+            <div class="emp-stat-num inactive" id="statInactive">—</div>
+            <div class="emp-stat-label">Funcionários Inativos</div>
+        </div>
     </div>
 </div>
 
@@ -644,6 +687,20 @@ function closeOverlay(id){document.getElementById(id).classList.remove('open');}
 document.querySelectorAll('.overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
 
 /* ── Boot ── */
+async function loadStats(){
+    try{
+        const [all,active,inactive]=await Promise.all([
+            apiFetch('GET','/employees?per_page=1').catch(()=>null),
+            apiFetch('GET','/employees?per_page=1&status=active').catch(()=>null),
+            apiFetch('GET','/employees?per_page=1&status=inactive').catch(()=>null),
+        ]);
+        const set=(id,val)=>{const el=document.getElementById(id);if(el)el.textContent=val??'—';};
+        set('statTotal',   all?.meta?.total    ?? all?.total    ?? '—');
+        set('statActive',  active?.meta?.total ?? active?.total ?? '—');
+        set('statInactive',inactive?.meta?.total??inactive?.total??'—');
+    }catch(e){ /* silencioso */ }
+}
+
 async function boot(){
     const [d,p,s]=await Promise.all([
         apiFetch('GET','/departments?per_page=200').catch(()=>({data:[]})),
@@ -654,6 +711,7 @@ async function boot(){
     ['fDept','fDeptModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;depts.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.department}</option>`);});
     ['fPos','fPosModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;positions.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.position}</option>`);});
     ['fSector','fSecModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;sectors.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.sector}</option>`);});
+    loadStats();
     loadEmployees();
 }
 
