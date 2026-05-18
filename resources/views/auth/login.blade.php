@@ -133,7 +133,7 @@
     <div class="login-left">
         <div class="login-left-bg"></div>
         <div class="login-left-content">
-            <div class="badge">✦ HRElectrominho</div>
+            <div class="badge">✦ HRElectro-Minho</div>
             <h2>Bem-vindo ao seu <span>painel de RH</span></h2>
             <p>Administre a sua equipa de forma simples, eficiente e segura — tudo num só lugar.</p>
             <div class="feature-list">
