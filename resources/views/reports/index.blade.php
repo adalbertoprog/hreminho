@@ -336,6 +336,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
             <button class="btn btn-primary" onclick="loadEmployees()">🔍 Filtrar</button>
             <button class="btn btn-secondary" onclick="resetEmployees()">↺ Limpar</button>
             <button class="btn btn-pdf" onclick="exportPdf('employees')">📄 PDF</button>
+            <button class="btn btn-success" onclick="exportExcel('employees')">📊 Excel</button>
             <button class="btn btn-success" onclick="openEmail('employees')">✉️ Email</button>
         </div>
     </div>
@@ -386,6 +387,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
         <div><h2>Formações e Funcionários que as Possuem</h2><span class="report-count" id="t-count">—</span></div>
         <div class="btn-actions">
             <button class="btn btn-pdf" onclick="exportPdf('trainings')">📄 Exportar PDF</button>
+            <button class="btn btn-success" onclick="exportExcel('trainings')">📊 Exportar Excel</button>
             <button class="btn btn-success" onclick="openEmail('trainings')">✉️ Enviar por Email</button>
         </div>
     </div>
@@ -417,6 +419,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
         <div><h2>Relatório de Assiduidade</h2><span class="report-count" id="a-count">—</span></div>
         <div class="btn-actions">
             <button class="btn btn-pdf" onclick="exportPdf('attendance')">📄 Exportar PDF</button>
+            <button class="btn btn-success" onclick="exportExcel('attendance')">📊 Exportar Excel</button>
             <button class="btn btn-success" onclick="openEmail('attendance')">✉️ Enviar por Email</button>
         </div>
     </div>
@@ -448,6 +451,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
             <button class="btn btn-primary" onclick="loadValidity()">🔍 Filtrar</button>
             <button class="btn btn-secondary" onclick="resetValidity()">↺ Limpar</button>
             <button class="btn btn-pdf" onclick="exportPdf('validity')">📄 Exportar PDF</button>
+            <button class="btn btn-success" onclick="exportExcel('validity')">📊 Exportar Excel</button>
             <button class="btn btn-success" onclick="openEmail('validity')">✉️ Enviar por Email</button>
         </div>
     </div>
@@ -527,6 +531,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
 
 @endsection
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 @section('scripts')
 <script>
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
@@ -646,6 +651,101 @@ class MultiSelect {
 
 /* Instâncias globais */
 let msEPosition, msTTraining, msTPosition;
+
+
+/* ══════════════════════════════════════════
+   EXPORTAÇÃO EXCEL (SheetJS)
+══════════════════════════════════════════ */
+function exportExcel(tab) {
+    const today = new Date().toLocaleDateString('pt-PT').replace(/\//g, '-');
+    const titleMap = {
+        employees:  'Funcionarios_com_Formacoes',
+        trainings:  'Formacoes_por_Funcionarios',
+        attendance: 'Assiduidade',
+        validity:   'Validade_Formacoes',
+    };
+    const filename = `HREminho_${titleMap[tab]}_${today}.xlsx`;
+    let wb, ws, data;
+
+    if (tab === 'employees') {
+        // Uma linha por funcionário, com as formações em colunas separadas por vírgula
+        data = [['Código', 'Nome', 'Função', 'Setor', 'Total Formações', 'Formações Concluídas']];
+        empData.forEach(e => {
+            const formacoes = (e.trainings || []).map(t => t.title).join('; ');
+            data.push([e.code || '—', e.name, e.position, e.sector, e.total_completed, formacoes]);
+        });
+        ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:10},{wch:30},{wch:25},{wch:20},{wch:10},{wch:60}];
+
+    } else if (tab === 'trainings') {
+        // Uma aba por formação seria ideal, mas para simplificar: linha por funcionário dentro de cada formação
+        data = [['Formação', 'Fornecedor', 'Nome Funcionário', 'Código', 'Setor', 'Função', 'Pontuação', 'Data Conclusão']];
+        trainingsData.forEach(t => {
+            (t.employees || []).forEach(e => {
+                data.push([t.title, t.provider || '—', e.name, e.code || '—', e.sector, e.position, e.score != null ? e.score : '—', e.completed_at ? new Date(e.completed_at).toLocaleDateString('pt-PT') : '—']);
+            });
+        });
+        ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:40},{wch:25},{wch:30},{wch:10},{wch:20},{wch:25},{wch:10},{wch:16}];
+
+    } else if (tab === 'attendance') {
+        // Lê directamente as linhas da tabela DOM (dados já renderizados)
+        const rows = document.querySelectorAll('#a-tbody tr');
+        data = [['Funcionário', 'Setor', 'Data', 'Entrada', 'Saída', 'Estado']];
+        rows.forEach(tr => {
+            const cells = tr.querySelectorAll('td');
+            if (cells.length >= 6) {
+                data.push([
+                    cells[0].textContent.trim(),
+                    cells[1].textContent.trim(),
+                    cells[2].textContent.trim(),
+                    cells[3].textContent.trim(),
+                    cells[4].textContent.trim(),
+                    cells[5].textContent.trim(),
+                ]);
+            }
+        });
+        ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:30},{wch:20},{wch:14},{wch:10},{wch:10},{wch:12}];
+
+    } else if (tab === 'validity') {
+        data = [['Funcionário', 'Código', 'Setor', 'Função', 'Formação', 'Fornecedor', 'Data Fim', 'Validade (meses)', 'Data Expiração', 'Estado']];
+        const vStatLabel = { valid: 'Válida', expiring: 'A expirar', expired: 'Expirada' };
+        validityData.forEach(r => {
+            data.push([
+                r.employee,
+                r.employee_code || '—',
+                r.sector,
+                r.position,
+                r.training,
+                r.provider || '—',
+                r.end_date    ? new Date(r.end_date    + 'T00:00:00').toLocaleDateString('pt-PT') : '—',
+                r.validity_months || '—',
+                r.expiry_date ? new Date(r.expiry_date + 'T00:00:00').toLocaleDateString('pt-PT') : '—',
+                vStatLabel[r.validity_status] || '—',
+            ]);
+        });
+        ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:30},{wch:10},{wch:20},{wch:25},{wch:40},{wch:25},{wch:14},{wch:10},{wch:16},{wch:12}];
+    }
+
+    // Estilo do cabeçalho
+    const headerRange = XLSX.utils.decode_range(ws['!ref']);
+    for (let C = headerRange.s.c; C <= headerRange.e.c; C++) {
+        const addr = XLSX.utils.encode_cell({r: 0, c: C});
+        if (!ws[addr]) continue;
+        ws[addr].s = {
+            font: { bold: true, color: { rgb: 'FFFFFF' } },
+            fill: { fgColor: { rgb: '6366F1' } },
+            alignment: { horizontal: 'center' },
+        };
+    }
+
+    wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, titleMap[tab].replace(/_/g, ' ').substring(0, 31));
+    XLSX.writeFile(wb, filename);
+    showToast('Ficheiro Excel gerado com sucesso!', 'success');
+}
 
 async function loadDropdowns() {
     const [sectors, trainings, positions, employees] = await Promise.all([
@@ -815,7 +915,7 @@ function renderCards() {
                     <div class="emp-card-meta">${e.position} · ${e.sector}</div>
                 </div>
                 <div class="emp-card-right">
-                    <span class="emp-badge-count">${e.total_completed} formação${e.total_completed !== 1 ? 'ões' : ''}</span>
+                    <span class="emp-badge-count">${e.total_completed !== 1 ? e.total_completed + ' formações' : '1 formação'}</span>
                     <span class="emp-chevron">▼</span>
                 </div>
             </div>
@@ -857,7 +957,7 @@ async function loadTrainings() {
     const res = await fetch('/api/v1/reports/training-employees?' + params).then(r => r.json());
     trainingsData = res.data || [];
     const count = document.getElementById('t-count');
-    count.textContent = res.total + ' formação(ões)';
+    count.textContent = res.total !== 1 ? res.total + ' formações' : '1 formação';
     count.dataset.loaded = '1';
     if (!trainingsData.length) { list.innerHTML = '<div class="state-msg">Sem resultados.</div>'; return; }
     list.innerHTML = trainingsData.map(t => `

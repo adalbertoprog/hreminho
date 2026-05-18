@@ -470,7 +470,15 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                 </select>
             </div>
             <div class="fg"><label>Data de Admissão *</label><input name="hire_date" type="date" required></div>
-            <div class="fg"><label>Tipo de Contrato</label><input name="contract_type" placeholder="full-time, part-time..."></div>
+            <div class="fg">
+                <label>Tipo de Contrato</label>
+                <select name="contract_type">
+                    <option value="">— Selecionar —</option>
+                    <option value="full-time">Full-time</option>
+                    <option value="part-time">Part-time</option>
+                    <option value="freelance">Freelance</option>
+                </select>
+            </div>
             <div class="fg"><label>Data de Término</label><input name="end_date" type="date"></div>
         </div>
         <div class="modal-foot">
