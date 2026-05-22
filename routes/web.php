@@ -13,6 +13,7 @@ use App\Http\Controllers\Web\ReportWebController;
 use App\Http\Controllers\Web\DocsElectroMinhoWebController;
 use App\Http\Controllers\Web\UserWebController;
 use App\Http\Controllers\Web\PasswordWebController;
+use App\Http\Controllers\Web\CalendarWebController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn() => view('home'))->name('home');
@@ -48,6 +49,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/trainings',   [TrainingWebController::class,   'index'])->name('trainings.index');
     Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
     Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
+
+    // ── Calendário de Formações ───────────────────────────────────────────────
+    Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
+    Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
 
     // ── Palavra-passe ─────────────────────────────────────────────────────────
     Route::put('/password', [PasswordWebController::class, 'update'])->name('password.update');

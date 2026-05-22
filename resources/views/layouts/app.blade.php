@@ -249,6 +249,9 @@
             <a href="{{ route('trainings.index') }}" class="nav-item {{ request()->routeIs('trainings.*') ? 'active' : '' }}">
                 <span class="nav-icon">🎓</span> Formações
             </a>
+            <a href="{{ route('calendar.index') }}" class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
+                <span class="nav-icon">📆</span> Calendário
+            </a>
 
             <p class="nav-section-label">Relatórios</p>
             <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
