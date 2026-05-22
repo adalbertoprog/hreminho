@@ -89,6 +89,7 @@ class CalendarWebController extends Controller
                 'borderColor'     => $color['border'],
                 'textColor'       => '#ffffff',
                 'extendedProps'   => [
+                    // Dados de exibição
                     'employee'       => $employeeName,
                     'employeeCode'   => $et->employee?->code ?? '',
                     'training'       => $trainingTitle,
@@ -101,6 +102,10 @@ class CalendarWebController extends Controller
                     'expiry_date'    => $et->expiry_date?->format('d/m/Y'),
                     'validity_status'=> $et->validity_status,
                     'notes'          => $et->notes,
+                    // IDs e datas em formato ISO — necessários para o form de edição
+                    'employee_id'    => $et->employee_id,
+                    'training_id'    => $et->training_id,
+                    'end_date_raw'   => $et->end_date?->format('Y-m-d'),
                 ],
             ];
         });
