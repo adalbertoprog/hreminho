@@ -13,7 +13,7 @@ class TrainingController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = Training::withCount('employeeTrainings');
+        $query = Training::withCount(['employeeTrainings' => fn($q) => $q->whereHas('employee')]);
         if ($request->filled('search')) {
             $s = $request->search;
             $query->where(fn($q) => $q->where('title','like',"%{$s}%")->orWhere('provider','like',"%{$s}%"));
@@ -86,7 +86,8 @@ class TrainingController extends Controller
 
     public function enrollments(Request $request): JsonResponse
     {
-        $query = EmployeeTraining::with(['employee', 'training']);
+        $query = EmployeeTraining::with(['employee', 'training'])
+            ->whereHas('employee'); // exclui inscrições de funcionários apagados (soft delete)
         if ($request->filled('training_id')) $query->where('training_id', $request->training_id);
         if ($request->filled('employee_id')) $query->where('employee_id', $request->employee_id);
         if ($request->filled('status'))      $query->where('status', $request->status);

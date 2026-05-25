@@ -188,9 +188,9 @@ class DocsElectroMinhoService
             'end_date'    => $employee->end_date?->format('Y-m-d'),
             'status'      => $employee->status,
             'contract_type' => $employee->contract_type,
-            'position'    => $employee->position?->name,
-            'department'  => $employee->department?->name,
-            'sector'      => $employee->sector?->name,
+            'position'    => $employee->position?->position,
+            'department'  => $employee->department?->department,
+            'sector'      => $employee->sector?->sector,
             'work_location' => $employee->work_location ?? null,
             'profile_photo' => $employee->profile_photo ?? null,
         ];

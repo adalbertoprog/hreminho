@@ -21,11 +21,12 @@ class DashboardController extends Controller
         // Stats cards
         $stats = [
             'total_employees'   => Employee::where('status', 'active')->count(),
-            'present_today'     => Attendance::whereDate('date', $today)->whereIn('status', ['present', 'late'])->count(),
-            'pending_leaves'    => Leave::where('status', 'pending')->count(),
-            'active_trainings'  => EmployeeTraining::where('status', 'enrolled')->count(),
+            'present_today'     => Attendance::whereHas('employee')->whereDate('date', $today)->whereIn('status', ['present', 'late'])->count(),
+            'pending_leaves'    => Leave::whereHas('employee')->where('status', 'pending')->count(),
+            'active_trainings'  => EmployeeTraining::whereHas('employee')->where('status', 'enrolled')->count(),
             'total_departments' => Department::count(),
-            'on_leave_today'    => Leave::where('status', 'approved')
+            'on_leave_today'    => Leave::whereHas('employee')
+                                    ->where('status', 'approved')
                                     ->whereDate('start_date', '<=', $today)
                                     ->whereDate('end_date', '>=', $today)
                                     ->count(),
@@ -36,10 +37,12 @@ class DashboardController extends Controller
             ->latest()->take(5)->get();
 
         $pending_leaves = Leave::with('employee')
+            ->whereHas('employee')
             ->where('status', 'pending')
             ->latest()->take(5)->get();
 
         $active_trainings = EmployeeTraining::with(['employee', 'training'])
+            ->whereHas('employee')
             ->where('status', 'enrolled')
             ->latest()->take(5)->get();
 
@@ -66,7 +69,7 @@ class DashboardController extends Controller
         ];
 
         // Grafico 3: Funcionarios por formacao (Top 10)
-        $top_trainings_emp = Training::withCount('employeeTrainings')
+        $top_trainings_emp = Training::withCount(['employeeTrainings' => fn($q) => $q->whereHas('employee')])
             ->having('employee_trainings_count', '>', 0)
             ->orderByDesc('employee_trainings_count')
             ->take(10)
@@ -83,9 +86,11 @@ class DashboardController extends Controller
         $months = collect(range(5, 0))->map(fn ($i) => Carbon::now()->subMonths($i));
 
         $completion_by_month = $months->map(function ($month) {
-            $total     = EmployeeTraining::whereYear('created_at', $month->year)
+            $total     = EmployeeTraining::whereHas('employee')
+                            ->whereYear('created_at', $month->year)
                             ->whereMonth('created_at', $month->month)->count();
-            $completed = EmployeeTraining::whereYear('created_at', $month->year)
+            $completed = EmployeeTraining::whereHas('employee')
+                            ->whereYear('created_at', $month->year)
                             ->whereMonth('created_at', $month->month)
                             ->where('status', 'completed')->count();
             return [
@@ -102,14 +107,15 @@ class DashboardController extends Controller
         ];
 
         // Grafico 5: Top 6 formacoes - barras de progresso
-        $top_trainings = Training::withCount('employeeTrainings')
+        $top_trainings = Training::withCount(['employeeTrainings' => fn($q) => $q->whereHas('employee')])
             ->having('employee_trainings_count', '>', 0)
             ->orderByDesc('employee_trainings_count')
             ->take(6)
             ->get(['id', 'title', 'employee_trainings_count']);
 
         $top_trainings_chart = $top_trainings->map(function ($training) {
-            $completed = EmployeeTraining::where('training_id', $training->id)
+            $completed = EmployeeTraining::whereHas('employee')
+                            ->where('training_id', $training->id)
                             ->where('status', 'completed')->count();
             $rate = $training->employee_trainings_count > 0
                 ? round(($completed / $training->employee_trainings_count) * 100)

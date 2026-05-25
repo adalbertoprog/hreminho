@@ -752,7 +752,7 @@ async function loadDropdowns() {
         fetch('/api/v1/sectors?all=1').then(r => r.json()),
         fetch('/api/v1/trainings?all=1').then(r => r.json()),
         fetch('/api/v1/positions?all=1').then(r => r.json()),
-        fetch('/api/v1/employees?per_page=9999').then(r => r.json()),
+        fetch('/api/v1/employees?all=true').then(r => r.json()),
     ]);
     const sectorList   = sectors.data   ?? sectors;
     const trainingList = trainings.data ?? trainings;

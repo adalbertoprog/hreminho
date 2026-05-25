@@ -637,11 +637,12 @@ function updateScoreState(){
     const endDate = new Date(endVal + 'T00:00:00');
     if(endDate > today){
         scoreEl.disabled = true;
-        scoreEl.value = '';
+        scoreEl.dataset.blocked = '1';
         hintEl.textContent = '⚠️ Não é possível atribuir pontuação — a formação ainda não foi concluída.';
         hintEl.style.color = '#f59e0b';
     } else {
         scoreEl.disabled = false;
+        delete scoreEl.dataset.blocked;
         hintEl.textContent = '';
     }
 }
@@ -706,7 +707,10 @@ async function submitEnroll(ev){
     ev.preventDefault();
     const btn=document.getElementById('enrollSubmitBtn');btn.disabled=true;btn.textContent='A guardar...';
     const data={};
+    const scoreBlocked = document.getElementById('scoreInput').dataset.blocked === '1';
     new FormData(document.getElementById('enrollForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
+    // Se o campo score estava bloqueado (data futura), não enviar — preservar valor existente
+    if(scoreBlocked) delete data.score;
     try{
         if(enrollEditId) await apiFetch('PUT',`/enrollments/${enrollEditId}`,data);
         else             await apiFetch('POST','/enrollments',data);

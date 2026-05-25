@@ -16,6 +16,7 @@ class ReportController extends Controller
     public function completedTrainings(Request $request): JsonResponse
     {
         $query = EmployeeTraining::with(['employee.sector', 'training'])
+            ->whereHas('employee')
             ->where('status', 'completed');
 
         if ($request->filled('training_id')) {
@@ -85,7 +86,8 @@ class ReportController extends Controller
     // ── 3. Relatório de assiduidade ─────────────────────────────────────
     public function attendance(Request $request): JsonResponse
     {
-        $query = Attendance::with(['employee.sector', 'employee.position']);
+        $query = Attendance::with(['employee.sector', 'employee.position'])
+            ->whereHas('employee');
 
         if ($request->filled('employee_id')) {
             $query->where('employee_id', $request->employee_id);
@@ -142,8 +144,9 @@ class ReportController extends Controller
     {
         $query = Training::with([
             'employeeTrainings' => fn($q) => $q->where('status', 'completed')
+                ->whereHas('employee')
                 ->with(['employee.sector', 'employee.position']),
-        ])->whereHas('employeeTrainings', fn($q) => $q->where('status', 'completed'));
+        ])->whereHas('employeeTrainings', fn($q) => $q->where('status', 'completed')->whereHas('employee'));
 
         $trainingIds = array_filter((array) $request->input('training_id', []));
         if (!empty($trainingIds)) {
@@ -202,6 +205,7 @@ class ReportController extends Controller
         $today = now()->toDateString();
 
         $query = EmployeeTraining::with(['employee.sector', 'employee.position', 'training'])
+            ->whereHas('employee')
             ->whereNotNull('validity_months')
             ->whereNotNull('end_date')
             ->where('status', 'completed');
@@ -230,7 +234,8 @@ class ReportController extends Controller
         $rows = $query->orderByRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) ASC")->get();
 
         // KPIs totais (sem filtro de estado — sobre o conjunto filtrado por func/setor/formação)
-        $kpiQuery = EmployeeTraining::whereNotNull('validity_months')
+        $kpiQuery = EmployeeTraining::whereHas('employee')
+            ->whereNotNull('validity_months')
             ->whereNotNull('end_date')
             ->where('status', 'completed');
         if ($request->filled('employee_id')) $kpiQuery->where('employee_id', $request->employee_id);

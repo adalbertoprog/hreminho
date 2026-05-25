@@ -10,7 +10,7 @@ class LeaveController extends Controller
 {
     public function index(Request $request): JsonResponse
     {
-        $query = Leave::with('employee');
+        $query = Leave::with('employee')->whereHas('employee');
 
         if ($request->filled('employee_id')) $query->where('employee_id', $request->employee_id);
         if ($request->filled('status'))      $query->where('status', $request->status);

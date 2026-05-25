@@ -32,7 +32,7 @@ class UpdateEmployeeRequest extends FormRequest
             'sector_id'     => 'nullable|exists:sectors,id',
             'hire_date'     => 'sometimes|date',
             'status'        => 'nullable|in:active,inactive,terminated',
-            'contract_type' => 'nullable|string|max:50',
+            'contract_type' => 'nullable|in:full-time,part-time,freelance',
             'end_date'      => 'nullable|date|after_or_equal:hire_date',
         ];
     }
