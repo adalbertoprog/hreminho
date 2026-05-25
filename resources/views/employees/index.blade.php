@@ -623,6 +623,10 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
     <div class="modal-foot">
         <button class="btn-cancel" onclick="closeOverlay('viewOverlay')">Fechar</button>
+        <button class="btn-sm" id="vDownloadBtn" style="padding:9px 18px;border-radius:9px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:var(--accent-light);cursor:pointer;font-size:.86rem;font-weight:600;display:inline-flex;align-items:center;gap:7px;" onclick="downloadFicha()">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 15V3"/></svg>
+            Descarregar Ficha
+        </button>
     </div>
 </div>
 </div>
@@ -647,7 +651,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 const API  = '/api/v1';
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 let state = {page:1,search:'',department_id:'',sector_id:'',position_id:'',status:'',sort:'name_asc'};
-let editId=null, deleteId=null;
+let editId=null, deleteId=null, viewEmpId=null, viewTrainings=[];
 let _searchTimer=null;
 function debouncedSearch(){clearTimeout(_searchTimer);_searchTimer=setTimeout(applyFilters,350);}
 let depts=[], positions=[], sectors=[];
@@ -963,6 +967,9 @@ async function openView(empId){
     const emp = empMap[empId];
     if(!emp) return;
 
+    viewEmpId = empId;
+    viewTrainings = [];
+
     // Reset tabs
     document.querySelectorAll('.view-tab-panel').forEach(p=>p.classList.remove('active'));
     document.querySelectorAll('.view-tab').forEach(b=>b.classList.remove('active'));
@@ -1015,6 +1022,7 @@ async function openView(empId){
     try{
         const res  = await apiFetch('GET',`/enrollments?employee_id=${empId}&per_page=100`);
         const rows = res.data ?? [];
+        viewTrainings = rows;
         if(!rows.length){
             document.getElementById('vTrainingsContent').innerHTML=`<div class="tr-empty">Sem formações registadas para este funcionário.</div>`;
             return;
@@ -1066,6 +1074,156 @@ async function openView(empId){
         document.getElementById('vTrainingsContent').innerHTML=`<div class="tr-empty">Erro ao carregar formações.</div>`;
     }
 }
+/* ── Download Ficha do Funcionário ──────────────────────────────────────── */
+function downloadFicha(){
+    const emp = empMap[viewEmpId];
+    if(!emp) return;
+
+    const fmt = d => d ? new Date(d+'T00:00:00').toLocaleDateString('pt-PT') : '—';
+    const age = d => d ? Math.floor((new Date()-new Date(d+'T00:00:00'))/(1000*60*60*24*365.25))+' anos' : '—';
+    const yrs = d => {if(!d)return'—';const diff=(new Date()-new Date(d+'T00:00:00'))/(1000*60*60*24*365.25);return diff<1?'< 1 ano':Math.floor(diff)+' ano(s)';};
+    const gl  = {male:'Masculino', female:'Feminino', other:'Outro'};
+    const sl  = {active:'Ativo', inactive:'Inativo', terminated:'Desligado'};
+    const ctl = {'full-time':'Tempo Inteiro','part-time':'Tempo Parcial','freelance':'Freelance'};
+    const sL  = {enrolled:'Inscrito', completed:'Concluído', failed:'Reprovado'};
+    const sColor = {enrolled:'#6366f1', completed:'#16a34a', failed:'#dc2626'};
+    const sBg    = {enrolled:'#ede9fe', completed:'#dcfce7', failed:'#fee2e2'};
+
+    const rows     = viewTrainings;
+    const nCompleted = rows.filter(r=>r.status==='completed').length;
+    const nEnrolled  = rows.filter(r=>r.status==='enrolled').length;
+    const nFailed    = rows.filter(r=>r.status==='failed').length;
+
+    const trRows = rows.length ? rows.map(r=>`
+        <tr>
+            <td>${r.training?.title??'—'}</td>
+            <td>${r.training?.provider??'—'}</td>
+            <td style="text-align:center"><span style="display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;background:${sBg[r.status]??'#f3f4f6'};color:${sColor[r.status]??'#374151'}">${sL[r.status]??r.status}</span></td>
+            <td style="text-align:center">${r.score!=null?r.score+'%':'—'}</td>
+            <td style="text-align:center">${r.start_date?fmt(r.start_date):'—'}</td>
+            <td style="text-align:center">${r.end_date?fmt(r.end_date):'—'}</td>
+            <td style="text-align:center">${r.validity_months??'—'}</td>
+            <td style="text-align:center">${r.expiry_date?fmt(r.expiry_date):'—'}</td>
+        </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;color:#94a3b8;padding:20px">Sem formações registadas.</td></tr>`;
+
+    const ini   = ((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
+    const today = new Date().toLocaleDateString('pt-PT');
+
+    const LOGO_URI = 'data:image/jpeg;base64,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ZMqgcgk+iQvzLLo3YQQ29dQYZYyCaDIOwRDmkxNitdqAxiBq1xKEQrEoYsGEoKMSOwYBBg3bOvwh9UFARuHUjtiXAUKDjAGwUr5l2mKjh84/BgMm7c9jnmEmRWx5h4cKmEOaL3lPUsCIQ4dBcGDtA8BJAOmD/A/kAPMhiASJQQmLV0JOsNKY+AhROIKIcHofpCozoLbOyoZCVgk0E7LlZloR2QYHDvLhjvadQQj3Kd0NQ2tEAuExEWECZUzrHcTzsiDlZEE2xKD7k0gzALEZxCUhjYLPaZRHZbLCBeRUEAWOMgKvFwAtdqAqH6xU1/uoG4EI9HzDLtlOp7opDVEbUhw4ZvWhQHxAbEKFsQm2RLNehL7Kj8hepJ/mmDjkQCNHQeGIhQ3Bl6s4SFgIzk8IDEDFrO4CJGeLnvyzufONGPfY5Snaadx0AmidRPqaKnV5jjpMh3A7EOGT/wCLAcwjQSkcwkYuZKzZa6/EHggACHKhyEABbgAfpFyVw0UuJTiRXgXXzMuQSAgvf6vYQB50l5d/u4OAncAIJHXEsgxgCuyeO4BB72rCXiNtEB4H+YtCphYqkGxWZv8Ae/dFczSsFLw6QABdh3/Wn//aAAwDAQACAAMAAAAQ888888888888888888888888888888888888888888887x+8888888887gxE888888888qr3h8888888888uNe888888AQ0qEcOym66888FEGT7YvDd888888888888888888888888888888888888888888888888888888//EACQRAQABAwMEAgMAAAAAAAAAAAERACFRMWGRMEFQgUChweHw/9oACAEDAQE/EPGDL1di7+jdgrXEPb6FeBoI0j0i0AC8VMJNCol1JgNYNDYpjQhMWoCMDRNhI+wRzbpAr2JzUHogSZEIbt3JtFGyGEaAPo0oAaRK2UgOFeM9OYLkPyMj7Ldq0FrYB5v9RUWoP67l3+Kz2omppOFThU4VOFThRv5f/8QAIxEBAQABAwIHAQAAAAAAAAAAAREAITAxUHEQIEFRYYGR8P/aAAgBAgEBPxDpiDTLORwRKbSwuW5K48DNF/MaRkZ9znaSiZbhj2xpaBJObg3rTsvpttNNHKcuACHnN5nhcGtTL7M+F++CtcY6sDP5OVNeer//xAAoEAEBAAICAgICAQMFAAAAAAABEQAhMUFRYXGBQJGhIHDwEDBQscH/2gAIAQEAAT8Q/tzpgA0HjyrwBtdGFnI8nyIDsXEcin5Qr6q0+XOSEgGPdLfnnrDV/Eka/XgUfNp+KL3I1WgcE0XWnjdIEIf6sGFx4FshxCVwyJhooTbTavYfR+GqblfHk+EP1mxZx4sWQqiS1zM7mJQ+WOg2vXeHnIR5VAEgYTUTUz/JlMXS7lzY+jpdbxVRsvHjD1XoyA/ACa9v4aDJQ26IPblPW8uYW6q8FL3zTx1LkiNAqS8l1iKjP8H1BNAIo3ygeOwcAY96Y4otRBIGofBRfWGmhbw6l+GnpVAojyJhJAC6ooewhyj1q/51/wCYRKeAgfWCwB4CYImxDHSWdco61LvH/FX2qVrtqZeg/Ed6Imv4fYefpprCmupZetwOKq8uB5v7n4Io/vAXXHR6Rn6Z7yO2sB49r1G3+D/hX5rCKgkGhuusezq04c2wLB1vpBBZsAwosMEpAm03h7w67TmquCzFpUpIS7yzl5go/rYHI5up/QwTiCGlI4bdJZlsUNa+S8p7w86JwUPvEW0gLm2GynehT2A8UmmYkPsdVnkk7JVy04YLIEcMbFLSmP8Aqh74WrvOOUMB1tR0oCNDhRtKbMZfwKaqt8tOeNYUQNQ92QoRpmD0qwkEnIx1Q8pkw6pJaiURRPJzaQL22uy5J1cKUzwiErso+T2LJkhRXkhMoEWzUwcFmloibia9T+je4tArT7TXxjSbOR8Fy8B04cw8irUpp9ZfNyKW5yV+8tOhOmNrUAfrCnRjGmgjCA6fYDkJ2hETkAMNvuaxzDjx9JGNmXxFcT06A9hlNY9v6QKJSGvwICEaO9vxe0rjtHmQXZOXEQhaQaAA8RrbLTWO8LuTw5VDR1v2A2FS6AMYFV7JUrOWi/DELPLTSvodDN/KDSGXoUOUZyyg4JCIookYN94fLd6VNg2OHVwbb1RES0RR1XdgMaXHbQFlShs0x4W7FFRZZeqk6s/qUBVgd4mEyoEDe79P6cHW2M0eXPHvD0MKINM3dSo7VOTnrIYkCBtxfGNAxMCoCz5g/rBUIpB2+v2fvB1BErprw+cSSAKKEJzv1lfEuhobUz4SUq1ePjEArUYnlPHvF1gJWJuTf2fszY0xVmTe/wCH9OAC0tOLJT7P3iMsaAB8a/2SZsCMzaPyCpYs3yfUPduS8E0DViSk7nbmz4aKMFk35w6mMYJQE8GfeA0x6VmzQYKLdZESkUEAFAMhNajzzlEOHFBwyS6rW/RgGlmIQm4PIupymWdo5RQAAbpseMVHNSiAb2Irh+bkO2mBRoWqg4LCYrgteHgd3e2+f5x265oRJOudd+31EZlLBKMpxY9f+3TiGGoGiXbRbvecvAAIIENGtf20/9k=';
+
+    const html = `<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Ficha de Funcionário — ${emp.full_name}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;font-size:10pt;color:#1e293b;background:#fff}
+.page{max-width:760px;margin:0 auto;padding:28px 32px}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:2px solid #6366f1;margin-bottom:22px}
+.hdr-left{display:flex;align-items:center;gap:16px}
+.hdr-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#a78bfa);display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden}
+.hdr-avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.hdr-name{font-size:15pt;font-weight:800;color:#1e293b}
+.hdr-sub{font-size:9pt;color:#64748b;margin-top:3px}
+.hdr-right{text-align:right}
+.hdr-logo{display:block;height:110px;width:auto;margin-left:auto}
+.hdr-meta{font-size:7.5pt;color:#94a3b8;margin-top:5px;text-align:right}
+.badge-active{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;background:#dcfce7;color:#16a34a}
+.badge-inactive{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;background:#fef9c3;color:#a16207}
+.badge-terminated{display:inline-block;padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626}
+.sec-title{font-size:7.5pt;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#6366f1;padding:8px 0 5px;border-bottom:1px solid #e2e8f0;margin-bottom:12px;margin-top:18px}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 20px;margin-bottom:4px}
+.field label{display:block;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#94a3b8;margin-bottom:2px}
+.field span{font-size:9.5pt;color:#1e293b;font-weight:500}
+.field.full{grid-column:1/-1}
+.kpi-row{display:flex;gap:12px;margin-bottom:16px}
+.kpi{flex:1;border-radius:10px;padding:10px 14px;text-align:center}
+.kpi-num{font-size:18pt;font-weight:800;line-height:1}
+.kpi-lbl{font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px;color:#64748b}
+.kpi-green{background:#f0fdf4;border:1px solid #bbf7d0}.kpi-green .kpi-num{color:#16a34a}
+.kpi-blue{background:#eff6ff;border:1px solid #bfdbfe}.kpi-blue .kpi-num{color:#2563eb}
+.kpi-red{background:#fef2f2;border:1px solid #fecaca}.kpi-red .kpi-num{color:#dc2626}
+.tr-table{width:100%;border-collapse:collapse;font-size:8.5pt}
+.tr-table thead th{padding:7px 10px;text-align:left;font-size:7pt;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:#64748b;border-bottom:1.5px solid #e2e8f0;background:#f8fafc}
+.tr-table tbody td{padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle}
+.tr-table tbody tr:last-child td{border-bottom:none}
+.tr-table tbody tr:nth-child(even) td{background:#f8fafc}
+.doc-footer{margin-top:28px;padding-top:10px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:7.5pt;color:#94a3b8}
+@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:16px 20px}}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="hdr">
+    <div class="hdr-left">
+      <div class="hdr-avatar">${emp.photo?`<img src="${emp.photo}" alt="${ini}">`:`${ini}`}</div>
+      <div>
+        <div class="hdr-name">${emp.full_name}</div>
+        <div class="hdr-sub">${[emp.position?.position, emp.department?.department, emp.sector?.sector].filter(Boolean).join(' · ')||'—'}</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <img class="hdr-logo" src="${LOGO_URI}" alt="HREminho">
+      <div class="hdr-meta">Ficha de Funcionário · Emitida aos ${today}</div>
+    </div>
+  </div>
+
+  <div class="sec-title">Dados Pessoais</div>
+  <div class="grid">
+    <div class="field"><label>Código</label><span>${emp.code||'—'}</span></div>
+    <div class="field"><label>Género</label><span>${gl[emp.gender]||(emp.gender||'—')}</span></div>
+    <div class="field"><label>Data de Nascimento</label><span>${fmt(emp.date_of_birth)}</span></div>
+    <div class="field"><label>Idade</label><span>${age(emp.date_of_birth)}</span></div>
+    <div class="field"><label>Nacionalidade</label><span>${emp.nationality||'—'}</span></div>
+    <div class="field"><label>Telefone</label><span>${emp.phone||'—'}</span></div>
+    <div class="field full"><label>Morada</label><span>${emp.address||'—'}</span></div>
+    <div class="field full"><label>Email</label><span>${emp.email||'—'}</span></div>
+  </div>
+
+  <div class="sec-title">Contrato &amp; Função</div>
+  <div class="grid">
+    <div class="field"><label>Departamento</label><span>${emp.department?.department||'—'}</span></div>
+    <div class="field"><label>Setor</label><span>${emp.sector?.sector||'—'}</span></div>
+    <div class="field"><label>Função</label><span>${emp.position?.position||'—'}</span></div>
+    <div class="field"><label>Data de Admissão</label><span>${fmt(emp.hire_date)}</span></div>
+    <div class="field"><label>Anos de Casa</label><span>${yrs(emp.hire_date)}</span></div>
+    <div class="field"><label>Estado</label><span>${emp.status?`<span class="badge-${emp.status}">${sl[emp.status]??emp.status}</span>`:'—'}</span></div>
+    <div class="field"><label>Tipo de Contrato</label><span>${ctl[emp.contract_type]||(emp.contract_type||'—')}</span></div>
+    <div class="field"><label>Data de Término</label><span>${fmt(emp.end_date)}</span></div>
+    <div class="field"><label>Local de Trabalho</label><span>${emp.work_location||'—'}</span></div>
+  </div>
+
+  <div class="sec-title">Formações</div>
+  <div class="kpi-row">
+    <div class="kpi kpi-green"><div class="kpi-num">${nCompleted}</div><div class="kpi-lbl">Concluídas</div></div>
+    <div class="kpi kpi-blue"><div class="kpi-num">${nEnrolled}</div><div class="kpi-lbl">Em Curso</div></div>
+    <div class="kpi kpi-red"><div class="kpi-num">${nFailed}</div><div class="kpi-lbl">Reprovadas</div></div>
+  </div>
+  <table class="tr-table">
+    <thead><tr>
+      <th>Formação</th><th>Provedor</th><th style="text-align:center">Estado</th>
+      <th style="text-align:center">Pontuação</th><th style="text-align:center">Início</th>
+      <th style="text-align:center">Conclusão</th><th style="text-align:center">Validade (m)</th>
+      <th style="text-align:center">Expira em</th>
+    </tr></thead>
+    <tbody>${trRows}</tbody>
+  </table>
+
+  <div class="doc-footer">
+    <span></span>
+    <span>HREminho — Sistema de Gestão de Recursos Humanos</span>
+  </div>
+</div>
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+    const w = window.open('','_blank','width=900,height=700');
+    w.document.write(html);
+    w.document.close();
+}
+
 /* ── DocsElectro-Minho Modal ────────────────────────────────────────────── */
 function openDocsEmSync() {
     document.getElementById('docsEmOverlay').style.display = 'flex';
