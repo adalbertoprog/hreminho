@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title', 'Funcões')
-@section('page-title', 'Funcões')
+@section('title', 'Funções')
+@section('page-title', 'Funções')
 
 @section('styles')
 <style>
@@ -55,7 +55,7 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 
 @section('content')
 <div class="toolbar">
-    <h2>💼 Funcões</h2>
+    <h2>💼 Funções</h2>
     <button class="btn-primary" onclick="openCreate()">+ Nova Função</button>
 </div>
 

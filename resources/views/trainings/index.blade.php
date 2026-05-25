@@ -80,6 +80,9 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
 .validity-hint.expired {color:#ef4444}
 .validity-hint.expiring{color:#f59e0b}
 .validity-hint.valid   {color:#22c55e}
+/* campo score desativado */
+.fg input[disabled]{opacity:.45;cursor:not-allowed;background:rgba(255,255,255,.02)}
+.score-hint{margin-top:5px;font-size:.74rem;color:var(--text-muted);min-height:16px}
 /* Alertas de validade */
 .alert-bar{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .alert-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:.8rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:.15s}
@@ -245,9 +248,13 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
                     <option value="failed">Reprovado</option>
                 </select>
             </div>
-            <div class="fg"><label>Pontuação (0–100)</label><input name="score" type="number" min="0" max="100" step="0.1" placeholder="Ex: 85.5"></div>
             <div class="fg"><label>Data de Início</label><input name="start_date" type="date"></div>
-            <div class="fg"><label>Data de Fim</label><input name="end_date" type="date" id="endDateInput" oninput="updateExpiryHint()"></div>
+            <div class="fg"><label>Data de Fim</label><input name="end_date" type="date" id="endDateInput" oninput="updateExpiryHint(); updateScoreState()"></div>
+            <div class="fg full">
+                <label>Pontuação (0–100)</label>
+                <input name="score" id="scoreInput" type="number" min="0" max="100" step="0.1" placeholder="Ex: 85.5">
+                <div class="score-hint" id="scoreHint"></div>
+            </div>
             <div class="fg">
                 <label>Validade (meses)</label>
                 <input name="validity_months" type="number" min="1" max="120" step="1" id="validityInput"
@@ -325,7 +332,7 @@ async function apiFetch(method,path,body){
 
 async function boot(){
     const [emp,tr]=await Promise.all([
-        apiFetch('GET','/employees?per_page=200').catch(()=>({data:[]})),
+        apiFetch('GET','/employees?all=true').catch(()=>({data:[]})),
         apiFetch('GET','/trainings?per_page=200').catch(()=>({data:[]})),
     ]);
     employees = emp.data??[];
@@ -616,6 +623,29 @@ function cbKeydown(e){
 function applyCatalogFilters(){catalogFilters={};const s=document.getElementById('fCatalogSearch').value.trim();if(s)catalogFilters.search=s;catalogPage=1;loadCatalog();}
 function resetCatalogFilters(){document.getElementById('fCatalogSearch').value='';catalogFilters={};catalogPage=1;loadCatalog();}
 
+/* ── Bloqueio de pontuação se formação ainda não terminou ── */
+function updateScoreState(){
+    const endVal  = document.getElementById('endDateInput').value;
+    const scoreEl = document.getElementById('scoreInput');
+    const hintEl  = document.getElementById('scoreHint');
+    if(!endVal){
+        scoreEl.disabled = false;
+        hintEl.textContent = '';
+        return;
+    }
+    const today = new Date(); today.setHours(0,0,0,0);
+    const endDate = new Date(endVal + 'T00:00:00');
+    if(endDate > today){
+        scoreEl.disabled = true;
+        scoreEl.value = '';
+        hintEl.textContent = '⚠️ Não é possível atribuir pontuação — a formação ainda não foi concluída.';
+        hintEl.style.color = '#f59e0b';
+    } else {
+        scoreEl.disabled = false;
+        hintEl.textContent = '';
+    }
+}
+
 /* ── Cálculo dinâmico de expiração no modal ── */
 function updateExpiryHint(){
     const endVal    = document.getElementById('endDateInput').value;
@@ -652,6 +682,8 @@ function openCreateEnroll(){
     document.getElementById('enrollForm').reset();
     document.getElementById('expiryHint').textContent='— preencha fim e validade';
     document.getElementById('expiryHint').className='validity-hint';
+    document.getElementById('scoreInput').disabled=false;
+    document.getElementById('scoreHint').textContent='';
     document.getElementById('enrollTitle').textContent='➕ Nova Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Inscrever';
     openOverlay('enrollOverlay');
@@ -667,7 +699,7 @@ function openEditEnroll(id){
     set('validity_months',e.validity_months);set('notes',e.notes);
     document.getElementById('enrollTitle').textContent='✏️ Editar Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Guardar';
-    setTimeout(updateExpiryHint,50);
+    setTimeout(()=>{updateExpiryHint();updateScoreState();},50);
     openOverlay('enrollOverlay');
 }
 async function submitEnroll(ev){

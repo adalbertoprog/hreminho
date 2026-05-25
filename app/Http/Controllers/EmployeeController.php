@@ -53,6 +53,10 @@ class EmployeeController extends Controller
             default     => $query->orderBy('first_name', 'asc')->orderBy('last_name', 'asc'),
         };
 
+        if ($request->boolean('all')) {
+            return EmployeeResource::collection($query->get());
+        }
+
         $employees = $query->paginate($request->get('per_page', 15));
 
         return EmployeeResource::collection($employees);

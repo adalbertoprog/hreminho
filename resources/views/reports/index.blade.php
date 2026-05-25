@@ -870,7 +870,7 @@ async function loadEmployees() {
     document.getElementById('kpi-avg').textContent       = avg;
     if (top) {
         document.getElementById('kpi-top').textContent     = top.name.split(' ')[0];
-        document.getElementById('kpi-top-sub').textContent = top.total_completed + ' formações';
+        document.getElementById('kpi-top-sub').textContent = top.total_completed + (top.total_completed !== 1 ? ' formações' : ' formação');
     }
     document.getElementById('e-count').dataset.loaded = '1';
     renderCards();
