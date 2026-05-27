@@ -55,6 +55,8 @@ class TrainingController extends Controller
             'title'       => 'required|string|max:200',
             'description' => 'nullable|string',
             'provider'    => 'required|string|max:200',
+            'has_video'   => 'boolean',
+            'has_quiz'    => 'boolean',
         ]);
         $training = Training::create($data);
         return response()->json(['data' => $this->formatTraining($training->loadCount('employeeTrainings'))], 201);
@@ -71,6 +73,8 @@ class TrainingController extends Controller
             'title'       => 'sometimes|string|max:200',
             'description' => 'nullable|string',
             'provider'    => 'sometimes|string|max:200',
+            'has_video'   => 'boolean',
+            'has_quiz'    => 'boolean',
         ]);
         $training->update($data);
         return response()->json(['data' => $this->formatTraining($training->fresh()->loadCount('employeeTrainings'))]);
@@ -167,6 +171,8 @@ class TrainingController extends Controller
             'title'                   => $t->title,
             'description'             => $t->description,
             'provider'                => $t->provider,
+            'has_video'               => (bool) $t->has_video,
+            'has_quiz'                => (bool) $t->has_quiz,
             'employee_trainings_count' => $t->employee_trainings_count ?? 0,
             'created_at'              => $t->created_at?->toDateTimeString(),
         ];

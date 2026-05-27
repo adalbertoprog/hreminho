@@ -749,10 +749,10 @@ function exportExcel(tab) {
 
 async function loadDropdowns() {
     const [sectors, trainings, positions, employees] = await Promise.all([
-        fetch('/api/v1/sectors?all=1').then(r => r.json()),
-        fetch('/api/v1/trainings?all=1').then(r => r.json()),
-        fetch('/api/v1/positions?all=1').then(r => r.json()),
-        fetch('/api/v1/employees?all=true').then(r => r.json()),
+        fetch('/api/v1/sectors?all=1',{credentials:'same-origin'}).then(r => r.json()),
+        fetch('/api/v1/trainings?all=1',{credentials:'same-origin'}).then(r => r.json()),
+        fetch('/api/v1/positions?all=1',{credentials:'same-origin'}).then(r => r.json()),
+        fetch('/api/v1/employees?all=true',{credentials:'same-origin'}).then(r => r.json()),
     ]);
     const sectorList   = sectors.data   ?? sectors;
     const trainingList = trainings.data ?? trainings;
@@ -860,7 +860,7 @@ async function loadEmployees() {
         sector_id:   document.getElementById('e-sector').value,
         position_id: msEPosition ? msEPosition.getValues() : [],
     });
-    const res = await fetch('/api/v1/reports/employees-trainings?' + params).then(r => r.json());
+    const res = await fetch('/api/v1/reports/employees-trainings?' + params, {credentials:'same-origin'}).then(r => r.json());
     empData = res.data || [];
     const totalTrainings = empData.reduce((s,e) => s + (e.total_completed||0), 0);
     const avg = empData.length ? (totalTrainings / empData.length).toFixed(1) : '—';
@@ -954,7 +954,7 @@ async function loadTrainings() {
         position_id:  msTPosition  ? msTPosition.getValues()  : [],
         sector_id:    document.getElementById('t-sector').value,
     });
-    const res = await fetch('/api/v1/reports/training-employees?' + params).then(r => r.json());
+    const res = await fetch('/api/v1/reports/training-employees?' + params, {credentials:'same-origin'}).then(r => r.json());
     trainingsData = res.data || [];
     const count = document.getElementById('t-count');
     count.textContent = res.total !== 1 ? res.total + ' formações' : '1 formação';
@@ -990,7 +990,7 @@ async function loadAttendance() {
     const tbody = document.getElementById('a-tbody');
     tbody.innerHTML = '<tr><td colspan="6" class="state-msg">A carregar…</td></tr>';
     const params = qs({ employee_id: document.getElementById('a-employee').value, sector_id: document.getElementById('a-sector').value, status: document.getElementById('a-status').value, date_from: document.getElementById('a-from').value, date_to: document.getElementById('a-to').value });
-    const res = await fetch('/api/v1/reports/attendance?' + params).then(r => r.json());
+    const res = await fetch('/api/v1/reports/attendance?' + params, {credentials:'same-origin'}).then(r => r.json());
     const count = document.getElementById('a-count');
     count.textContent = res.total + ' registo(s)';
     count.dataset.loaded = '1';
@@ -1047,7 +1047,7 @@ async function loadValidity() {
         sector_id       : document.getElementById('v-sector').value,
     });
 
-    const res = await fetch('/api/v1/reports/validity?' + params).then(r => r.json());
+    const res = await fetch('/api/v1/reports/validity?' + params, {credentials:'same-origin'}).then(r => r.json());
     validityData = res.data || [];
 
     // Atualizar KPIs
@@ -1310,7 +1310,8 @@ async function sendEmail() {
     btn.disabled = true; btn.textContent = 'A enviar…';
     try {
         const res = await fetch('/api/v1/reports/send-email', {
-            method: 'POST',
+        credentials:'same-origin',
+        method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': CSRF },
             body: JSON.stringify({ email, type: typeMap[emailTab], subject, html }),
         }).then(r => r.json());
@@ -1341,3 +1342,4 @@ window.addEventListener('afterprint', () => {
 loadDropdowns().then(() => { switchTab('employees'); });
 </script>
 @endsection
+     

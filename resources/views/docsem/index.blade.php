@@ -263,7 +263,7 @@ async function pingApi() {
     btn.innerHTML = '<span class="spinner"></span> A testar…';
     result.textContent = '';
     try {
-        const res = await fetch('{{ route("docsem.ping") }}').then(r => r.json());
+        const res = await fetch('{{ route("docsem.ping") }}', {credentials:'same-origin'}).then(r => r.json());
         result.textContent = res.online ? '✅ Online' : '❌ Sem resposta';
         result.style.color = res.online ? '#4ade80' : '#f87171';
     } catch(e) {

@@ -117,7 +117,7 @@ const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 let editId=null, deleteId=null, employees=[];
 
 async function api(method, path, body) {
-    const opts = { method, headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'} };
+    const opts = { method, credentials:'same-origin', headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'} };
     if(body) opts.body = JSON.stringify(body);
     const r = await fetch(API + path, opts);
     if(!r.ok) { const e = await r.json().catch(()=>({message:'Erro'})); throw e; }
@@ -208,4 +208,4 @@ function toast(msg,type='ok') {
 document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
 boot();
 </script>
-@endsection
+@endsecti

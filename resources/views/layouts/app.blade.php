@@ -220,49 +220,61 @@
         </a>
 
         <nav class="sidebar-nav">
-            <p class="nav-section-label">Principal</p>
-            <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
-                <span class="nav-icon">🏠</span> Dashboard
-            </a>
+            @if(auth()->user()->role === 'employee')
+                {{-- ── Portal do Funcionário ── --}}
+                <p class="nav-section-label">O Meu Espaço</p>
+                <a href="{{ route('employee.dashboard') }}" class="nav-item {{ request()->routeIs('employee.dashboard') ? 'active' : '' }}">
+                    <span class="nav-icon">🏠</span> Início
+                </a>
+                <a href="{{ route('employee.dashboard') }}#formacoes" class="nav-item {{ request()->routeIs('employee.training') ? 'active' : '' }}">
+                    <span class="nav-icon">🎓</span> Formações
+                </a>
+            @else
+                {{-- ── Back-office (admin / hr) ── --}}
+                <p class="nav-section-label">Principal</p>
+                <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                    <span class="nav-icon">🏠</span> Dashboard
+                </a>
 
-            <p class="nav-section-label">Gestão</p>
-            <a href="{{ route('employees.index') }}" class="nav-item {{ request()->routeIs('employees.*') ? 'active' : '' }}">
-                <span class="nav-icon">👥</span> Funcionários
-            </a>
-            <a href="{{ route('departments.index') }}" class="nav-item {{ request()->routeIs('departments.*') ? 'active' : '' }}">
-                <span class="nav-icon">🏢</span> Departamentos
-            </a>
-            <a href="{{ route('positions.index') }}" class="nav-item {{ request()->routeIs('positions.*') ? 'active' : '' }}">
-                <span class="nav-icon">💼</span> Cargos
-            </a>
-            <a href="{{ route('sectors.index') }}" class="nav-item {{ request()->routeIs('sectors.*') ? 'active' : '' }}">
-                <span class="nav-icon">🏭</span> Setores
-            </a>
+                <p class="nav-section-label">Gestão</p>
+                <a href="{{ route('employees.index') }}" class="nav-item {{ request()->routeIs('employees.*') ? 'active' : '' }}">
+                    <span class="nav-icon">👥</span> Funcionários
+                </a>
+                <a href="{{ route('departments.index') }}" class="nav-item {{ request()->routeIs('departments.*') ? 'active' : '' }}">
+                    <span class="nav-icon">🏢</span> Departamentos
+                </a>
+                <a href="{{ route('positions.index') }}" class="nav-item {{ request()->routeIs('positions.*') ? 'active' : '' }}">
+                    <span class="nav-icon">💼</span> Cargos
+                </a>
+                <a href="{{ route('sectors.index') }}" class="nav-item {{ request()->routeIs('sectors.*') ? 'active' : '' }}">
+                    <span class="nav-icon">🏭</span> Setores
+                </a>
 
-            <p class="nav-section-label">Operações</p>
-            <a href="{{ route('attendances.index') }}" class="nav-item {{ request()->routeIs('attendances.*') ? 'active' : '' }}">
-                <span class="nav-icon">📅</span> Presenças
-            </a>
-            <a href="{{ route('leaves.index') }}" class="nav-item {{ request()->routeIs('leaves.*') ? 'active' : '' }}">
-                <span class="nav-icon">🌴</span> Férias & Licenças
-            </a>
-            <a href="{{ route('trainings.index') }}" class="nav-item {{ request()->routeIs('trainings.*') ? 'active' : '' }}">
-                <span class="nav-icon">🎓</span> Formações
-            </a>
-            <a href="{{ route('calendar.index') }}" class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
-                <span class="nav-icon">📆</span> Calendário
-            </a>
+                <p class="nav-section-label">Operações</p>
+                <a href="{{ route('attendances.index') }}" class="nav-item {{ request()->routeIs('attendances.*') ? 'active' : '' }}">
+                    <span class="nav-icon">📅</span> Presenças
+                </a>
+                <a href="{{ route('leaves.index') }}" class="nav-item {{ request()->routeIs('leaves.*') ? 'active' : '' }}">
+                    <span class="nav-icon">🌴</span> Férias & Licenças
+                </a>
+                <a href="{{ route('trainings.index') }}" class="nav-item {{ request()->routeIs('trainings.*') ? 'active' : '' }}">
+                    <span class="nav-icon">🎓</span> Formações
+                </a>
+                <a href="{{ route('calendar.index') }}" class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
+                    <span class="nav-icon">📆</span> Calendário
+                </a>
 
-            <p class="nav-section-label">Relatórios</p>
-            <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
-                <span class="nav-icon">📊</span> Relatórios
-            </a>
+                <p class="nav-section-label">Relatórios</p>
+                <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
+                    <span class="nav-icon">📊</span> Relatórios
+                </a>
 
-            @if(auth()->user()->role === 'admin')
-            <p class="nav-section-label">Administração</p>
-            <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
-                <span class="nav-icon">🔐</span> Utilizadores
-            </a>
+                @if(auth()->user()->role === 'admin')
+                <p class="nav-section-label">Administração</p>
+                <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
+                    <span class="nav-icon">🔐</span> Utilizadores
+                </a>
+                @endif
             @endif
         </nav>
 

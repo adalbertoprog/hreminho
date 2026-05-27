@@ -164,7 +164,7 @@ const statusLabel = {pending:'Pendente',approved:'Aprovado',rejected:'Rejeitado'
 const statusClass = {pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected'};
 
 async function apiFetch(method,path,body){
-    const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
+    const opts={method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
     if(body)opts.body=JSON.stringify(body);
     const r=await fetch(API+path,opts);
     if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
@@ -183,7 +183,7 @@ async function loadTable(){
     document.getElementById('pagBar').style.display='none';
     const q=new URLSearchParams({page,per_page:15,...filters});
     try{
-        const res=await fetch(`${API}/leaves?${q}`,{headers:{Accept:'application/json'}});
+        const res=await fetch(`${API}/leaves?${q}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
         const json=await res.json();
         renderTable(json.data??[]);
         renderPag(json.meta);

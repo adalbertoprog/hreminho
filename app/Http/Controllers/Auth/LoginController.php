@@ -22,16 +22,20 @@ class LoginController extends Controller
             'email'    => ['required', 'email'],
             'password' => ['required'],
         ], [
-            'email.required'    => 'O e-mail é obrigatório.',
-            'email.email'       => 'Insira um e-mail válido.',
-            'password.required' => 'A palavra-passe é obrigatória.',
+            'email.required'    => 'O e-mail e obrigatorio.',
+            'email.email'       => 'Insira um e-mail valido.',
+            'password.required' => 'A palavra-passe e obrigatoria.',
         ]);
 
         $remember = $request->boolean('remember');
 
         if (Auth::attempt($credentials, $remember)) {
             $request->session()->regenerate();
-            return redirect()->intended(route('dashboard'));
+            $role    = Auth::user()->role;
+            $default = $role === 'employee'
+                ? route('employee.dashboard')
+                : route('dashboard');
+            return redirect()->intended($default);
         }
 
         return back()

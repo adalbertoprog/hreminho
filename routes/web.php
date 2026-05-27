@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\Web\AttendanceWebController;
 use App\Http\Controllers\Web\DepartmentWebController;
 use App\Http\Controllers\Web\EmployeeWebController;
+use App\Http\Controllers\Web\EmployeePortalController;
 use App\Http\Controllers\Web\LeaveWebController;
 use App\Http\Controllers\Web\PositionWebController;
 use App\Http\Controllers\Web\SectorWebController;
@@ -50,19 +51,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
     Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
 
-    // ── Calendário de Formações ───────────────────────────────────────────────
     Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
     Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
 
-    // ── Palavra-passe ─────────────────────────────────────────────────────────
     Route::put('/password', [PasswordWebController::class, 'update'])->name('password.update');
 
-    // ── DocsElectro-Minho — Integração ────────────────────────────────────────
     Route::prefix('docsem')->name('docsem.')->group(function () {
         Route::get('/',                                      [DocsElectroMinhoWebController::class, 'index'])->name('index');
         Route::post('/sync',                                 [DocsElectroMinhoWebController::class, 'syncTodos'])->name('sync');
         Route::post('/sync/{employee}',                      [DocsElectroMinhoWebController::class, 'syncFuncionario'])->name('sync.employee');
         Route::get('/employee/{employee}/documentos',        [DocsElectroMinhoWebController::class, 'documentosFuncionario'])->name('employee.documentos');
         Route::get('/ping',                                  [DocsElectroMinhoWebController::class, 'ping'])->name('ping');
+    });
+
+    Route::prefix('employee')->name('employee.')->group(function () {
+        Route::get('/dashboard',           [EmployeePortalController::class, 'dashboard'])->name('dashboard');
+        Route::get('/training/{training}', [EmployeePortalController::class, 'training'])->name('training');
     });
 });

@@ -151,7 +151,7 @@ const statusLabel = {present:'Presente',late:'Atrasado',absent:'Ausente',holiday
 const statusClass  = {present:'badge-present',late:'badge-late',absent:'badge-absent',holiday:'badge-holiday',on_leave:'badge-on_leave'};
 
 async function apiFetch(method, path, body) {
-    const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
+    const opts={method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
     if(body) opts.body=JSON.stringify(body);
     const r=await fetch(API+path,opts);
     if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
@@ -176,7 +176,7 @@ async function loadTable() {
     document.getElementById('pagBar').style.display='none';
     const q=new URLSearchParams({page,per_page:15,...filters});
     try {
-        const res=await fetch(`${API}/attendances?${q}`,{headers:{Accept:'application/json'}});
+        const res=await fetch(`${API}/attendances?${q}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
         const json=await res.json();
         renderTable(json.data??[]);
         renderPag(json.meta);

@@ -10,12 +10,18 @@ use App\Models\Leave;
 use App\Models\Sector;
 use App\Models\Training;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class DashboardController extends Controller
 {
     public function index()
     {
+        // Redirect employees to their own portal
+        if (Auth::user()->role === 'employee') {
+            return redirect()->route('employee.dashboard');
+        }
+
         $today = Carbon::today();
 
         // Stats cards

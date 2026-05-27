@@ -248,7 +248,7 @@ function params(page) {
 
 async function loadUsers(page = 1) {
     currentPage = page;
-    const res  = await fetch(`${API}?${params(page)}`);
+    const res  = await fetch(`${API}?${params(page)}`, { credentials:'same-origin', headers:{ Accept:'application/json' } });
     const json = await res.json();
     renderTable(json.data);
     renderPagination(json.meta);
@@ -324,7 +324,7 @@ async function openEdit(id) {
     document.getElementById('f_password').value = '';
     document.getElementById('f_password_confirmation').value = '';
 
-    const res  = await fetch(`${API}/${id}`);
+    const res  = await fetch(`${API}/${id}`, { credentials:'same-origin', headers:{ Accept:'application/json' } });
     const json = await res.json();
     const u    = json.data;
     document.getElementById('f_name').value  = u.name;
@@ -347,6 +347,7 @@ async function saveUser() {
 
     const res = await fetch(url, {
         method,
+        credentials:'same-origin',
         headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': csrf() },
         body: JSON.stringify(body),
     });
@@ -368,6 +369,7 @@ function openDelete(id, name) {
 
 async function confirmDelete() {
     const res = await fetch(`${API}/${deletingId}`, {
+        credentials:'same-origin',
         method: 'DELETE',
         headers: { 'X-CSRF-TOKEN': csrf() },
     });

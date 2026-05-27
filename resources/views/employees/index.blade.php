@@ -683,7 +683,7 @@ function setPhotoPreview(src,initials){
 
 /* ── Helpers ── */
 async function apiFetch(method,path,body){
-    const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
+    const opts={method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
     if(body)opts.body=JSON.stringify(body);
     const r=await fetch(API+path,opts);
     if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
@@ -740,7 +740,7 @@ async function loadEmployees(){
     if(state.status)        params.status=state.status;
     if(state.sort) params.sort=state.sort;
     try{
-        const res=await fetch(`${API}/employees?${new URLSearchParams(params)}`,{headers:{Accept:'application/json'}});
+        const res=await fetch(`${API}/employees?${new URLSearchParams(params)}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
         const json=await res.json();
         renderTable(json.data??[]);renderPag(json.meta);updateSortHeaders();
     }catch{tbody.innerHTML='<tr class="state-row"><td colspan="9">Erro ao carregar.</td></tr>';}
@@ -1239,7 +1239,7 @@ async function checkDocsEmStatus() {
     text.textContent = 'A verificar ligação…';
     try {
         const res  = await fetch('{{ route("docsem.ping") }}', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            credentials:'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest' }
         });
         const data = await res.json();
         if (data.online) {

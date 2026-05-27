@@ -309,7 +309,7 @@ function toast(msg, type='ok') {
 }
 
 async function apiFetch(method, path, body) {
-    const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
+    const opts={method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
     if(body) opts.body=JSON.stringify(body);
     const r=await fetch(API+path,opts);
     if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', function(){
             const params=buildParams();
             params.set('start',fetchInfo.startStr.substring(0,10));
             params.set('end',fetchInfo.endStr.substring(0,10));
-            fetch('/calendar/events?'+params.toString(),{headers:{'Accept':'application/json','X-Requested-With':'XMLHttpRequest'}})
+            fetch('/calendar/events?'+params.toString(),{headers:{'Accept':'application/json',credentials:'same-origin','X-Requested-With':'XMLHttpRequest'}})
             .then(r=>r.json())
             .then(data=>{
                 const meta=document.getElementById('calMeta');

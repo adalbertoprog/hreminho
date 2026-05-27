@@ -213,8 +213,8 @@ let employees   = [];
 /* ── Boot ── */
 async function boot() {
     const [dRes, eRes] = await Promise.all([
-        fetch(`${API}/departments?per_page=200`, { headers:{ Accept:'application/json' } }),
-        fetch(`${API}/employees?per_page=500&status=active`, { headers:{ Accept:'application/json' } }),
+        fetch(`${API}/departments?per_page=200`, { credentials:'same-origin', headers:{ Accept:'application/json' } }),
+        fetch(`${API}/employees?per_page=500&status=active`, { credentials:'same-origin', headers:{ Accept:'application/json' } }),
     ]);
     const dJson = await dRes.json();
     const eJson = await eRes.json();
@@ -265,7 +265,7 @@ async function loadSectors(page = 1) {
     if (s) p.set('search', s);
     if (d) p.set('department_id', d);
 
-    const res  = await fetch(`${API}/sectors?${p}`, { headers:{ Accept:'application/json' } });
+    const res  = await fetch(`${API}/sectors?${p}`, { credentials:'same-origin', headers:{ Accept:'application/json' } });
     const json = await res.json();
     renderTable(json.data ?? []);
     renderPagination(json.meta);
@@ -325,7 +325,7 @@ async function openEdit(id) {
     editingId = id;
     document.getElementById('modalTitle').textContent = 'Editar setor';
 
-    const res  = await fetch(`${API}/sectors/${id}`, { headers:{ Accept:'application/json' } });
+    const res  = await fetch(`${API}/sectors/${id}`, { credentials:'same-origin', headers:{ Accept:'application/json' } });
     const json = await res.json();
     const s    = json.data;
 

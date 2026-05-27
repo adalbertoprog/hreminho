@@ -9,6 +9,10 @@
 .btn-primary{display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:9px;font-size:.875rem;font-weight:600;cursor:pointer;transition:.15s}
 .btn-primary:hover{background:#4f46e5}
 .tab-bar{display:flex;gap:4px;margin-bottom:20px;background:var(--bg-card);border:1px solid var(--border);border-radius:10px;padding:4px;width:fit-content}
+.btn-mode{padding:6px 14px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text-muted);font-size:.82rem;cursor:pointer;transition:.15s}
+.btn-mode.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-type-pick{display:flex;align-items:center;gap:14px;width:100%;padding:14px 16px;border-radius:12px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--text);cursor:pointer;transition:.15s;text-align:left}
+.btn-type-pick:hover{border-color:var(--accent);background:rgba(99,102,241,.12)}
 .tab-btn{padding:7px 18px;border-radius:7px;border:none;background:none;color:var(--text-muted);cursor:pointer;font-size:.86rem;font-weight:600;transition:.15s}
 .tab-btn.active{background:var(--accent);color:#fff}
 .filters{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px}
@@ -284,6 +288,16 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
         <div class="fg" style="margin-bottom:13px"><label>Título *</label><input name="title" required placeholder="Ex: Excel Avançado"></div>
         <div class="fg" style="margin-bottom:13px"><label>Fornecedor *</label><input name="provider" required placeholder="Ex: Udemy, Coursera..."></div>
         <div class="fg" style="margin-bottom:13px"><label>Descrição</label><textarea name="description" rows="3" placeholder="Descreva o conteúdo..."></textarea></div>
+        <div style="display:flex;gap:24px;margin-bottom:16px;padding:12px 14px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid var(--border)">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem">
+                <input type="checkbox" name="has_video" value="1" style="width:16px;height:16px;accent-color:var(--accent)">
+                🎬 Inclui vídeos
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.9rem">
+                <input type="checkbox" name="has_quiz" value="1" style="width:16px;height:16px;accent-color:var(--accent)">
+                📝 Inclui questionário
+            </label>
+        </div>
         <div class="modal-foot">
             <button type="button" class="btn-cancel" onclick="closeOverlay('trainingOverlay')">Cancelar</button>
             <button type="submit" class="btn-primary" id="trainingSubmitBtn">Criar</button>
@@ -304,6 +318,112 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
     </div>
 </div>
 </div>
+
+<!-- ══ Modal: Gerir Conteúdo (vídeos + questionário) ══ -->
+<style>
+.btn-icon-del{background:none;border:none;cursor:pointer;color:var(--danger);font-size:1rem;padding:4px 6px;border-radius:6px;transition:.15s}
+.btn-icon-del:hover{background:rgba(239,68,68,.12)}
+.q-block{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px}
+.q-block-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.q-opt-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.q-opt-row input[type=text]{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text-primary);font-size:.83rem;font-family:inherit}
+.q-opt-row input[type=text]:focus{outline:none;border-color:var(--accent)}
+.q-opt-row input[type=radio]{accent-color:var(--accent);width:15px;height:15px;flex-shrink:0}
+.q-opt-row .opt-correct-label{font-size:.72rem;color:var(--text-muted);white-space:nowrap}
+</style>
+<div class="overlay" id="contentOverlay">
+<div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <div class="modal-title">🎬 Conteúdo — <span id="contentTrainingTitle"></span></div>
+
+    <div class="tab-bar" style="margin-bottom:18px">
+        <button class="tab-btn active" id="ctTabVideo" onclick="ctSwitch('video')">▶ Vídeos</button>
+        <button class="tab-btn"        id="ctTabQuiz"  onclick="ctSwitch('quiz')">📝 Questionário</button>
+    </div>
+
+    <!-- Vídeos -->
+    <div id="ctVideo">
+        <div id="videoList" style="margin-bottom:14px"></div>
+        <div style="border-top:1px solid var(--border);padding-top:14px">
+            <p style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px">Adicionar vídeo</p>
+            <!-- Toggle URL / Upload -->
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+                <button id="vModeUrl" class="btn-mode active" onclick="setVideoMode('url')">🔗 URL externa</button>
+                <button id="vModeFile" class="btn-mode" onclick="setVideoMode('file')">📁 Upload ficheiro</button>
+            </div>
+            <div class="form-grid" style="grid-template-columns:1fr">
+                <div class="fg"><label>Título *</label><input id="vTitle" placeholder="Ex: Introdução à Segurança"></div>
+                <!-- URL mode -->
+                <div class="fg" id="vUrlField">
+                    <label>URL * <small style="font-weight:400">(YouTube, Vimeo ou MP4 directo)</small></label>
+                    <input id="vUrl" placeholder="https://www.youtube.com/watch?v=...">
+                </div>
+                <!-- File mode -->
+                <div class="fg" id="vFileField" style="display:none">
+                    <label>Ficheiro de vídeo * <small style="font-weight:400">(MP4, WebM — máx. 500 MB)</small></label>
+                    <input id="vFile" type="file" accept="video/mp4,video/webm,video/ogg,video/quicktime"
+                           style="padding:8px;background:var(--bg-input,rgba(255,255,255,.06));border:1px solid var(--border);border-radius:8px;width:100%;color:var(--text)">
+                    <div id="vUploadProgress" style="display:none;margin-top:6px">
+                        <div style="height:4px;background:var(--border);border-radius:4px;overflow:hidden">
+                            <div id="vProgressBar" style="height:100%;background:var(--accent);width:0%;transition:width .2s"></div>
+                        </div>
+                        <span id="vProgressText" style="font-size:.75rem;color:var(--text-muted)">A enviar...</span>
+                    </div>
+                </div>
+                <div class="fg"><label>Descrição</label><textarea id="vDesc" rows="2" style="resize:vertical" placeholder="Descrição opcional"></textarea></div>
+            </div>
+            <div class="modal-foot" style="border:none;padding:10px 0 0">
+                <button id="vAddBtn" class="btn-primary" onclick="addVideo()">＋ Adicionar Vídeo</button>
+            </div>
+        </div>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeOverlay('contentOverlay')">Fechar</button>
+        </div>
+    </div>
+
+    <!-- Questionário -->
+    <div id="ctQuiz" style="display:none">
+        <div class="form-grid" style="margin-bottom:16px">
+            <div class="fg full"><label>Título do questionário *</label><input id="qTitle" placeholder="Ex: Avaliação de Segurança"></div>
+            <div class="fg full"><label>Descrição / instruções</label><textarea id="qDesc" rows="2" style="resize:vertical" placeholder="Texto introdutório para o funcionário"></textarea></div>
+            <div class="fg"><label>Nota mínima de aprovação (%)</label><input id="qPass" type="number" min="0" max="100" value="70"></div>
+        </div>
+        <div id="questionsList"></div>
+        <button class="btn-primary" style="margin-bottom:16px;width:100%" onclick="addQuestion()">＋ Adicionar Pergunta</button>
+        <div class="modal-foot">
+            <button class="btn-cancel" onclick="closeOverlay('contentOverlay')">Fechar</button>
+            <button class="btn-primary" onclick="saveQuiz()">💾 Guardar Questionário</button>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Modal: Tipo de pergunta -->
+<div class="overlay" id="qTypeOverlay" style="z-index:1100">
+<div class="modal" style="max-width:380px;text-align:center">
+    <div class="modal-title" style="margin-bottom:6px">&#xFF0B; Adicionar Pergunta</div>
+    <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:20px">Escolhe o tipo de pergunta</p>
+    <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn-type-pick" onclick="pickQuestionType('mc')">
+            <span style="font-size:1.4rem">&#128280;</span>
+            <div>
+                <div style="font-weight:700;text-align:left">Multipla escolha</div>
+                <div style="font-size:.78rem;color:var(--text-muted);text-align:left">Varias opcoes, uma correcta</div>
+            </div>
+        </button>
+        <button class="btn-type-pick" onclick="pickQuestionType('tf')">
+            <span style="font-size:1.4rem">&#9989;</span>
+            <div>
+                <div style="font-weight:700;text-align:left">Verdadeiro / Falso</div>
+                <div style="font-size:.78rem;color:var(--text-muted);text-align:left">Duas opcoes: Verdadeiro ou Falso</div>
+            </div>
+        </button>
+    </div>
+    <div style="margin-top:18px">
+        <button class="btn-cancel" onclick="closeOverlay('qTypeOverlay')">Cancelar</button>
+    </div>
+</div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -323,7 +443,7 @@ const validityLabel = {valid:'✅ Válida', expiring:'🔔 A expirar', expired:'
 const validityClass = {valid:'badge-valid', expiring:'badge-expiring', expired:'badge-expired'};
 
 async function apiFetch(method,path,body){
-    const opts={method,headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
+    const opts={method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
     if(body)opts.body=JSON.stringify(body);
     const r=await fetch(API+path,opts);
     if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
@@ -398,7 +518,7 @@ async function loadEnrollments(){
     document.getElementById('enrollPagBar').style.display='none';
     const q=new URLSearchParams({page:enrollPage,per_page:15,...enrollFilters});
     try{
-        const res=await fetch(`${API}/enrollments?${q}`,{headers:{Accept:'application/json'}});
+        const res=await fetch(`${API}/enrollments?${q}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
         const json=await res.json();
         renderEnrollments(json.data??[]);
         renderPag(json.meta,'enrollPagBar','enrollPagInfo','enrollPagBtns',p=>{enrollPage=p;loadEnrollments();});
@@ -484,7 +604,7 @@ async function loadCatalog(){
     document.getElementById('catalogPagBar').style.display='none';
     const q=new URLSearchParams({page:catalogPage,per_page:15,sort:catalogSort,...catalogFilters});
     try{
-        const res=await fetch(`${API}/trainings?${q}`,{headers:{Accept:'application/json'}});
+        const res=await fetch(`${API}/trainings?${q}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
         const json=await res.json();
         renderCatalog(json.data??[]);
         updateCatalogSortHeaders();
@@ -501,11 +621,16 @@ function renderCatalog(rows){
     rows.forEach(t=>trainingMap[t.id]=t);
     tbody.innerHTML=rows.map(t=>`<tr>
         <td style="color:var(--text-muted)">${t.id}</td>
-        <td style="font-weight:600">${t.title}</td>
+        <td style="font-weight:600">
+            ${t.title}
+            ${t.has_video?'<span style="font-size:.7rem;background:rgba(99,102,241,.18);color:var(--accent-light);border-radius:6px;padding:2px 7px;margin-left:6px">🎬 Vídeo</span>':''}
+            ${t.has_quiz?'<span style="font-size:.7rem;background:rgba(34,197,94,.15);color:#4ade80;border-radius:6px;padding:2px 7px;margin-left:4px">📝 Quiz</span>':''}
+        </td>
         <td>${t.provider}</td>
         <td><span class="badge-count">${t.employee_trainings_count??0}</span></td>
         <td style="white-space:nowrap">
             <button class="btn-sm btn-edit" onclick="openEditTraining(${t.id})">✏️ Editar</button>
+            ${(t.has_video||t.has_quiz)?`<button class="btn-sm" style="background:rgba(99,102,241,.15);color:var(--accent-light)" onclick="openContentModal(${t.id},${t.has_video},${t.has_quiz})">🎬 Conteúdo</button>`:''}
             <button class="btn-sm btn-del"  onclick="openDelete('training',${t.id})">🗑</button>
         </td>
     </tr>`).join('');
@@ -734,6 +859,10 @@ function openEditTraining(id){
     const form=document.getElementById('trainingForm');
     const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
     set('title',t.title);set('provider',t.provider);set('description',t.description);
+    const chkVideo=form.querySelector('[name="has_video"]');
+    const chkQuiz=form.querySelector('[name="has_quiz"]');
+    if(chkVideo) chkVideo.checked=!!t.has_video;
+    if(chkQuiz)  chkQuiz.checked=!!t.has_quiz;
     document.getElementById('trainingTitle').textContent='✏️ Editar Formação';
     document.getElementById('trainingSubmitBtn').textContent='Guardar';
     openOverlay('trainingOverlay');
@@ -741,7 +870,10 @@ function openEditTraining(id){
 async function submitTraining(ev){
     ev.preventDefault();
     const btn=document.getElementById('trainingSubmitBtn');btn.disabled=true;btn.textContent='A guardar...';
-    const data={};new FormData(document.getElementById('trainingForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
+    const form=document.getElementById('trainingForm');
+    const data={};new FormData(form).forEach((v,k)=>{if(v!=='')data[k]=v;});
+    data.has_video=form.querySelector('[name="has_video"]').checked;
+    data.has_quiz=form.querySelector('[name="has_quiz"]').checked;
     try{
         if(trainingEditId) await apiFetch('PUT',`/trainings/${trainingEditId}`,data);
         else               await apiFetch('POST','/trainings',data);
@@ -781,5 +913,321 @@ document.querySelectorAll('.overlay').forEach(o=>{
     o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
 });
 boot();
+
+/* ══ Gestão de Conteúdo (vídeos + quiz) ══ */
+let ctTrainingId = null;
+
+function ctSwitch(tab) {
+    document.getElementById('ctVideo').style.display = tab === 'video' ? '' : 'none';
+    document.getElementById('ctQuiz').style.display  = tab === 'quiz'  ? '' : 'none';
+    document.getElementById('ctTabVideo').classList.toggle('active', tab === 'video');
+    document.getElementById('ctTabQuiz').classList.toggle('active',  tab === 'quiz');
+}
+
+async function openContentModal(trainingId, hasVideo, hasQuiz) {
+    ctTrainingId = trainingId;
+    const t = trainingMap[trainingId] || {};
+    document.getElementById('contentTrainingTitle').textContent = t.title || '';
+
+    // Show/hide tabs based on flags
+    const tabVideo = document.getElementById('ctTabVideo');
+    const tabQuiz  = document.getElementById('ctTabQuiz');
+    tabVideo.style.display = hasVideo ? '' : 'none';
+    tabQuiz.style.display  = hasQuiz  ? '' : 'none';
+
+    // Switch to the first available tab
+    if (hasVideo) ctSwitch('video');
+    else if (hasQuiz) ctSwitch('quiz');
+
+    // clear video add form
+    ['vTitle','vUrl','vDesc'].forEach(id => document.getElementById(id).value = '');
+    if (document.getElementById('vFile')) document.getElementById('vFile').value = '';
+    setVideoMode('url');
+    openOverlay('contentOverlay');
+    const tasks = [];
+    if (hasVideo) tasks.push(loadVideos());
+    if (hasQuiz)  tasks.push(loadQuiz());
+    await Promise.all(tasks);
+}
+
+/* ── Videos ── */
+async function loadVideos() {
+    document.getElementById('videoList').innerHTML = '<p style="color:var(--text-muted);font-size:.83rem">A carregar...</p>';
+    try {
+        const j = await apiFetch('GET', `/trainings/${ctTrainingId}/videos`);
+        renderVideoList(j.data || []);
+    } catch(e) {
+        document.getElementById('videoList').innerHTML = '<p style="color:var(--danger);font-size:.83rem">Erro ao carregar vídeos.</p>';
+    }
+}
+
+function renderVideoList(videos) {
+    const el = document.getElementById('videoList');
+    if (!videos.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem;padding:8px 0">Ainda não há vídeos nesta formação.</p>';
+        return;
+    }
+    el.innerHTML = videos.map((v,i) => `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:1.2rem">▶</span>
+            <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:.875rem">${v.title}</div>
+                <div style="font-size:.75rem;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${v.url}</div>
+            </div>
+            <button class="btn-icon-del" onclick="deleteVideo(${v.id})" title="Eliminar">🗑</button>
+        </div>
+    `).join('');
+}
+
+// ── Video mode toggle ──
+let videoMode = 'url'; // 'url' or 'file'
+function setVideoMode(mode) {
+    videoMode = mode;
+    document.getElementById('vModeUrl').classList.toggle('active', mode === 'url');
+    document.getElementById('vModeFile').classList.toggle('active', mode === 'file');
+    document.getElementById('vUrlField').style.display  = mode === 'url'  ? '' : 'none';
+    document.getElementById('vFileField').style.display = mode === 'file' ? '' : 'none';
+}
+
+async function addVideo() {
+    const title = document.getElementById('vTitle').value.trim();
+    const desc  = document.getElementById('vDesc').value.trim();
+    const btn   = document.getElementById('vAddBtn');
+
+    if (!title) return toast('O título é obrigatório.', 'err');
+
+    btn.disabled = true;
+    btn.textContent = 'A guardar...';
+
+    try {
+        if (videoMode === 'url') {
+            const url = document.getElementById('vUrl').value.trim();
+            if (!url) { toast('A URL é obrigatória.', 'err'); return; }
+            await apiFetch('POST', `/trainings/${ctTrainingId}/videos`, { title, url, description: desc || null });
+            toast('Vídeo adicionado.', 'ok');
+        } else {
+            const fileInput = document.getElementById('vFile');
+            if (!fileInput.files.length) { toast('Selecciona um ficheiro.', 'err'); return; }
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('video_file', file);
+            if (desc) formData.append('description', desc);
+
+            // XHR for progress bar
+            await uploadVideoWithProgress(formData);
+            toast('Vídeo enviado com sucesso.', 'ok');
+        }
+
+        ['vTitle','vUrl','vDesc'].forEach(id => document.getElementById(id).value = '');
+        document.getElementById('vFile').value = '';
+        setVideoMode('url');
+        loadVideos();
+    } catch(e) {
+        toast(e.message || 'Erro ao adicionar vídeo.', 'err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '＋ Adicionar Vídeo';
+    }
+}
+
+function uploadVideoWithProgress(formData) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const progWrap = document.getElementById('vUploadProgress');
+        const progBar  = document.getElementById('vProgressBar');
+        const progText = document.getElementById('vProgressText');
+
+        progWrap.style.display = '';
+        progBar.style.width = '0%';
+        progText.textContent = 'A enviar...';
+
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                progBar.style.width = pct + '%';
+                progText.textContent = pct + '%';
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            progWrap.style.display = 'none';
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve(JSON.parse(xhr.responseText));
+            } else {
+                try {
+                    const err = JSON.parse(xhr.responseText);
+                    reject(new Error(err.message || 'Erro no upload.'));
+                } catch { reject(new Error('Erro no upload.')); }
+            }
+        });
+
+        xhr.addEventListener('error', () => {
+            progWrap.style.display = 'none';
+            reject(new Error('Erro de ligacao.'));
+        });
+
+        xhr.open('POST', `/api/v1/trainings/${ctTrainingId}/videos`);
+        xhr.setRequestHeader('X-CSRF-TOKEN', CSRF);
+        xhr.setRequestHeader('Accept', 'application/json');
+        xhr.withCredentials = true;
+        xhr.send(formData);
+    });
+}
+
+async function deleteVideo(videoId) {
+    if (!confirm('Eliminar este vídeo?')) return;
+    try {
+        await apiFetch('DELETE', `/videos/${videoId}`);
+        toast('Vídeo eliminado.','ok');
+        loadVideos();
+    } catch(e) { toast(e.message || 'Erro.','err'); }
+}
+
+/* ── Quiz ── */
+let quizQuestions = []; // [{type,question,options:[{text,is_correct}]}]
+let quizExists    = false;
+
+async function loadQuiz() {
+    quizQuestions = [];
+    quizExists    = false;
+    try {
+        const j = await apiFetch('GET', `/trainings/${ctTrainingId}/quiz`);
+        const q = j.data;
+        quizExists = true;
+        document.getElementById('qTitle').value = q.title || '';
+        document.getElementById('qDesc').value  = q.description || '';
+        document.getElementById('qPass').value  = q.passing_score ?? 70;
+        quizQuestions = (q.questions || []).map(qq => ({
+            type: qq.type,
+            question: qq.question,
+            options: (qq.options || []).map(o => ({ text: o.text, is_correct: o.is_correct }))
+        }));
+    } catch(e) {
+        // 404 = no quiz yet, that's fine
+        document.getElementById('qTitle').value = '';
+        document.getElementById('qDesc').value  = '';
+        document.getElementById('qPass').value  = 70;
+    }
+    renderQuestions();
+}
+
+function renderQuestions() {
+    const el = document.getElementById('questionsList');
+    if (!quizQuestions.length) {
+        el.innerHTML = '<p style="color:var(--text-muted);font-size:.83rem;padding:8px 0 12px">Ainda não há perguntas. Clica em «＋ Adicionar Pergunta».</p>';
+        return;
+    }
+    el.innerHTML = quizQuestions.map((q, qi) => `
+        <div class="q-block" id="qblock-${qi}">
+            <div class="q-block-header">
+                <span style="font-size:.8rem;font-weight:700;color:var(--text-muted)">Pergunta ${qi+1} — ${q.type === 'mc' ? 'Múltipla escolha' : 'Verdadeiro / Falso'}</span>
+                <button class="btn-icon-del" onclick="removeQuestion(${qi})">🗑</button>
+            </div>
+            <div class="fg" style="margin-bottom:10px">
+                <label style="font-size:.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Enunciado *</label>
+                <input type="text" value="${escHtml(q.question)}" oninput="quizQuestions[${qi}].question=this.value" placeholder="Texto da pergunta">
+            </div>
+            <div>
+                <p style="font-size:.75rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+                    Opções <small style="font-weight:400;text-transform:none">(assinala a correcta)</small>
+                </p>
+                ${q.options.map((o,oi) => `
+                <div class="q-opt-row">
+                    <input type="radio" name="correct-${qi}" ${o.is_correct?'checked':''} onchange="setCorrect(${qi},${oi})">
+                    <span class="opt-correct-label">Correcta</span>
+                    <input type="text" value="${escHtml(o.text)}" oninput="quizQuestions[${qi}].options[${oi}].text=this.value" placeholder="Texto da opção">
+                    ${q.options.length > 2 ? `<button class="btn-icon-del" style="font-size:.85rem" onclick="removeOption(${qi},${oi})">✕</button>` : ''}
+                </div>`).join('')}
+                ${q.type === 'mc' && q.options.length < 5 ? `
+                <button onclick="addOption(${qi})" class="btn-cancel" style="font-size:.78rem;padding:5px 12px;margin-top:4px">＋ Opção</button>` : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function escHtml(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function addQuestion() {
+    openOverlay('qTypeOverlay');
+}
+
+function pickQuestionType(t) {
+    closeOverlay('qTypeOverlay');
+    const opts = t === 'tf'
+        ? [{ text: 'Verdadeiro', is_correct: true }, { text: 'Falso', is_correct: false }]
+        : [{ text: '', is_correct: true }, { text: '', is_correct: false }, { text: '', is_correct: false }];
+    quizQuestions.push({ type: t, question: '', options: opts });
+    renderQuestions();
+    setTimeout(() => {
+        const last = document.getElementById('qblock-' + (quizQuestions.length - 1));
+        if (last) last.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 50);
+}
+
+function removeQuestion(qi) {
+    quizQuestions.splice(qi, 1);
+    renderQuestions();
+}
+
+function setCorrect(qi, oi) {
+    quizQuestions[qi].options.forEach((o,i) => o.is_correct = (i === oi));
+    renderQuestions();
+}
+
+function addOption(qi) {
+    quizQuestions[qi].options.push({ text: '', is_correct: false });
+    renderQuestions();
+}
+
+function removeOption(qi, oi) {
+    const opts = quizQuestions[qi].options;
+    if (opts.length <= 2) return;
+    const wasCorrect = opts[oi].is_correct;
+    opts.splice(oi, 1);
+    if (wasCorrect && opts.length) opts[0].is_correct = true;
+    renderQuestions();
+}
+
+async function saveQuiz() {
+    const title = document.getElementById('qTitle').value.trim();
+    const desc  = document.getElementById('qDesc').value.trim();
+    const pass  = parseInt(document.getElementById('qPass').value) || 70;
+
+    if (!title) return toast('O título do questionário é obrigatório.','err');
+    if (!quizQuestions.length) return toast('Adiciona pelo menos uma pergunta.','err');
+
+    for (let i=0; i<quizQuestions.length; i++) {
+        const q = quizQuestions[i];
+        if (!q.question.trim()) return toast(`Pergunta ${i+1}: o enunciado está vazio.`,'err');
+        if (!q.options.some(o => o.is_correct)) return toast(`Pergunta ${i+1}: nenhuma opção está marcada como correcta.`,'err');
+        for (let j=0; j<q.options.length; j++) {
+            if (!q.options[j].text.trim()) return toast(`Pergunta ${i+1}, opção ${j+1}: texto em branco.`,'err');
+        }
+    }
+
+    const payload = {
+        title,
+        description: desc || null,
+        passing_score: pass,
+        questions: quizQuestions.map((q,qi) => ({
+            question: q.question,
+            type:     q.type,
+            order:    qi+1,
+            options:  q.options.map((o,oi) => ({ text: o.text, is_correct: o.is_correct, order: oi+1 }))
+        }))
+    };
+
+    try {
+        const method = quizExists ? 'PUT' : 'POST';
+        await apiFetch(method, `/trainings/${ctTrainingId}/quiz`, payload);
+        quizExists = true;
+        toast('Questionário guardado com sucesso.','ok');
+    } catch(e) {
+        toast(e.message || 'Erro ao guardar questionário.','err');
+    }
+}
 </script>
 @endsection
