@@ -424,6 +424,52 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
 </div>
 </div>
 
+<!-- ══ Modal: Resultados do questionário ══ -->
+<div class="overlay" id="resultsOverlay">
+<div class="modal" style="max-width:760px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="modal-title" style="margin-bottom:0">📊 Resultados — <span id="resModalTitle"></span></div>
+        <button onclick="closeOverlay('resultsOverlay')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.3rem;line-height:1">✕</button>
+    </div>
+    <p style="font-size:.8rem;color:var(--text-muted);margin-bottom:20px">Melhor tentativa por funcionário</p>
+
+    <div id="resSummary" style="margin-bottom:24px"></div>
+
+    <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <input id="resSearch" type="text" placeholder="🔍  Pesquisar por nome ou código…"
+               oninput="filterResultsTable()"
+               style="flex:1;min-width:200px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:.85rem;font-family:inherit;outline:none;transition:border-color .15s"
+               onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        <select id="resStatusFilter" onchange="filterResultsTable()"
+                style="background:var(--bg-card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text-primary);font-size:.85rem;font-family:inherit;outline:none;cursor:pointer">
+            <option value="">Todos</option>
+            <option value="passed">✓ Aprovados</option>
+            <option value="failed">✗ Reprovados</option>
+        </select>
+        <span id="resCount" style="font-size:.8rem;color:var(--text-muted);white-space:nowrap"></span>
+    </div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+        <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:9px 12px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Funcionário</th>
+                <th style="padding:9px 12px;text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Nota</th>
+                <th style="padding:9px 12px;text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Estado</th>
+                <th style="padding:9px 12px;text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Tentativas</th>
+                <th style="padding:9px 12px;text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Última tentativa</th>
+            </tr>
+        </thead>
+        <tbody id="resTableBody">
+            <tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">A carregar…</td></tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top:20px;text-align:right">
+        <button class="btn-cancel" onclick="closeOverlay('resultsOverlay')">Fechar</button>
+    </div>
+</div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -631,6 +677,7 @@ function renderCatalog(rows){
         <td style="white-space:nowrap">
             <button class="btn-sm btn-edit" onclick="openEditTraining(${t.id})">✏️ Editar</button>
             ${(t.has_video||t.has_quiz)?`<button class="btn-sm" style="background:rgba(99,102,241,.15);color:var(--accent-light)" onclick="openContentModal(${t.id},${t.has_video},${t.has_quiz})">🎬 Conteúdo</button>`:''}
+            ${t.has_quiz?`<button class="btn-sm" style="background:rgba(34,197,94,.12);color:#4ade80" onclick="openResultsModal(${t.id})">📊 Resultados</button>`:''}
             <button class="btn-sm btn-del"  onclick="openDelete('training',${t.id})">🗑</button>
         </td>
     </tr>`).join('');
@@ -1228,6 +1275,108 @@ async function saveQuiz() {
     } catch(e) {
         toast(e.message || 'Erro ao guardar questionário.','err');
     }
+}
+
+/* ══════════════════════════════════════════
+   Modal de Resultados
+══════════════════════════════════════════ */
+let resAllRows = [];
+
+async function openResultsModal(trainingId) {
+    const t = trainings.find(x => x.id === trainingId);
+    document.getElementById('resModalTitle').textContent = t ? t.title : '…';
+    // Reset
+    document.getElementById('resSummary').innerHTML  = '<span style="color:var(--text-muted);font-size:.85rem">A carregar…</span>';
+    document.getElementById('resTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">A carregar…</td></tr>';
+    document.getElementById('resSearch').value = '';
+    document.getElementById('resStatusFilter').value = '';
+    document.getElementById('resCount').textContent = '';
+    resAllRows = [];
+    openOverlay('resultsOverlay');
+
+    try {
+        const res = await apiFetch('GET', `/trainings/${trainingId}/quiz/results`);
+        resAllRows = res.data ?? [];
+        renderResultsSummary(res.summary);
+        renderResultsTable(resAllRows);
+    } catch(e) {
+        document.getElementById('resSummary').innerHTML = `<span style="color:var(--danger)">${e.message||'Erro ao carregar resultados.'}</span>`;
+    }
+}
+
+function filterResultsTable() {
+    const q      = document.getElementById('resSearch').value.trim().toLowerCase();
+    const status = document.getElementById('resStatusFilter').value;
+
+    const filtered = resAllRows.filter(r => {
+        const matchText = !q ||
+            r.name.toLowerCase().includes(q) ||
+            r.code.toLowerCase().includes(q);
+        const matchStatus = !status ||
+            (status === 'passed' && r.passed) ||
+            (status === 'failed' && !r.passed);
+        return matchText && matchStatus;
+    });
+
+    renderResultsTable(filtered);
+}
+
+function renderResultsSummary(s) {
+    if (!s || s.total === 0) {
+        document.getElementById('resSummary').innerHTML =
+            '<span style="color:var(--text-muted);font-size:.85rem">Ainda nenhum funcionário realizou este questionário.</span>';
+        return;
+    }
+    const pct = s.total > 0 ? Math.round((s.passed / s.total) * 100) : 0;
+    document.getElementById('resSummary').innerHTML = `
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+            <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px 20px;min-width:120px;text-align:center">
+                <div style="font-size:1.8rem;font-weight:800;color:var(--accent-light)">${s.total}</div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Participantes</div>
+            </div>
+            <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:14px 20px;min-width:120px;text-align:center">
+                <div style="font-size:1.8rem;font-weight:800;color:#22c55e">${s.passed} <span style="font-size:1rem;font-weight:500">(${pct}%)</span></div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Aprovados</div>
+            </div>
+            <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px 20px;min-width:120px;text-align:center">
+                <div style="font-size:1.8rem;font-weight:800;color:#f59e0b">${s.avg_score ?? '—'}${s.avg_score!=null?'%':''}</div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Nota média</div>
+            </div>
+            <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:14px 20px;min-width:120px;text-align:center">
+                <div style="font-size:1.1rem;font-weight:700;color:var(--text-muted);margin-top:4px">${s.passing_score}%</div>
+                <div style="font-size:.75rem;color:var(--text-muted);margin-top:2px">Nota mínima</div>
+            </div>
+        </div>`;
+}
+
+function renderResultsTable(rows) {
+    const body = document.getElementById('resTableBody');
+    const counter = document.getElementById('resCount');
+    if (!rows || rows.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:40px;color:var(--text-muted)">Sem resultados' + (resAllRows.length > 0 ? ' para o filtro aplicado.' : ' ainda.') + '</td></tr>';
+        counter.textContent = resAllRows.length > 0 ? `0 de ${resAllRows.length}` : '';
+        return;
+    }
+    counter.textContent = rows.length < resAllRows.length ? `${rows.length} de ${resAllRows.length}` : `${rows.length} funcionário${rows.length !== 1 ? 's' : ''}`;
+    body.innerHTML = rows.map(r => {
+        const passedBadge = r.passed
+            ? '<span style="background:rgba(34,197,94,.15);color:#22c55e;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700">✓ Aprovado</span>'
+            : '<span style="background:rgba(239,68,68,.12);color:#ef4444;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700">✗ Reprovado</span>';
+        const date = r.last_attempt
+            ? new Date(r.last_attempt).toLocaleDateString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric'})
+            : '—';
+        const scoreColor = r.passed ? '#22c55e' : '#ef4444';
+        return `<tr>
+            <td>
+                <div style="font-weight:600;font-size:.875rem">${r.name}</div>
+                <div style="font-size:.73rem;color:var(--text-muted);font-family:monospace">${r.code}</div>
+            </td>
+            <td style="text-align:center;font-weight:700;color:${scoreColor};font-size:1rem">${r.best_score}%</td>
+            <td style="text-align:center">${passedBadge}</td>
+            <td style="text-align:center;color:var(--text-muted);font-size:.82rem">${r.attempts}</td>
+            <td style="text-align:center;color:var(--text-muted);font-size:.82rem">${date}</td>
+        </tr>`;
+    }).join('');
 }
 </script>
 @endsection

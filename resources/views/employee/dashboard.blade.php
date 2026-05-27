@@ -90,10 +90,68 @@
 /* Empty */
 .empty-state { padding:48px 20px; text-align:center; color:var(--text-muted); }
 .empty-state .icon { font-size:2.5rem; margin-bottom:12px; }
+
+/* ── Banner de associação ── */
+.assoc-banner {
+    background:linear-gradient(135deg, rgba(99,102,241,.12), rgba(167,139,250,.08));
+    border:1px solid rgba(99,102,241,.35);
+    border-radius:14px; padding:24px 28px; margin-bottom:28px;
+    display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;
+}
+.assoc-banner .assoc-icon { font-size:2.2rem; flex-shrink:0; margin-top:2px; }
+.assoc-banner .assoc-content { flex:1; min-width:260px; }
+.assoc-banner .assoc-title {
+    font-size:1rem; font-weight:700; color:var(--text-primary); margin-bottom:4px;
+}
+.assoc-banner .assoc-sub {
+    font-size:.85rem; color:var(--text-muted); margin-bottom:14px; line-height:1.5;
+}
+.assoc-form { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.assoc-input {
+    background:rgba(255,255,255,.07); border:1px solid var(--border);
+    color:var(--text-primary); padding:9px 14px; border-radius:8px;
+    font-size:.9rem; outline:none; transition:border-color .15s;
+    font-family:inherit; letter-spacing:.05em; width:170px; text-transform:uppercase;
+}
+.assoc-input:focus { border-color:var(--accent); }
+.assoc-input::placeholder { text-transform:none; letter-spacing:0; color:var(--text-muted); }
+.assoc-btn {
+    background:var(--accent); color:#fff; border:none; padding:9px 20px;
+    border-radius:8px; font-size:.88rem; font-weight:600; cursor:pointer;
+    transition:background .15s; white-space:nowrap;
+}
+.assoc-btn:hover { background:var(--accent-light); }
+.assoc-btn:disabled { opacity:.5; cursor:not-allowed; }
+.assoc-msg { font-size:.82rem; margin-top:10px; padding:7px 12px; border-radius:7px; display:none; }
+.assoc-msg.error   { background:rgba(239,68,68,.12); color:var(--danger);  border:1px solid rgba(239,68,68,.25); }
+.assoc-msg.success { background:rgba(34,197,94,.12);  color:var(--success); border:1px solid rgba(34,197,94,.25); }
 </style>
 @endsection
 
 @section('content')
+
+{{-- ── Banner de associação (só aparece se não houver funcionário ligado) ── --}}
+@if(! $employee)
+<div class="assoc-banner" id="assocBanner">
+    <div class="assoc-icon">🔗</div>
+    <div class="assoc-content">
+        <p class="assoc-title">Ligue a sua conta ao seu registo de funcionário</p>
+        <p class="assoc-sub">
+            Para aceder ao seu perfil e formações, introduza o seu <strong>código de funcionário</strong>
+            (ex: <code style="background:rgba(255,255,255,.08);padding:1px 6px;border-radius:4px">FUN0590</code>).
+            Encontra este código no seu contrato ou pode solicitá-lo ao departamento de RH.
+        </p>
+        <div class="assoc-form">
+            <input id="assocCode" class="assoc-input" type="text" placeholder="Ex: FUN0590"
+                   maxlength="20" oninput="this.value = this.value.toUpperCase()">
+            <button class="assoc-btn" id="assocBtn" onclick="submitAssociation()">
+                Associar conta
+            </button>
+        </div>
+        <div class="assoc-msg" id="assocMsg"></div>
+    </div>
+</div>
+@endif
 
 <div class="profile-grid">
 
@@ -260,5 +318,67 @@
         </div>
     @endif
 </div>
+
+@if(! $employee)
+<script>
+async function submitAssociation() {
+    const input = document.getElementById('assocCode');
+    const btn   = document.getElementById('assocBtn');
+    const msg   = document.getElementById('assocMsg');
+    const code  = input.value.trim();
+
+    if (! code) {
+        showMsg('Por favor introduza o código de funcionário.', 'error');
+        input.focus();
+        return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'A verificar…';
+    msg.style.display = 'none';
+
+    try {
+        const res = await fetch('/api/v1/employee-portal/associate', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({ code }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            showMsg('✓ ' + data.message, 'success');
+            // Reload após breve pausa para mostrar a mensagem de sucesso
+            setTimeout(() => window.location.reload(), 1400);
+        } else {
+            showMsg(data.message || 'Erro ao associar. Tente novamente.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Associar conta';
+        }
+    } catch (e) {
+        showMsg('Erro de rede. Verifique a ligação e tente novamente.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Associar conta';
+    }
+}
+
+function showMsg(text, type) {
+    const msg = document.getElementById('assocMsg');
+    msg.textContent = text;
+    msg.className = 'assoc-msg ' + type;
+    msg.style.display = 'block';
+}
+
+// Submeter ao pressionar Enter
+document.getElementById('assocCode').addEventListener('keydown', e => {
+    if (e.key === 'Enter') submitAssociation();
+});
+</script>
+@endif
 
 @endsection

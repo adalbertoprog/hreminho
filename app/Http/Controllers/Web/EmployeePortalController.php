@@ -18,8 +18,15 @@ class EmployeePortalController extends Controller
     public function dashboard()
     {
         $user     = Auth::user();
+        // Prefer explicit user_id link; fall back to email match for legacy records
         $employee = Employee::with(['position', 'department', 'sector', 'trainings'])
-                            ->where('email', $user->email)
+                            ->where(function ($q) use ($user) {
+                                $q->where('user_id', $user->id)
+                                  ->orWhere(function ($q2) use ($user) {
+                                      $q2->whereNull('user_id')
+                                         ->where('email', $user->email);
+                                  });
+                            })
                             ->first();
 
         $trainings = Training::with('videos', 'quiz')

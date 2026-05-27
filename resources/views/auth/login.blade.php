@@ -179,7 +179,7 @@
             </div>
 
             <h1>Entrar na conta</h1>
-            <p class="subtitle">Insira as suas credenciais para aceder ao sistema.</p>
+            <p class="subtitle">Use o seu e-mail ou código de funcionário (ex: FUN0488) e a sua palavra-passe.</p>
 
             {{-- Erro de autenticação --}}
             @if ($errors->any())
@@ -193,17 +193,17 @@
                 @csrf
 
                 <div class="form-group">
-                    <label for="email">E-mail</label>
+                    <label for="login">E-mail ou Código de Funcionário</label>
                     <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        class="form-control @error('email') is-invalid @enderror"
-                        placeholder="seu@email.com"
-                        value="{{ old('email') }}"
-                        required autofocus autocomplete="email"
+                        type="text"
+                        id="login"
+                        name="login"
+                        class="form-control @error('login') is-invalid @enderror"
+                        placeholder="seu@email.com ou FUN0488"
+                        value="{{ old('login') }}"
+                        required autofocus autocomplete="username"
                     >
-                    @error('email')
+                    @error('login')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>

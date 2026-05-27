@@ -10,7 +10,9 @@ use App\Http\Controllers\SectorController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\TrainingVideoController;
 use App\Http\Controllers\QuizController;
+use App\Http\Controllers\BulkUserController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\Web\EmployeeAssociationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
@@ -33,14 +35,21 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
     // Videos e questionarios (gestao por admin/hr)
     Route::apiResource('trainings.videos', TrainingVideoController::class)->shallow();
-    Route::get('trainings/{training}/quiz',        [QuizController::class, 'show'])->name('trainings.quiz.show');
-    Route::post('trainings/{training}/quiz',       [QuizController::class, 'store'])->name('trainings.quiz.store');
-    Route::put('trainings/{training}/quiz',        [QuizController::class, 'update'])->name('trainings.quiz.update');
-    Route::post('quiz/{training}/attempt',         [QuizController::class, 'attempt'])->name('quiz.attempt');
-    Route::get('quiz/{training}/my-attempts',      [QuizController::class, 'myAttempts'])->name('quiz.my-attempts');
+    Route::get('trainings/{training}/quiz',         [QuizController::class, 'show'])->name('trainings.quiz.show');
+    Route::post('trainings/{training}/quiz',        [QuizController::class, 'store'])->name('trainings.quiz.store');
+    Route::put('trainings/{training}/quiz',         [QuizController::class, 'update'])->name('trainings.quiz.update');
+    Route::get('trainings/{training}/quiz/results', [QuizController::class, 'results'])->name('trainings.quiz.results');
+    Route::post('quiz/{training}/attempt',          [QuizController::class, 'attempt'])->name('quiz.attempt');
+    Route::get('quiz/{training}/my-attempts',       [QuizController::class, 'myAttempts'])->name('quiz.my-attempts');
 
     // Utilizadores
     Route::apiResource('users', UserController::class);
+
+    // Portal do funcionario — associacao por codigo
+    Route::post('employee-portal/associate', [EmployeeAssociationController::class, 'associate'])->name('employee-portal.associate');
+
+    // Criacao em massa de utilizadores para funcionarios activos
+    Route::post('employees/bulk-create-users', [BulkUserController::class, 'createEmployeeUsers'])->name('employees.bulk-create-users');
 
     // Relatorios
     Route::get('reports/completed-trainings',   [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');

@@ -32,6 +32,7 @@ class StoreEmployeeRequest extends FormRequest
             'status'        => 'nullable|in:active,inactive,terminated',
             'contract_type' => 'nullable|in:full-time,part-time,freelance',
             'end_date'      => 'nullable|date|after_or_equal:hire_date',
+            'user_id'       => 'nullable|integer|exists:users,id|unique:employees,user_id',
         ];
     }
 }

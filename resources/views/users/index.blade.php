@@ -12,6 +12,7 @@
     color:var(--text-primary); padding:8px 12px; border-radius:8px;
     font-size:.85rem; outline:none; transition:border-color .15s;
 }
+.filter-bar select option { background:var(--bg-card, #1e293b); color:var(--text-primary, #e2e8f0); }
 .filter-bar input:focus, .filter-bar select:focus { border-color:var(--accent); }
 .filter-bar input { flex:1; min-width:200px; }
 .btn {
@@ -97,6 +98,7 @@ tbody tr:hover td { background:rgba(255,255,255,.025); }
     transition:border-color .15s; font-family:inherit;
 }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); }
+.form-group select option { background:var(--bg-card, #1e293b); color:var(--text-primary, #e2e8f0); }
 .form-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
 .hint { font-size:.73rem; color:var(--text-muted); margin-top:4px; }
 

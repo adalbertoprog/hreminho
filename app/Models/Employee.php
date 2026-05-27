@@ -29,6 +29,7 @@ class Employee extends Model
         'status',
         'contract_type',
         'end_date',
+        'user_id',
     ];
 
     protected $casts = [
@@ -50,6 +51,11 @@ class Employee extends Model
     public function sector()
     {
         return $this->belongsTo(Sector::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
     }
 
     public function attendances()

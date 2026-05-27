@@ -217,6 +217,69 @@ class QuizController extends Controller
         return response()->json(['data' => $result]);
     }
 
+    // ── Results for a training (admin/hr) — best attempt per user ──
+
+    public function results(Training $training): JsonResponse
+    {
+        $this->authorizeManager();
+
+        $quiz = $training->quiz;
+        if (!$quiz) {
+            return response()->json(['data' => [], 'summary' => ['total' => 0, 'passed' => 0, 'avg_score' => null]]);
+        }
+
+        // All attempts for this quiz
+        $attempts = QuizAttempt::where('quiz_id', $quiz->id)
+            ->with('user.employee')
+            ->orderByDesc('score')
+            ->get();
+
+        // Group by user_id — keep best attempt (already ordered by score desc)
+        $byUser = [];
+        foreach ($attempts as $att) {
+            $uid = $att->user_id;
+            if (!isset($byUser[$uid])) {
+                $byUser[$uid] = [
+                    'user_id'    => $uid,
+                    'name'       => $att->user?->name ?? '—',
+                    'code'       => $att->user?->employee?->code ?? '—',
+                    'best_score' => $att->score,
+                    'passed'     => $att->passed,
+                    'last_attempt' => $att->completed_at ?? $att->created_at,
+                    'attempts'   => 1,
+                ];
+            } else {
+                $byUser[$uid]['attempts']++;
+                // Update last_attempt to most recent date
+                $attDate = $att->completed_at ?? $att->created_at;
+                if ($attDate > $byUser[$uid]['last_attempt']) {
+                    $byUser[$uid]['last_attempt'] = $attDate;
+                }
+            }
+        }
+
+        $rows        = array_values($byUser);
+        $totalUsers  = count($rows);
+        $passedUsers = count(array_filter($rows, fn($r) => $r['passed']));
+        $avgScore    = $totalUsers > 0
+            ? round(array_sum(array_column($rows, 'best_score')) / $totalUsers, 1)
+            : null;
+
+        // Sort: passed first, then by score desc
+        usort($rows, fn($a, $b) => $b['passed'] <=> $a['passed'] ?: $b['best_score'] <=> $a['best_score']);
+
+        return response()->json([
+            'data' => $rows,
+            'summary' => [
+                'total'        => $totalUsers,
+                'passed'       => $passedUsers,
+                'avg_score'    => $avgScore,
+                'passing_score' => $quiz->passing_score,
+                'quiz_title'   => $quiz->title,
+            ],
+        ]);
+    }
+
     // ── My attempts history ──
 
     public function myAttempts(Training $training): JsonResponse

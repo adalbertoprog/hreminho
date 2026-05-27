@@ -104,6 +104,17 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 .btn-danger { padding:9px 20px; border-radius:9px; background:#ef4444; color:#fff; border:none; cursor:pointer; font-size:.875rem; font-weight:600; }
 .btn-danger:hover { background:#dc2626; }
 
+/* Associação rápida */
+.btn-link  { background:rgba(34,197,94,.12); color:#22c55e; }
+.btn-link:hover  { background:rgba(34,197,94,.25); }
+.btn-unlink  { background:rgba(245,158,11,.12); color:#f59e0b; }
+.btn-unlink:hover  { background:rgba(245,158,11,.25); }
+.assoc-quick-modal { max-width:420px; }
+.assoc-quick-modal .sub { font-size:.82rem; color:var(--text-muted); margin:-12px 0 18px; }
+.assoc-quick-modal select { width:100%; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:9px; padding:9px 12px; color:var(--text-primary); font-size:.875rem; font-family:inherit; margin-bottom:4px; }
+.assoc-quick-modal select option { background:var(--bg-card); }
+.assoc-quick-modal .hint { font-size:.74rem; color:var(--text-muted); margin-bottom:18px; }
+
 /* ── Profile Card (hover) ── */
 .emp-name-wrap { position:relative; display:inline-block; cursor:default; }
 .emp-name-wrap .emp-name { text-decoration:underline dotted rgba(255,255,255,.2); }
@@ -249,6 +260,22 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 .emp-stat-num.inactive { color:#ef4444; }
 .emp-stat-label { font-size:.78rem; color:var(--text-muted); font-weight:500; margin-top:3px; }
 @media (max-width:600px) { .emp-stats { grid-template-columns:1fr; } }
+
+/* Bulk users modal */
+.bulk-modal { max-width:460px; }
+.bulk-modal .info-box {
+    background:rgba(99,102,241,.08); border:1px solid rgba(99,102,241,.2);
+    border-radius:10px; padding:14px 16px; font-size:.85rem; color:var(--text-muted);
+    margin-bottom:18px; line-height:1.6;
+}
+.bulk-modal .info-box strong { color:var(--text-primary); }
+.bulk-result { display:none; margin-top:16px; }
+.bulk-result .stat-row { display:flex; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:.875rem; }
+.bulk-result .stat-row:last-child { border-bottom:none; }
+.bulk-result .stat-row .val { font-weight:700; }
+.bulk-result .val.ok  { color:#22c55e; }
+.bulk-result .val.warn { color:#f59e0b; }
+.bulk-result .val.err  { color:#ef4444; }
 </style>
 @endsection
 
@@ -263,6 +290,10 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                 <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
             </svg>
             DocsElectro-Minho
+        </button>
+        <button class="btn-docsem" onclick="openBulkUsersModal()" title="Criar contas para todos os funcionários activos">
+            <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+            Gerar Acessos
         </button>
         <button class="btn-primary" onclick="openCreate()">+ Novo Funcionário</button>
     </div>
@@ -480,6 +511,12 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
                 </select>
             </div>
             <div class="fg"><label>Data de Término</label><input name="end_date" type="date"></div>
+            <div class="fg full">
+                <label>Utilizador do sistema <small style="font-weight:400;color:var(--text-muted)">(para acesso ao portal)</small></label>
+                <select name="user_id" id="fUserModal">
+                    <option value="">— Sem utilizador associado —</option>
+                </select>
+            </div>
         </div>
         <div class="modal-foot">
             <button type="button" class="btn-cancel" onclick="closeOverlay('formOverlay')">Cancelar</button>
@@ -631,6 +668,44 @@ tbody tr:hover { background:rgba(255,255,255,.025); }
 </div>
 </div>
 
+<!-- ══ Modal: Gerar acessos em massa ══ -->
+<div class="overlay" id="bulkUsersOverlay">
+<div class="modal bulk-modal">
+    <div class="modal-title">🔑 Gerar Acessos ao Portal</div>
+    <div class="info-box">
+        Esta acção vai criar uma conta de acesso para <strong>todos os funcionários activos</strong> que ainda não têm utilizador associado.<br><br>
+        • Login: <strong>código do funcionário</strong> (ex: FUN0488)<br>
+        • Password inicial: <strong>12345678</strong><br><br>
+        Funcionários que já têm conta não são afectados.
+    </div>
+    <div class="bulk-result" id="bulkResult">
+        <div class="stat-row"><span>✅ Contas criadas</span><span class="val ok" id="brCreated">—</span></div>
+        <div class="stat-row"><span>🔗 Contas ligadas (email)</span><span class="val warn" id="brLinked">—</span></div>
+        <div class="stat-row"><span>❌ Erros</span><span class="val err" id="brErrors">—</span></div>
+    </div>
+    <div class="modal-foot" id="bulkFooter">
+        <button type="button" class="btn-cancel" onclick="closeOverlay('bulkUsersOverlay')">Cancelar</button>
+        <button type="button" class="btn-primary" id="bulkRunBtn" onclick="runBulkUsers()">▶ Executar</button>
+    </div>
+</div>
+</div>
+
+<!-- ══ Modal: Associação rápida ao portal ══ -->
+<div class="overlay" id="quickAssocOverlay">
+<div class="modal assoc-quick-modal">
+    <div class="modal-title">🔗 Associar ao Portal</div>
+    <p class="sub" id="qaSubtitle">Selecione o utilizador do sistema a associar a este funcionário.</p>
+    <select id="qaUserSelect">
+        <option value="">— Sem utilizador associado —</option>
+    </select>
+    <p class="hint">Apenas utilizadores com perfil <strong>Employee</strong> são listados.</p>
+    <div class="modal-foot">
+        <button type="button" class="btn-cancel" onclick="closeOverlay('quickAssocOverlay')">Cancelar</button>
+        <button type="button" class="btn-primary" id="qaSubmitBtn" onclick="submitQuickAssoc()">Guardar</button>
+    </div>
+</div>
+</div>
+
 <!-- ══ Modal: Confirmar exclusão ══ -->
 <div class="overlay" id="delOverlay">
 <div class="modal confirm-modal">
@@ -713,16 +788,20 @@ async function loadStats(){
     }catch(e){ /* silencioso */ }
 }
 
+let systemUsers=[];
 async function boot(){
-    const [d,p,s]=await Promise.all([
+    const [d,p,s,u]=await Promise.all([
         apiFetch('GET','/departments?per_page=200').catch(()=>({data:[]})),
         apiFetch('GET','/positions?per_page=200').catch(()=>({data:[]})),
         apiFetch('GET','/sectors?per_page=200').catch(()=>({data:[]})),
+        apiFetch('GET','/users?per_page=200').catch(()=>({data:[]})),
     ]);
-    depts=d.data??[];positions=p.data??[];sectors=s.data??[];
+    depts=d.data??[];positions=p.data??[];sectors=s.data??[];systemUsers=u.data??[];
     ['fDept','fDeptModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;depts.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.department}</option>`);});
     ['fPos','fPosModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;positions.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.position}</option>`);});
     ['fSector','fSecModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;sectors.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.sector}</option>`);});
+    const uSel=document.getElementById('fUserModal');
+    if(uSel) systemUsers.forEach(u=>uSel.innerHTML+=`<option value="${u.id}">${u.name} (${u.email})</option>`);
     loadStats();
     loadEmployees();
 }
@@ -773,6 +852,7 @@ function renderTable(rows){
                             onmouseenter="showHoverCard(event,${emp.id})"
                             onmouseleave="hideHoverCard()">
                             <span class="emp-name">${emp.full_name}</span>
+                            ${emp.user_id ? '<span title="Utilizador do sistema associado" style="font-size:.7rem;background:rgba(34,197,94,.15);color:#4ade80;border-radius:6px;padding:1px 6px;margin-left:6px;vertical-align:middle">🔗 Portal</span>' : ''}
                         </span>
                     </div>
                 </div>
@@ -787,6 +867,10 @@ function renderTable(rows){
             <td style="white-space:nowrap">
                 <button class="btn-sm btn-view" onclick="openView(${emp.id})">👁 Ver</button>
                 <button class="btn-sm btn-edit" onclick="openEdit(${emp.id})">✏️ Editar</button>
+                ${emp.user_id
+                    ? `<button class="btn-sm btn-unlink" onclick="openQuickAssoc(${emp.id})" title="Gerir associação ao portal">🔗</button>`
+                    : `<button class="btn-sm btn-link"   onclick="openQuickAssoc(${emp.id})" title="Associar ao portal">🔗</button>`
+                }
                 <button class="btn-sm btn-del"  onclick="openDeleteModal(${emp.id},'${ini}')">🗑</button>
             </td></tr>`;
     }).join('');
@@ -914,6 +998,7 @@ function openEdit(empId){const emp=empMap[empId];if(!emp)return;
     set('work_location',emp.work_location);set('position_id',emp.position_id);
     set('department_id',emp.department_id);set('sector_id',emp.sector_id??'');
     set('hire_date',emp.hire_date);set('status',emp.status);set('contract_type',emp.contract_type);set('end_date',emp.end_date);
+    set('user_id', emp.user_id??'');
     const ini=((emp.first_name?.[0]??'')+(emp.last_name?.[0]??'')).toUpperCase();
     photoBase64=null;setPhotoPreview(emp.photo??null,ini);
     document.getElementById('formTitle').textContent='Editar Funcionário';
@@ -924,6 +1009,9 @@ async function submitForm(e){
     e.preventDefault();
     const btn=document.getElementById('formSubmitBtn');btn.disabled=true;btn.textContent='A guardar...';
     const data={};new FormData(document.getElementById('empForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
+    // user_id must be integer or absent (not empty string)
+    if(data.user_id) data.user_id=parseInt(data.user_id);
+    else delete data.user_id;
     if(photoBase64)data.photo=photoBase64;
     try{
         if(editId)await apiFetch('PUT',`/employees/${editId}`,data);
@@ -1272,5 +1360,97 @@ document.getElementById('docsEmForm').addEventListener('submit', function() {
 @endif
 
 boot();
+
+/* ── Gerar acessos em massa ── */
+function openBulkUsersModal() {
+    // Resetar estado
+    document.getElementById('bulkResult').style.display = 'none';
+    document.getElementById('bulkFooter').innerHTML =
+        `<button type="button" class="btn-cancel" onclick="closeOverlay('bulkUsersOverlay')">Cancelar</button>
+         <button type="button" class="btn-primary" id="bulkRunBtn" onclick="runBulkUsers()">▶ Executar</button>`;
+    openOverlay('bulkUsersOverlay');
+}
+
+async function runBulkUsers() {
+    const btn = document.getElementById('bulkRunBtn');
+    btn.disabled = true;
+    btn.textContent = 'A criar contas…';
+
+    try {
+        const res = await apiFetch('POST', '/employees/bulk-create-users', {});
+        document.getElementById('brCreated').textContent = res.created;
+        document.getElementById('brLinked').textContent  = res.linked;
+        document.getElementById('brErrors').textContent  = res.errors?.length ?? 0;
+        document.getElementById('bulkResult').style.display = 'block';
+
+        // Substituir footer por botão de fechar
+        document.getElementById('bulkFooter').innerHTML =
+            `<button type="button" class="btn-primary" onclick="closeOverlay('bulkUsersOverlay');loadEmployees()">✓ Fechar e actualizar</button>`;
+
+        toast(res.message, 'ok');
+    } catch (err) {
+        toast(err.message ?? 'Erro ao gerar acessos.', 'err');
+        btn.disabled = false;
+        btn.textContent = '▶ Executar';
+    }
+}
+
+/* ── Associação rápida ── */
+let qaEmpId = null;
+
+function openQuickAssoc(empId) {
+    qaEmpId = empId;
+    const emp = empMap[empId];
+    if (!emp) return;
+
+    // Subtítulo com nome do funcionário
+    document.getElementById('qaSubtitle').innerHTML =
+        `Funcionário: <strong>${emp.full_name}</strong> (${emp.code})`;
+
+    // IDs já em uso por outros funcionários (excluir o próprio)
+    const usedUserIds = new Set(
+        Object.values(empMap)
+              .filter(e => e.user_id && e.id !== empId)
+              .map(e => e.user_id)
+    );
+
+    // Popular dropdown apenas com utilizadores livres (ou o já associado a este)
+    const sel = document.getElementById('qaUserSelect');
+    sel.innerHTML = '<option value="">— Sem utilizador associado —</option>';
+    systemUsers.forEach(u => {
+        if (usedUserIds.has(u.id)) return; // já associado a outro funcionário
+        const opt = document.createElement('option');
+        opt.value = u.id;
+        opt.textContent = `${u.name} (${u.email})`;
+        if (u.id === emp.user_id) opt.selected = true;
+        sel.appendChild(opt);
+    });
+
+    openOverlay('quickAssocOverlay');
+}
+
+async function submitQuickAssoc() {
+    if (!qaEmpId) return;
+    const btn = document.getElementById('qaSubmitBtn');
+    const sel = document.getElementById('qaUserSelect');
+    const userId = sel.value ? parseInt(sel.value) : null;
+
+    btn.disabled = true;
+    btn.textContent = 'A guardar…';
+
+    try {
+        const body = { user_id: userId };
+        await apiFetch('PUT', `/employees/${qaEmpId}`, body);
+        toast(userId ? 'Utilizador associado com sucesso!' : 'Associação removida.', 'ok');
+        closeOverlay('quickAssocOverlay');
+        loadEmployees();
+    } catch (err) {
+        const msg = err.errors ? Object.values(err.errors).flat().join('\n') : (err.message ?? 'Erro.');
+        toast(msg, 'err');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Guardar';
+    }
+}
 </script>
 @endsection

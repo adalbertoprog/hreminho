@@ -27,6 +27,7 @@ class EmployeeResource extends JsonResource
             'end_date'      => $this->end_date?->toDateString(),
             'status'        => $this->status,
             'contract_type' => $this->contract_type,
+            'user_id'       => $this->user_id,
             'position'      => $this->whenLoaded('position', fn() => [
                 'id'       => $this->position->id,
                 'position' => $this->position->position,
