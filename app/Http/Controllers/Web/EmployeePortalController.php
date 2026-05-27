@@ -22,7 +22,12 @@ class EmployeePortalController extends Controller
                             ->where('email', $user->email)
                             ->first();
 
-        $trainings = Training::with('videos', 'quiz')->get();
+        $trainings = Training::with('videos', 'quiz')
+                            ->where(function ($q) {
+                                $q->where('has_video', true)
+                                  ->orWhere('has_quiz', true);
+                            })
+                            ->get();
 
         // Enrich each training with the user's best attempt (if any)
         $quizStatuses = [];
