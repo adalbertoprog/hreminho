@@ -199,7 +199,7 @@
                         id="login"
                         name="login"
                         class="form-control @error('login') is-invalid @enderror"
-                        placeholder="seuemail@email.com ou código (ex.: FUN0777)"
+                        placeholder="email ou código (ex.: FUN0777)"
                         value="{{ old('login') }}"
                         required autofocus autocomplete="username"
                     >
