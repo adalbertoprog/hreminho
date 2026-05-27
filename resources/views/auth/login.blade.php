@@ -179,7 +179,7 @@
             </div>
 
             <h1>Entrar na conta</h1>
-            <p class="subtitle">Use o seu e-mail ou código de funcionário (ex: FUN0488) e a sua palavra-passe.</p>
+            <p class="subtitle">Use o seu e-mail ou código de funcionário (ex.: FUN0777) e a sua palavra-passe.</p>
 
             {{-- Erro de autenticação --}}
             @if ($errors->any())
@@ -199,7 +199,7 @@
                         id="login"
                         name="login"
                         class="form-control @error('login') is-invalid @enderror"
-                        placeholder="seu@email.com ou FUN0488"
+                        placeholder="seuemail@email.com ou código (ex.: FUN0777)"
                         value="{{ old('login') }}"
                         required autofocus autocomplete="username"
                     >
