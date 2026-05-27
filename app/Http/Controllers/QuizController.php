@@ -228,30 +228,35 @@ class QuizController extends Controller
             return response()->json(['data' => [], 'summary' => ['total' => 0, 'passed' => 0, 'avg_score' => null]]);
         }
 
-        // All attempts for this quiz
+        // All attempts for this quiz — no ordering needed, we process manually
         $attempts = QuizAttempt::where('quiz_id', $quiz->id)
             ->with('user.employee')
-            ->orderByDesc('score')
             ->get();
 
-        // Group by user_id — keep best attempt (already ordered by score desc)
+        // Group by user_id: best score + most recent date + attempt count
         $byUser = [];
         foreach ($attempts as $att) {
-            $uid = $att->user_id;
+            $uid     = $att->user_id;
+            $attDate = $att->completed_at ?? $att->created_at;
+
             if (!isset($byUser[$uid])) {
                 $byUser[$uid] = [
-                    'user_id'    => $uid,
-                    'name'       => $att->user?->name ?? '—',
-                    'code'       => $att->user?->employee?->code ?? '—',
-                    'best_score' => $att->score,
-                    'passed'     => $att->passed,
-                    'last_attempt' => $att->completed_at ?? $att->created_at,
-                    'attempts'   => 1,
+                    'user_id'      => $uid,
+                    'name'         => $att->user?->name ?? '—',
+                    'code'         => $att->user?->employee?->code ?? '—',
+                    'best_score'   => $att->score,
+                    'passed'       => (bool) $att->passed,
+                    'last_attempt' => $attDate,
+                    'attempts'     => 1,
                 ];
             } else {
                 $byUser[$uid]['attempts']++;
-                // Update last_attempt to most recent date
-                $attDate = $att->completed_at ?? $att->created_at;
+                // Keep the highest score (and its passed status)
+                if ($att->score > $byUser[$uid]['best_score']) {
+                    $byUser[$uid]['best_score'] = $att->score;
+                    $byUser[$uid]['passed']     = (bool) $att->passed;
+                }
+                // Always track the most recent date
                 if ($attDate > $byUser[$uid]['last_attempt']) {
                     $byUser[$uid]['last_attempt'] = $attDate;
                 }
