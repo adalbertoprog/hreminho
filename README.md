@@ -1,221 +1,178 @@
-# HRELETROMINHO - HR Management System
+# HRElectrominho — Sistema de Gestão de Recursos Humanos
 
-A modern and scalable Employee Management System built with Laravel 13 and **Blade templating**, featuring a modern web interface with **Tailwind CSS** and **Vite** for asset bundling, designed to streamline HR operations such as employee records, department management, attendance tracking, leave requests, career progression, and staff training.
+Sistema de gestão de RH desenvolvido para a empresa **Electrominho**. Cobre a gestão completa de funcionários, departamentos, presenças, férias, formações com vídeo e questionários, e integração com o sistema documental externo DocsElectroMinho.
 
-
-## About
-
-**HRELETROMINHO** is a full-featured HR management application designed to streamline employee management, attendance tracking, leave management, department organization, and training administration. This project is currently in early development stages and aims to provide a user-friendly solution for managing all aspects of human resources.
+---
 
 ## Tech Stack
 
-- **Backend**: PHP 8.3+ with Laravel 13
-- **Frontend**: Blade Templates (35%) + Tailwind CSS 4.0
-- **Build Tool**: Vite 8.0 with Laravel Vite Plugin
-- **Database**: SQLite (default, configurable)
-- **Testing**: PHPUnit 12.5+
-- **Development Tools**: Laravel Pint, Faker, Mockery
+- **Backend**: PHP 8.3+ com Laravel 11 (`bootstrap/app.php`, sem Kernel.php)
+- **Frontend**: Blade Templates + CSS custom (dark theme com variáveis CSS) + Vanilla JS
+- **Build Tool**: Vite com Laravel Vite Plugin
+- **Base de dados**: MySQL (`dbhreminho`)
+- **URL local**: `http://hreminho.test`
 
-## Key Features
+---
 
-### Employee Management
-- Create and manage employee records
-- Track employee details and assignments
+## Funcionalidades
 
-### Department Management
-- Organize departments within the organization
-- Assign employees to departments
+### Gestão de Funcionários
+- Registo completo: dados pessoais, cargo, departamento, sector, foto de perfil (base64)
+- Soft deletes — registos arquivados em vez de eliminados
+- Associação a conta de utilizador por código de funcionário (ex.: `FUN0590`) ou e-mail
+- Geração em massa de contas para todos os funcionários activos (password padrão: `12345678`)
 
-### Position Management
-- Define and manage job positions
-- Link positions to employees and departments
+### Estrutura Organizacional
+- Departamentos, Cargos (Positions) e Sectores com relações entre si
 
-### Sectors
-- Organize company structure by sectors
+### Presenças e Férias
+- Registo diário de presenças por funcionário
+- Pedidos de férias/licenças com anexos e histórico
 
-### Attendance Tracking
-- Monitor employee attendance records
-- Track attendance patterns
+### Formações
+- Catálogo de formações com vídeos (upload ou URL externa) e questionários
+- Quiz com perguntas de escolha múltipla (MC) e verdadeiro/falso (TF)
+- Pontuação mínima configurável por questionário (default: 70%)
+- Resultados por formação: melhor pontuação por utilizador, filtros por nome/código e estado
 
-### Leave Management
-- Manage leave requests and approvals
-- Track available leave days
+### Portal do Funcionário
+- Dashboard pessoal com perfil e formações disponíveis
+- Player de vídeo integrado + realização de questionários
+- Quiz bloqueado até todos os vídeos da formação serem vistos
+- Histórico de tentativas por formação
+- Auto-associação da conta por código de funcionário
 
-### Training Management
-- Organize and track employee training programs
-- Monitor training history
+### Relatórios
+- Formações concluídas (filtros por formação, sector, data)
+- Funcionários com formações concluídas
+- Sumário de presenças
 
-### Reporting
-- Generate comprehensive HR reports
-- Access analytics and insights
+### Integração DocsElectroMinho
+- Sincronização de funcionários activos com sistema externo de gestão documental
+- Sincronização global ou individual por funcionário
+- Página de estado e ping em `/docsem`
 
-### User Management
-- Administrative user control
-- Role-based access management
+### Autenticação
+- Login por e-mail **ou** código de funcionário (ex.: `FUN0777`)
+- Três roles: `admin`, `hr`, `employee` — com redirects e acessos distintos
+- Sessão persistente com "Manter sessão iniciada"
 
-### Authentication
-- Secure login system
-- Session management
+---
 
-## Getting Started
+## Roles de Utilizador
 
-### Prerequisites
+| Role       | Acesso                                              |
+|------------|-----------------------------------------------------|
+| `admin`    | Back-office completo — todas as operações           |
+| `hr`       | Mesmo acesso que admin                              |
+| `employee` | Portal do funcionário (`/employee/dashboard`) apenas |
 
-- PHP 8.3 or higher
+---
+
+## Instalação
+
+### Pré-requisitos
+- PHP 8.3+
 - Composer
-- Node.js and npm
-- Git
+- Node.js e npm
+- MySQL
 
-### Installation
+### Passos
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/adalbertoprog/hreminho.git
-   cd hreminho
-   ```
-
-2. **Install dependencies**
-   ```bash
-   composer install
-   npm install
-   ```
-
-3. **Setup environment**
-   ```bash
-   cp .env.example .env
-   php artisan key:generate
-   ```
-
-4. **Database setup**
-   ```bash
-   php artisan migrate
-   ```
-
-5. **Build assets**
-   ```bash
-   npm run build
-   ```
-
-### Quick Setup Script
-
-The project includes a convenient setup script:
 ```bash
-composer run setup
+# 1. Instalar dependências
+composer install
+npm install
+
+# 2. Configurar ambiente
+cp .env.example .env
+php artisan key:generate
+
+# 3. Configurar base de dados em .env
+# DB_CONNECTION=mysql
+# DB_DATABASE=dbhreminho
+
+# 4. Executar migrações
+php artisan migrate
+
+# 5. Compilar assets
+npm run build
+
+# 6. Symlink de storage (para uploads de vídeo)
+php artisan storage:link
 ```
 
-This will:
-- Install PHP dependencies
-- Copy `.env` file
-- Generate application key
-- Run migrations
-- Install npm packages
-- Build frontend assets
+---
 
-## Development
-
-### Start Development Server
-
-Run the development command to start all services concurrently:
+## Desenvolvimento
 
 ```bash
 composer run dev
 ```
 
-This command will start:
-- Laravel development server
-- Queue listener
-- Laravel Pail (logs)
-- Vite development server
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-### Testing
-
-Run the test suite:
-```bash
-composer run test
-```
-
-This will clear config cache and run PHPUnit tests.
-
-## Project Structure
-
-```
-├── app/
-│   ├── Http/
-│   │   ├── Controllers/
-│   │   │   ├── Auth/
-│   │   │   ├── Web/
-│   │   │   └── DashboardController.php
-│   │   └── Middleware/
-│   ├── Models/
-│   └── ...
-├── routes/
-│   └── web.php
-├── resources/
-│   ├── views/
-│   └── css/
-├── database/
-│   ├── migrations/
-│   ├── factories/
-│   └── seeders/
-├── config/
-├── public/
-└── storage/
-```
-
-
-
-## Database Configuration
-
-By default, HREMINHO uses MySQL. To configure a different database:
-
-1. Edit `.env` file
-2. Uncomment and configure `DB_*` variables for SQLite/PostgreSQL/etc
-3. Run migrations
-
-
-## Available Commands
-
-### Composer Scripts
-
-```bash
-composer run setup      # Complete project setup
-composer run dev        # Development mode with watchers
-composer run test       # Run tests
-```
-
-### Artisan Commands
-
-```bash
-php artisan serve       # Start development server
-php artisan migrate     # Run migrations
-php artisan tinker      # Interactive shell
-php artisan queue:listen    # Listen for queued jobs
-php artisan pail        # Tail application logs
-```
-
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support & Documentation
-
-- [Laravel Documentation](https://laravel.com/docs)
-- [Tailwind CSS Documentation](https://tailwindcss.com)
-- [Vite Documentation](https://vitejs.dev)
+Inicia em simultâneo: servidor Laravel, queue listener, logs (Pail) e Vite dev server.
 
 ---
 
-**Author**: Adalberto Prog 
-**Repository**: https://github.com/adalbertoprog/hreminho  
-**Created**: April 2026
+## Comandos Artisan
+
+```bash
+# Criar contas de utilizador para todos os funcionários activos sem conta
+php artisan employees:create-users
+
+# Simulação sem alterações na base de dados
+php artisan employees:create-users --dry-run
+
+# Sincronizar funcionários com DocsElectroMinho
+php artisan docsem:sync
+```
+
+---
+
+## Variáveis .env Relevantes
+
+```env
+APP_NAME=HRElectrominho
+DB_CONNECTION=#########
+DB_DATABASE=########
+
+DOCSEM_API_URL=http://docselectrominho.test/api
+DOCSEM_API_TOKEN=...
+DOCSEM_SYNC_ENABLED=true
+```
+
+---
+
+## Estrutura de Pastas Relevante
+
+```
+app/
+├── Console/Commands/        # CreateEmployeeUsers, SyncToDocsElectroMinho
+├── Http/
+│   ├── Controllers/         # Controllers API (JSON)
+│   │   ├── Auth/            # LoginController
+│   │   └── Web/             # Controllers Web (Blade) + EmployeeAssociationController
+│   └── Requests/            # Form Requests com validação
+├── Models/                  # Eloquent models
+└── Services/                # DocsElectroMinhoService
+routes/
+├── web.php                  # Rotas Blade (auth middleware)
+└── api.php                  # Rotas API /api/v1/ (auth:web middleware)
+resources/views/
+├── layouts/                 # app, guest, employee
+├── auth/                    # login
+├── dashboard/               # back-office
+├── employees/               # CRUD + associação + geração em massa
+├── trainings/               # CRUD + conteúdo + resultados de quiz
+├── employee/                # portal do funcionário
+├── reports/                 # relatórios
+└── docsem/                  # integração DocsElectroMinho
+database/migrations/         # 24 migrações desde Jan 2024 a Mai 2026
+```
+
+
+---
+
+**Autor**: Adalberto Filipe  
+**Criado**: Abril 2026  
+**Última actualização**: Maio 2026
