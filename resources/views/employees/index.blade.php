@@ -794,7 +794,7 @@ async function boot(){
         apiFetch('GET','/departments?per_page=200').catch(()=>({data:[]})),
         apiFetch('GET','/positions?per_page=200').catch(()=>({data:[]})),
         apiFetch('GET','/sectors?per_page=200').catch(()=>({data:[]})),
-        apiFetch('GET','/users?per_page=200').catch(()=>({data:[]})),
+        apiFetch('GET','/users?per_page=200&role=employee').catch(()=>({data:[]})),
     ]);
     depts=d.data??[];positions=p.data??[];sectors=s.data??[];systemUsers=u.data??[];
     ['fDept','fDeptModal'].forEach(id=>{const el=document.getElementById(id);if(!el)return;depts.forEach(x=>el.innerHTML+=`<option value="${x.id}">${x.department}</option>`);});
