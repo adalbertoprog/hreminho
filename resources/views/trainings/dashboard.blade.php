@@ -254,6 +254,104 @@
 
 </div>
 
+{{-- ── Cumprimento de Formações Obrigatórias ── --}}
+@if($mandatoryCompliance->count() > 0)
+<div class="section-title">Cumprimento de Formações Obrigatórias</div>
+
+{{-- KPIs de cumprimento --}}
+<div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+    <div class="kpi kpi-purple" style="min-width:130px;flex:1">
+        <div class="kpi-icon">🔒</div>
+        <div class="kpi-value">{{ $complianceKpis['total_rules'] }}</div>
+        <div class="kpi-label">Regras definidas</div>
+    </div>
+    <div class="kpi kpi-green" style="min-width:130px;flex:1">
+        <div class="kpi-icon">✅</div>
+        <div class="kpi-value">{{ $complianceKpis['fully_done'] }}</div>
+        <div class="kpi-label">100% cumpridas</div>
+    </div>
+    <div class="kpi kpi-red" style="min-width:130px;flex:1">
+        <div class="kpi-icon">🚨</div>
+        <div class="kpi-value">{{ $complianceKpis['critical'] }}</div>
+        <div class="kpi-label">Críticas (&lt;50%)</div>
+    </div>
+    <div class="kpi kpi-amber" style="min-width:130px;flex:1">
+        <div class="kpi-icon">👤</div>
+        <div class="kpi-value">{{ $complianceKpis['total_missing'] }}</div>
+        <div class="kpi-label">Em falta (total)</div>
+    </div>
+</div>
+
+{{-- Tabela de cumprimento por regra --}}
+<div class="card" style="margin-bottom:20px">
+    <div class="card-header">
+        <h3>📋 Detalhe por Regra — ordenado por urgência</h3>
+        <a href="{{ route('trainings.index') }}#mandatory">Gerir regras →</a>
+    </div>
+    <div style="overflow-x:auto">
+        <table class="compact-table">
+            <thead>
+                <tr>
+                    <th>Formação</th>
+                    <th>Âmbito</th>
+                    <th style="text-align:center">Abrangidos</th>
+                    <th style="text-align:center">Concluíram</th>
+                    <th style="text-align:center">Em falta</th>
+                    <th style="min-width:160px">Cumprimento</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($mandatoryCompliance as $rule)
+                @php
+                    $rateColor = $rule['rate'] >= 100 ? '#22c55e' : ($rule['rate'] >= 50 ? '#f59e0b' : '#ef4444');
+                    $rateBg    = $rule['rate'] >= 100 ? 'rgba(34,197,94,.12)' : ($rule['rate'] >= 50 ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.10)');
+                @endphp
+                <tr>
+                    <td style="font-weight:600">{{ Str::limit($rule['training'], 40) }}</td>
+                    <td>
+                        @if($rule['target_type'] === 'all')
+                            <span class="badge badge-purple">Todos</span>
+                        @elseif($rule['target_type'] === 'department')
+                            <span class="badge" style="background:rgba(6,182,212,.12);color:#06b6d4">Dept.</span>
+                            {{ $rule['target_name'] }}
+                        @else
+                            <span class="badge" style="background:rgba(168,85,247,.12);color:#a855f7">Cargo</span>
+                            {{ $rule['target_name'] }}
+                        @endif
+                    </td>
+                    <td style="text-align:center;color:var(--text-muted)">{{ $rule['total'] }}</td>
+                    <td style="text-align:center;color:#22c55e;font-weight:600">{{ $rule['done'] }}</td>
+                    <td style="text-align:center">
+                        @if($rule['missing'] > 0)
+                            <span class="badge badge-red">{{ $rule['missing'] }}</span>
+                        @else
+                            <span style="color:#22c55e;font-size:.8rem">✓</span>
+                        @endif
+                    </td>
+                    <td>
+                        <div style="display:flex;align-items:center;gap:8px">
+                            <div style="flex:1;height:6px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden">
+                                <div style="height:100%;width:{{ $rule['rate'] }}%;background:{{ $rateColor }};border-radius:4px"></div>
+                            </div>
+                            <span style="font-size:.8rem;font-weight:700;color:{{ $rateColor }};min-width:36px;text-align:right">{{ $rule['rate'] }}%</span>
+                        </div>
+                    </td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+    </div>
+</div>
+@else
+<div class="section-title">Cumprimento de Formações Obrigatórias</div>
+<div class="card" style="margin-bottom:20px">
+    <div class="empty-state" style="padding:32px">
+        Nenhuma formação obrigatória definida ainda.
+        <a href="{{ route('trainings.index') }}" style="color:var(--accent-light);margin-left:6px">Definir regras →</a>
+    </div>
+</div>
+@endif
+
 @endsection
 
 @section('scripts')

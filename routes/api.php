@@ -13,6 +13,7 @@ use App\Http\Controllers\QuizController;
 use App\Http\Controllers\BulkUserController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Web\EmployeeAssociationController;
+use App\Http\Controllers\MandatoryTrainingController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
@@ -44,6 +45,14 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
     Route::get('trainings/{training}/quiz/results', [QuizController::class, 'results'])->name('trainings.quiz.results');
     Route::post('quiz/{training}/attempt',          [QuizController::class, 'attempt'])->name('quiz.attempt');
     Route::get('quiz/{training}/my-attempts',       [QuizController::class, 'myAttempts'])->name('quiz.my-attempts');
+
+    // Formações obrigatórias (compliance antes de {mandatoryTraining} para evitar conflito)
+    Route::get   ('mandatory-trainings/compliance',               [MandatoryTrainingController::class, 'compliance'])->name('mandatory-trainings.compliance');
+    Route::get   ('mandatory-trainings',                          [MandatoryTrainingController::class, 'index'])->name('mandatory-trainings.index');
+    Route::post  ('mandatory-trainings',                          [MandatoryTrainingController::class, 'store'])->name('mandatory-trainings.store');
+    Route::put   ('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'update'])->name('mandatory-trainings.update');
+    Route::delete('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'destroy'])->name('mandatory-trainings.destroy');
+    Route::get   ('mandatory-trainings/{mandatoryTraining}/gaps', [MandatoryTrainingController::class, 'gaps'])->name('mandatory-trainings.gaps');
 
     // Utilizadores
     Route::apiResource('users', UserController::class);

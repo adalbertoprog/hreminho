@@ -7,6 +7,7 @@ use App\Models\Department;
 use App\Models\Employee;
 use App\Models\EmployeeTraining;
 use App\Models\QuizAttempt;
+use App\Models\MandatoryTraining;
 use App\Models\Training;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -158,6 +159,36 @@ class TrainingDashboardController extends Controller
             ->take(8)
             ->values();
 
+        // ── Cumprimento de formações obrigatórias ──────────────────────
+        $mandatoryCompliance = MandatoryTraining::with('training')->get()->map(function ($rule) {
+            $affectedIds = $rule->scopeAffectedEmployeeIds();
+            $doneIds     = EmployeeTraining::whereIn('employee_id', $affectedIds)
+                ->where('training_id', $rule->training_id)
+                ->whereIn('status', ['enrolled', 'completed'])
+                ->pluck('employee_id')->unique();
+            $total   = $affectedIds->count();
+            $done    = $doneIds->count();
+            $missing = $total - $done;
+            $rate    = $total > 0 ? round(($done / $total) * 100) : 0;
+            return [
+                'id'          => $rule->id,
+                'training'    => $rule->training->title,
+                'target_name' => $rule->target_name,
+                'target_type' => $rule->target_type,
+                'total'       => $total,
+                'done'        => $done,
+                'missing'     => $missing,
+                'rate'        => $rate,
+            ];
+        })->sortBy('rate')->values();
+
+        $complianceKpis = [
+            'total_rules'    => $mandatoryCompliance->count(),
+            'fully_done'     => $mandatoryCompliance->where('rate', 100)->count(),
+            'critical'       => $mandatoryCompliance->where('rate', '<', 50)->count(),
+            'total_missing'  => $mandatoryCompliance->sum('missing'),
+        ];
+
         return view('trainings.dashboard', compact(
             'kpis',
             'deptCompletion',
@@ -167,6 +198,8 @@ class TrainingDashboardController extends Controller
             'chartEvolution',
             'chartDept',
             'topByApproval',
+            'mandatoryCompliance',
+            'complianceKpis',
         ));
     }
 }

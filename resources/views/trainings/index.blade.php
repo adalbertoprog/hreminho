@@ -122,15 +122,17 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
 <div class="toolbar">
     <h2>🎓 Formações</h2>
     <div style="display:flex;gap:10px">
-        <button class="btn-primary" id="btnNewTraining" onclick="openCreateTraining()" style="display:none">+ Nova Formação</button>
-        <button class="btn-primary" id="btnNewEnroll"   onclick="openCreateEnroll()">+ Nova Inscrição</button>
+        <button class="btn-primary" id="btnNewTraining"  onclick="openCreateTraining()" style="display:none">+ Nova Formação</button>
+        <button class="btn-primary" id="btnNewEnroll"    onclick="openCreateEnroll()">+ Nova Inscrição</button>
+        <button class="btn-primary" id="btnNewMandatory" onclick="openMandatoryModal()" style="display:none">🔒 Nova Regra</button>
     </div>
 </div>
 
 <!-- Tabs -->
 <div class="tab-bar">
-    <button class="tab-btn active" id="tabEnroll"   onclick="switchTab('enrollments')">📋 Inscrições</button>
-    <button class="tab-btn"        id="tabCatalog"  onclick="switchTab('catalog')">📚 Catálogo</button>
+    <button class="tab-btn active" id="tabEnroll"     onclick="switchTab('enrollments')">📋 Inscrições</button>
+    <button class="tab-btn"        id="tabCatalog"    onclick="switchTab('catalog')">📚 Catálogo</button>
+    <button class="tab-btn"        id="tabMandatory"  onclick="switchTab('mandatory')">🔒 Obrigatórias</button>
 </div>
 
 <!-- Alertas de validade (clicáveis — filtram a tabela) -->
@@ -473,6 +475,116 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
 </div>
 </div>
 
+{{-- ══ Tab: Formações Obrigatórias ══ --}}
+<div id="tableMandatory" style="display:none">
+
+    {{-- Sumário de cumprimento global --}}
+    <div id="mandatorySummary" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px"></div>
+
+    {{-- Tabela de regras --}}
+    <div class="card">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Formação</th>
+                        <th>Âmbito</th>
+                        <th>Prazo (dias)</th>
+                        <th style="text-align:center">Funcionários</th>
+                        <th style="text-align:center">Cumprimento</th>
+                        <th>Notas</th>
+                        <th style="text-align:center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="mandatoryBody">
+                    <tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{{-- Modal: Nova/Editar Regra Obrigatória --}}
+<div class="overlay" id="mandatoryOverlay">
+<div class="modal" style="max-width:520px">
+    <div class="modal-title" id="mandatoryModalTitle">🔒 Nova Regra Obrigatória</div>
+
+    <form id="mandatoryForm" onsubmit="submitMandatory(event)">
+        <input type="hidden" id="mandatoryId">
+
+        <div class="form-grid">
+            <div class="fg full">
+                <label>Formação *</label>
+                <select id="mTrainingId" required style="width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text-primary);font-size:.86rem;font-family:inherit">
+                    <option value="">— Selecionar formação —</option>
+                </select>
+            </div>
+
+            <div class="fg full">
+                <label>Âmbito *</label>
+                <select id="mTargetType" required onchange="onTargetTypeChange()" style="width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text-primary);font-size:.86rem;font-family:inherit">
+                    <option value="all">Todos os funcionários</option>
+                    <option value="department">Por Departamento</option>
+                    <option value="position">Por Cargo</option>
+                </select>
+            </div>
+
+            <div class="fg full" id="mTargetIdWrap" style="display:none">
+                <label id="mTargetIdLabel">Departamento *</label>
+                <select id="mTargetId" style="width:100%;background:var(--bg-card);border:1px solid var(--border);border-radius:9px;padding:9px 13px;color:var(--text-primary);font-size:.86rem;font-family:inherit">
+                    <option value="">— Selecionar —</option>
+                </select>
+            </div>
+
+            <div class="fg">
+                <label>Prazo após contratação (dias)</label>
+                <input type="number" id="mDeadlineDays" min="1" max="3650" placeholder="Ex: 90 (opcional)" class="f-input" style="width:100%">
+            </div>
+
+            <div class="fg full">
+                <label>Notas</label>
+                <input type="text" id="mNotes" maxlength="500" placeholder="Observações (opcional)" class="f-input" style="width:100%">
+            </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px">
+            <button type="button" class="btn-cancel" onclick="closeOverlay('mandatoryOverlay')">Cancelar</button>
+            <button type="submit" class="btn-primary">Guardar</button>
+        </div>
+    </form>
+</div>
+</div>
+
+{{-- Modal: Lacunas (funcionários em falta) --}}
+<div class="overlay" id="gapsOverlay">
+<div class="modal" style="max-width:680px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div class="modal-title" style="margin-bottom:0">👤 Funcionários em Falta — <span id="gapsModalTitle"></span></div>
+        <button onclick="closeOverlay('gapsOverlay')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.3rem">✕</button>
+    </div>
+
+    <div id="gapsSummary" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px"></div>
+
+    <table style="width:100%;border-collapse:collapse;font-size:.875rem">
+        <thead>
+            <tr style="border-bottom:1px solid var(--border)">
+                <th style="padding:8px 12px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Funcionário</th>
+                <th style="padding:8px 12px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Departamento</th>
+                <th style="padding:8px 12px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Cargo</th>
+                <th style="padding:8px 12px;text-align:center;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--text-muted)">Contratado em</th>
+            </tr>
+        </thead>
+        <tbody id="gapsBody">
+            <tr><td colspan="4" style="text-align:center;padding:28px;color:var(--text-muted)">A carregar…</td></tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top:16px;display:flex;justify-content:flex-end">
+        <button class="btn-cancel" onclick="closeOverlay('gapsOverlay')">Fechar</button>
+    </div>
+</div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -548,17 +660,21 @@ function filterByValidity(v){
 /* ── Tabs ── */
 function switchTab(tab){
     currentTab=tab;
-    document.getElementById('tabEnroll').classList.toggle('active',tab==='enrollments');
-    document.getElementById('tabCatalog').classList.toggle('active',tab==='catalog');
-    document.getElementById('tableEnroll').style.display   = tab==='enrollments'?'':'none';
-    document.getElementById('tableCatalog').style.display  = tab==='catalog'?'':'none';
-    document.getElementById('filterEnroll').style.display  = tab==='enrollments'?'flex':'none';
-    document.getElementById('filterCatalog').style.display = tab==='catalog'?'flex':'none';
-    document.getElementById('alertBar').style.display      = tab==='enrollments'?'':'none';
+    document.getElementById('tabEnroll').classList.toggle('active',    tab==='enrollments');
+    document.getElementById('tabCatalog').classList.toggle('active',   tab==='catalog');
+    document.getElementById('tabMandatory').classList.toggle('active', tab==='mandatory');
+    document.getElementById('tableEnroll').style.display    = tab==='enrollments'?'':'none';
+    document.getElementById('tableCatalog').style.display   = tab==='catalog'?'':'none';
+    document.getElementById('tableMandatory').style.display = tab==='mandatory'?'':'none';
+    document.getElementById('filterEnroll').style.display   = tab==='enrollments'?'flex':'none';
+    document.getElementById('filterCatalog').style.display  = tab==='catalog'?'flex':'none';
+    document.getElementById('alertBar').style.display       = tab==='enrollments'?'':'none';
     document.getElementById('btnNewTraining').style.display  = tab==='catalog'?'inline-flex':'none';
     document.getElementById('btnNewEnroll').style.display    = tab==='enrollments'?'inline-flex':'none';
+    document.getElementById('btnNewMandatory').style.display = tab==='mandatory'?'inline-flex':'none';
     document.getElementById('catalogStatRow').style.display  = tab==='catalog'?'':'none';
-    if(tab==='catalog') loadCatalog();
+    if(tab==='catalog')   loadCatalog();
+    if(tab==='mandatory') loadMandatory();
 }
 
 /* ── Enrollments ── */
@@ -1532,6 +1648,241 @@ function exportResultsPDF() {
     w.document.close();
     w.focus();
     setTimeout(() => w.print(), 400);
+}
+
+/* ══════════════════════════════════════════
+   Tab: Formações Obrigatórias
+══════════════════════════════════════════ */
+let mandatoryRules = [];
+let departments    = [];
+let positions      = [];
+
+async function loadMandatory() {
+    document.getElementById('mandatoryBody').innerHTML =
+        '<tr class="state-row"><td colspan="7"><span class="spinner"></span>A carregar...</td></tr>';
+
+    try {
+        const [rules, depts, pos] = await Promise.all([
+            apiFetch('GET', '/mandatory-trainings'),
+            apiFetch('GET', '/departments?all=true').catch(() => ({ data: [] })),
+            apiFetch('GET', '/positions?all=true').catch(() => ({ data: [] })),
+        ]);
+        mandatoryRules = rules.data ?? [];
+        departments    = depts.data ?? [];
+        positions      = pos.data  ?? [];
+
+        // Preencher selects do modal com deps/cargos
+        populateMandatorySelects();
+        renderMandatoryTable(mandatoryRules);
+        renderMandatorySummary(mandatoryRules);
+    } catch(e) {
+        document.getElementById('mandatoryBody').innerHTML =
+            '<tr class="state-row"><td colspan="7">⚠️ Erro ao carregar regras.</td></tr>';
+    }
+}
+
+function renderMandatorySummary(rules) {
+    const el = document.getElementById('mandatorySummary');
+    if (!rules.length) { el.innerHTML = ''; return; }
+    const total   = rules.length;
+    const ok      = rules.filter(r => r.rate >= 100).length;
+    const warn    = rules.filter(r => r.rate >= 50 && r.rate < 100).length;
+    const crit    = rules.filter(r => r.rate < 50).length;
+    const missing = rules.reduce((s, r) => s + r.missing, 0);
+    el.innerHTML = `
+        <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:12px 18px;text-align:center;min-width:110px">
+            <div style="font-size:1.6rem;font-weight:800;color:var(--accent-light)">${total}</div>
+            <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">Regras activas</div>
+        </div>
+        <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:12px 18px;text-align:center;min-width:110px">
+            <div style="font-size:1.6rem;font-weight:800;color:#22c55e">${ok}</div>
+            <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">100% cumpridas</div>
+        </div>
+        <div style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px 18px;text-align:center;min-width:110px">
+            <div style="font-size:1.6rem;font-weight:800;color:#f59e0b">${warn}</div>
+            <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">Parciais</div>
+        </div>
+        <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:10px;padding:12px 18px;text-align:center;min-width:110px">
+            <div style="font-size:1.6rem;font-weight:800;color:#ef4444">${crit}</div>
+            <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">Críticas (&lt;50%)</div>
+        </div>
+        <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.12);border-radius:10px;padding:12px 18px;text-align:center;min-width:110px">
+            <div style="font-size:1.6rem;font-weight:800;color:#ef4444">${missing}</div>
+            <div style="font-size:.74rem;color:var(--text-muted);margin-top:2px">Em falta (total)</div>
+        </div>`;
+}
+
+function renderMandatoryTable(rules) {
+    const body = document.getElementById('mandatoryBody');
+    if (!rules.length) {
+        body.innerHTML = '<tr class="state-row"><td colspan="7">Nenhuma regra definida. Clique em "🔒 Nova Regra" para começar.</td></tr>';
+        return;
+    }
+    body.innerHTML = rules.map(r => {
+        const rateColor = r.rate >= 100 ? '#22c55e' : r.rate >= 50 ? '#f59e0b' : '#ef4444';
+        const rateBg    = r.rate >= 100 ? 'rgba(34,197,94,.12)' : r.rate >= 50 ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.10)';
+        const scopeBadge = r.target_type === 'all'
+            ? '<span style="background:rgba(99,102,241,.12);color:var(--accent-light);padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700">Todos</span>'
+            : r.target_type === 'department'
+                ? `<span style="background:rgba(6,182,212,.12);color:#06b6d4;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700">Dept.</span> ${escHtml(r.target_name)}`
+                : `<span style="background:rgba(168,85,247,.12);color:#a855f7;padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700">Cargo</span> ${escHtml(r.target_name)}`;
+        const deadline = r.deadline_days ? `${r.deadline_days}d` : '<span style="color:var(--text-muted)">—</span>';
+        const bar = `<div style="height:5px;background:rgba(255,255,255,.07);border-radius:4px;margin-top:4px;overflow:hidden">
+            <div style="height:100%;width:${r.rate}%;background:${rateColor};border-radius:4px;transition:width .5s"></div></div>`;
+        return `<tr>
+            <td style="font-weight:600">${escHtml(r.training_title)}</td>
+            <td>${scopeBadge}</td>
+            <td>${deadline}</td>
+            <td style="text-align:center;color:var(--text-muted);font-size:.82rem">${r.done}/${r.total}</td>
+            <td style="min-width:100px">
+                <div style="display:flex;justify-content:space-between;font-size:.78rem">
+                    <span style="color:${rateColor};font-weight:700">${r.rate}%</span>
+                    ${r.missing > 0 ? `<button onclick="openGaps(${r.id})" style="background:${rateBg};border:none;color:${rateColor};padding:1px 8px;border-radius:5px;font-size:.71rem;font-weight:700;cursor:pointer">${r.missing} em falta</button>` : '<span style="color:#22c55e;font-size:.72rem">✓ Completo</span>'}
+                </div>
+                ${bar}
+            </td>
+            <td style="font-size:.8rem;color:var(--text-muted)">${r.notes ? escHtml(r.notes) : '—'}</td>
+            <td style="text-align:center">
+                <button class="btn-sm btn-edit" onclick="editMandatory(${r.id})">✏️</button>
+                <button class="btn-sm btn-del"  onclick="deleteMandatory(${r.id})" style="margin-left:4px">🗑️</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+function populateMandatorySelects() {
+    // Formações
+    const tSel = document.getElementById('mTrainingId');
+    tSel.innerHTML = '<option value="">— Selecionar formação —</option>';
+    trainings.forEach(t => { tSel.innerHTML += `<option value="${t.id}">${escHtml(t.title)}</option>`; });
+}
+
+function onTargetTypeChange() {
+    const type = document.getElementById('mTargetType').value;
+    const wrap  = document.getElementById('mTargetIdWrap');
+    const label = document.getElementById('mTargetIdLabel');
+    const sel   = document.getElementById('mTargetId');
+    if (type === 'all') { wrap.style.display = 'none'; return; }
+    wrap.style.display = '';
+    label.textContent  = type === 'department' ? 'Departamento *' : 'Cargo *';
+    const items = type === 'department' ? departments : positions;
+    const key   = type === 'department' ? 'department' : 'position';
+    sel.innerHTML = '<option value="">— Selecionar —</option>';
+    items.forEach(i => { sel.innerHTML += `<option value="${i.id}">${escHtml(i[key])}</option>`; });
+    sel.required = true;
+}
+
+function openMandatoryModal(rule = null) {
+    document.getElementById('mandatoryId').value          = rule ? rule.id : '';
+    document.getElementById('mandatoryModalTitle').textContent = rule ? '✏️ Editar Regra' : '🔒 Nova Regra Obrigatória';
+    document.getElementById('mTrainingId').value          = rule ? rule.training_id : '';
+    document.getElementById('mTargetType').value          = rule ? rule.target_type : 'all';
+    document.getElementById('mDeadlineDays').value        = rule?.deadline_days ?? '';
+    document.getElementById('mNotes').value               = rule?.notes ?? '';
+
+    // Bloquear campos de formação/âmbito na edição
+    document.getElementById('mTrainingId').disabled = !!rule;
+    document.getElementById('mTargetType').disabled = !!rule;
+
+    onTargetTypeChange();
+    if (rule && rule.target_id) document.getElementById('mTargetId').value = rule.target_id;
+    document.getElementById('mTargetId').disabled = !!rule;
+
+    openOverlay('mandatoryOverlay');
+}
+
+function editMandatory(id) {
+    const rule = mandatoryRules.find(r => r.id === id);
+    if (rule) openMandatoryModal(rule);
+}
+
+async function submitMandatory(e) {
+    e.preventDefault();
+    const id   = document.getElementById('mandatoryId').value;
+    const type = document.getElementById('mTargetType').value;
+    const body = id ? {
+        deadline_days: parseInt(document.getElementById('mDeadlineDays').value) || null,
+        notes:         document.getElementById('mNotes').value.trim() || null,
+    } : {
+        training_id:   parseInt(document.getElementById('mTrainingId').value),
+        target_type:   type,
+        target_id:     type !== 'all' ? parseInt(document.getElementById('mTargetId').value) || null : null,
+        deadline_days: parseInt(document.getElementById('mDeadlineDays').value) || null,
+        notes:         document.getElementById('mNotes').value.trim() || null,
+    };
+    try {
+        if (id) {
+            await apiFetch('PUT', `/mandatory-trainings/${id}`, body);
+            toast('Regra actualizada.', 'ok');
+        } else {
+            await apiFetch('POST', '/mandatory-trainings', body);
+            toast('Regra criada com sucesso.', 'ok');
+        }
+        closeOverlay('mandatoryOverlay');
+        loadMandatory();
+    } catch(err) {
+        toast(err.message || 'Erro ao guardar.', 'err');
+    }
+}
+
+async function deleteMandatory(id) {
+    const rule = mandatoryRules.find(r => r.id === id);
+    if (!confirm(`Remover obrigatoriedade de "${rule?.training_title}"?`)) return;
+    try {
+        await apiFetch('DELETE', `/mandatory-trainings/${id}`);
+        toast('Regra removida.', 'ok');
+        loadMandatory();
+    } catch(e) {
+        toast('Erro ao remover.', 'err');
+    }
+}
+
+async function openGaps(ruleId) {
+    const rule = mandatoryRules.find(r => r.id === ruleId);
+    document.getElementById('gapsModalTitle').textContent = rule?.training_title ?? '…';
+    document.getElementById('gapsSummary').innerHTML = '';
+    document.getElementById('gapsBody').innerHTML =
+        '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--text-muted)">A carregar…</td></tr>';
+    openOverlay('gapsOverlay');
+    try {
+        const res = await apiFetch('GET', `/mandatory-trainings/${ruleId}/gaps`);
+        const s = res.summary;
+        const rateColor = s.rate >= 100 ? '#22c55e' : s.rate >= 50 ? '#f59e0b' : '#ef4444';
+        document.getElementById('gapsSummary').innerHTML = `
+            <div style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:9px;padding:10px 16px;text-align:center;min-width:90px">
+                <div style="font-size:1.4rem;font-weight:800;color:var(--accent-light)">${s.total}</div>
+                <div style="font-size:.72rem;color:var(--text-muted)">Abrangidos</div>
+            </div>
+            <div style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);border-radius:9px;padding:10px 16px;text-align:center;min-width:90px">
+                <div style="font-size:1.4rem;font-weight:800;color:#22c55e">${s.done}</div>
+                <div style="font-size:.72rem;color:var(--text-muted)">Concluíram</div>
+            </div>
+            <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.15);border-radius:9px;padding:10px 16px;text-align:center;min-width:90px">
+                <div style="font-size:1.4rem;font-weight:800;color:#ef4444">${s.missing}</div>
+                <div style="font-size:.72rem;color:var(--text-muted)">Em falta</div>
+            </div>
+            <div style="background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;padding:10px 16px;text-align:center;min-width:90px">
+                <div style="font-size:1.4rem;font-weight:800;color:${rateColor}">${s.rate}%</div>
+                <div style="font-size:.72rem;color:var(--text-muted)">Cumprimento</div>
+            </div>`;
+        if (!res.data.length) {
+            document.getElementById('gapsBody').innerHTML =
+                '<tr><td colspan="4" style="text-align:center;padding:24px;color:#22c55e">✅ Todos os funcionários abrangidos já realizaram esta formação.</td></tr>';
+            return;
+        }
+        document.getElementById('gapsBody').innerHTML = res.data.map(e => `<tr>
+            <td>
+                <div style="font-weight:600">${escHtml(e.full_name)}</div>
+                <div style="font-size:.73rem;color:var(--text-muted);font-family:monospace">${e.code}</div>
+            </td>
+            <td style="color:var(--text-muted);font-size:.83rem">${e.department ?? '—'}</td>
+            <td style="color:var(--text-muted);font-size:.83rem">${e.position ?? '—'}</td>
+            <td style="text-align:center;color:var(--text-muted);font-size:.82rem">${e.hire_date ?? '—'}</td>
+        </tr>`).join('');
+    } catch(e) {
+        document.getElementById('gapsBody').innerHTML =
+            '<tr><td colspan="4" style="text-align:center;padding:24px;color:#ef4444">Erro ao carregar dados.</td></tr>';
+    }
 }
 </script>
 @endsection

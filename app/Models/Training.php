@@ -43,4 +43,9 @@ class Training extends Model
     {
         return $this->hasOne(Quiz::class);
     }
+
+    public function mandatoryRules()
+    {
+        return $this->hasMany(MandatoryTraining::class);
+    }
 }
