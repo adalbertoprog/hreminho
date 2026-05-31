@@ -464,7 +464,10 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
         </tbody>
     </table>
 
-    <div style="margin-top:20px;text-align:right">
+    <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+        <button onclick="exportResultsPDF()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 18px;border-radius:9px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#ef4444;font-size:.875rem;font-weight:600;cursor:pointer;transition:.15s" onmouseover="this.style.background='rgba(239,68,68,.22)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">
+            📄 Exportar PDF
+        </button>
         <button class="btn-cancel" onclick="closeOverlay('resultsOverlay')">Fechar</button>
     </div>
 </div>
@@ -482,6 +485,7 @@ let enrollPage=1, catalogPage=1, enrollFilters={}, catalogFilters={};
 let employees=[], trainings=[];
 let catalogSort='title_asc'; // title_asc | title_desc | inscricoes_asc | inscricoes_desc
 let enrollMap={}, trainingMap={};
+let resAllRows = [], resSummaryData = null, resCurrentTrainingTitle = '';
 
 const statusLabel   = {enrolled:'Inscrito', completed:'Concluído', failed:'Reprovado'};
 const statusClass   = {enrolled:'badge-enrolled', completed:'badge-completed', failed:'badge-failed'};
@@ -1280,24 +1284,25 @@ async function saveQuiz() {
 /* ══════════════════════════════════════════
    Modal de Resultados
 ══════════════════════════════════════════ */
-let resAllRows = [];
 
 async function openResultsModal(trainingId) {
     const t = trainings.find(x => x.id === trainingId);
-    document.getElementById('resModalTitle').textContent = t ? t.title : '…';
+    resCurrentTrainingTitle = t ? t.title : '…';
+    document.getElementById('resModalTitle').textContent = resCurrentTrainingTitle;
     // Reset
     document.getElementById('resSummary').innerHTML  = '<span style="color:var(--text-muted);font-size:.85rem">A carregar…</span>';
     document.getElementById('resTableBody').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:32px;color:var(--text-muted)">A carregar…</td></tr>';
     document.getElementById('resSearch').value = '';
     document.getElementById('resStatusFilter').value = '';
     document.getElementById('resCount').textContent = '';
-    resAllRows = [];
+    resAllRows = []; resSummaryData = null;
     openOverlay('resultsOverlay');
 
     try {
         const res = await apiFetch('GET', `/trainings/${trainingId}/quiz/results`);
         resAllRows = res.data ?? [];
-        renderResultsSummary(res.summary);
+        resSummaryData = res.summary ?? null;
+        renderResultsSummary(resSummaryData);
         renderResultsTable(resAllRows);
     } catch(e) {
         document.getElementById('resSummary').innerHTML = `<span style="color:var(--danger)">${e.message||'Erro ao carregar resultados.'}</span>`;
@@ -1377,6 +1382,156 @@ function renderResultsTable(rows) {
             <td style="text-align:center;color:var(--text-muted);font-size:.82rem">${date}</td>
         </tr>`;
     }).join('');
+}
+
+function exportResultsPDF() {
+    if (!resAllRows.length) { alert('Sem dados para exportar.'); return; }
+    const s      = resSummaryData;
+    const pct    = s && s.total > 0 ? Math.round((s.passed / s.total) * 100) : 0;
+    const nowObj = new Date();
+    const nowFmt = nowObj.toLocaleDateString('pt-PT', {day:'2-digit', month:'long', year:'numeric'})
+                 + ' às ' + nowObj.toLocaleTimeString('pt-PT', {hour:'2-digit', minute:'2-digit'});
+    const logoUrl = '{{ asset("images/logo.jpg") }}';
+
+    const summaryHtml = s ? `
+        <div class="summary">
+            <div class="stat">        <div class="val">${s.total}</div>                                             <div class="lbl">Participantes</div></div>
+            <div class="stat green">  <div class="val">${s.passed} <span class="val-sub">(${pct}%)</span></div>   <div class="lbl">Aprovados</div></div>
+            <div class="stat amber">  <div class="val">${s.avg_score != null ? s.avg_score + '%' : '—'}</div>     <div class="lbl">Nota média</div></div>
+            <div class="stat red">    <div class="val">${s.passing_score}%</div>                                   <div class="lbl">Nota mínima de aprovação</div></div>
+        </div>` : '';
+
+    const rowsHtml = resAllRows.map((r, i) => {
+        const date = r.last_attempt
+            ? new Date(r.last_attempt).toLocaleDateString('pt-PT', {day:'2-digit',month:'2-digit',year:'numeric'})
+            : '—';
+        return `<tr class="${i % 2 === 0 ? 'even' : ''}">
+            <td><strong>${r.name}</strong><br><span class="code">${r.code}</span></td>
+            <td class="center ${r.passed ? 'pass-score' : 'fail-score'}">${r.best_score}%</td>
+            <td class="center">${r.passed
+                ? '<span class="badge pass">✓ Aprovado</span>'
+                : '<span class="badge fail">✗ Reprovado</span>'}</td>
+            <td class="center muted">${r.attempts}</td>
+            <td class="center muted">${date}</td>
+        </tr>`;
+    }).join('');
+
+    const html = `<!DOCTYPE html><html lang="pt">
+<head>
+<meta charset="UTF-8">
+<title>Resultados — ${escHtml(resCurrentTrainingTitle)}</title>
+<style>
+  @page { size: A4; margin: 18mm 14mm 24mm 14mm; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; }
+
+  /* ── Cabeçalho ── */
+  .ph { border-bottom: 2px solid #6366f1; padding-bottom: 14px; margin-bottom: 22px; }
+  .ph-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+  .ph-logo { display: flex; align-items: center; gap: 11px; }
+  .ph-logo img { height: 44px; width: auto; object-fit: contain; }
+  .ph-logo-text { font-size: 1.2rem; font-weight: 800; color: #1a1a2e; letter-spacing: -.5px; line-height: 1.2; }
+  .ph-logo-text span { color: #6366f1; }
+  .ph-meta { text-align: right; font-size: 10.5px; color: #6b7280; line-height: 1.75; }
+  .ph-meta strong { color: #1a1a2e; font-size: 12.5px; font-weight: 700; display: block; margin-bottom: 1px; }
+  .ph-divider { margin-top: 13px; display: flex; align-items: center; gap: 10px; }
+  .ph-divider-label { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #6366f1; white-space: nowrap; padding: 3px 10px; background: #eef2ff; border-radius: 4px; }
+  .ph-divider-line { flex: 1; height: 1px; background: #e0e7ff; }
+
+  /* ── KPIs ── */
+  .summary { display: flex; gap: 14px; margin-bottom: 22px; flex-wrap: wrap; }
+  .stat { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 8px; padding: 11px 16px; min-width: 108px; text-align: center; }
+  .stat.green { background: #f0fdf4; border-color: #bbf7d0; }
+  .stat.amber { background: #fffbeb; border-color: #fde68a; }
+  .stat.red   { background: #fff1f2; border-color: #fecdd3; }
+  .val { font-size: 20px; font-weight: 800; color: #1e293b; }
+  .val-sub { font-size: 13px; font-weight: 500; }
+  .stat.green .val { color: #16a34a; }
+  .stat.amber .val { color: #d97706; }
+  .stat.red   .val { color: #dc2626; }
+  .lbl { font-size: 9.5px; color: #64748b; margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* ── Tabela ── */
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  thead th { background: #6366f1; color: #fff; padding: 9px 11px; text-align: left; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+  thead th.center { text-align: center; }
+  tbody td { padding: 8px 11px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tbody tr.even td { background: #f8fafc; }
+  .center { text-align: center; }
+  .muted  { color: #64748b; }
+  .code   { font-family: monospace; font-size: 10px; color: #94a3b8; }
+  .pass-score { color: #16a34a; font-weight: 700; }
+  .fail-score { color: #dc2626; font-weight: 700; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 9.5px; font-weight: 700; }
+  .badge.pass { background: #dcfce7; color: #16a34a; }
+  .badge.fail { background: #fee2e2; color: #dc2626; }
+
+  /* ── Rodapé fixo ── */
+  .pf { position: fixed; bottom: 0; left: 0; right: 0; padding: 7px 14mm; background: #fff; border-top: 1px solid #e0e7ff; display: flex; justify-content: space-between; align-items: center; font-size: 9.5px; color: #9ca3af; }
+  .pf-left { display: flex; align-items: center; gap: 8px; }
+  .pf-left img { height: 18px; width: auto; opacity: .55; }
+  .pf-right { font-size: 9px; color: #c1c7d4; }
+
+  @media print {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+</style>
+</head>
+<body>
+
+  <!-- Cabeçalho -->
+  <div class="ph">
+    <div class="ph-top">
+      <div class="ph-logo">
+        <img src="${logoUrl}" alt="HRElectrominho">
+        <div class="ph-logo-text">HR<span>Electrominho</span></div>
+      </div>
+      <div class="ph-meta">
+        <strong>Resultados do Questionário</strong>
+        <span style="font-size:14px;font-weight:700;color:#1a1a2e">${escHtml(resCurrentTrainingTitle)}</span><br>
+        <span>Gerado em ${nowFmt}</span>
+      </div>
+    </div>
+    <div class="ph-divider">
+      <span class="ph-divider-label">Melhor tentativa por funcionário</span>
+      <div class="ph-divider-line"></div>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  ${summaryHtml}
+
+  <!-- Tabela -->
+  <table>
+    <thead>
+      <tr>
+        <th>Funcionário</th>
+        <th class="center">Nota</th>
+        <th class="center">Estado</th>
+        <th class="center">Tentativas</th>
+        <th class="center">Última tentativa</th>
+      </tr>
+    </thead>
+    <tbody>${rowsHtml}</tbody>
+  </table>
+
+  <!-- Rodapé -->
+  <div class="pf">
+    <div class="pf-left">
+      <img src="${logoUrl}" alt="HREminho">
+      <span>HREminho — Sistema de Gestão de Recursos Humanos</span>
+    </div>
+    <div class="pf-right">Documento gerado automaticamente — Confidencial</div>
+  </div>
+
+</body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 400);
 }
 </script>
 @endsection
