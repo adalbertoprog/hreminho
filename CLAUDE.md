@@ -1,7 +1,7 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Maio 2026.
+Última actualização: Maio 2026 (rev. 31/05/2026).
 
 ---
 
@@ -43,6 +43,20 @@ Todas as chamadas `fetch()` devem incluir:
 credentials: 'same-origin',
 headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
 ```
+
+---
+
+## Gates de Autorização
+
+Definidos em `AppServiceProvider::boot()`:
+
+| Gate              | Roles permitidos  | Uso                                          |
+|-------------------|-------------------|----------------------------------------------|
+| `manage-hr`       | `admin`, `hr`     | Acesso ao back-office e operações de gestão  |
+| `admin-only`      | `admin`           | Administração de utilizadores                |
+| `employee-portal` | `employee`        | Acesso ao portal do funcionário              |
+
+Usar com `Gate::authorize('manage-hr')` nos controllers ou `@can('manage-hr')` nas views.
 
 ---
 
@@ -312,6 +326,26 @@ Integração com sistema externo de gestão documental de subcontratadas.
 
 ---
 
+## Fotos de Perfil
+
+- Guardadas em `storage/app/public/employees/photos/` (disco `public`)
+- Acesso via `$employee->profile_photo_url` (accessor no modelo)
+- `EmployeeController::storePhoto()` converte base64 data URI para ficheiro em storage
+- A migração `2026_05_31_000001` converte registos legados de base64 para path
+- `EmployeeResource` devolve `photo` como URL pública (não base64)
+
+---
+
+## Mudança de Password Obrigatória
+
+- Campo `must_change_password` (boolean) na tabela `users`
+- Activado automaticamente ao criar contas via `BulkUserController` e comando `employees:create-users`
+- Middleware `ForcePasswordChange` (registado no grupo `web`) redireciona para `/password/change`
+- View: `auth/change-password.blade.php`
+- Após guardar nova password, `must_change_password` é reposto a `false`
+
+---
+
 ## Migrations (por ordem)
 
 | Ficheiro                                                    | Descrição                                  |
@@ -329,6 +363,8 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `2026_05_27_000001_add_has_video_has_quiz_to_trainings`     | Flags `has_video` e `has_quiz`             |
 | `2026_05_27_000002_add_is_uploaded_to_training_videos`      | Flag `is_uploaded` para distinguir upload/URL |
 | `2026_05_27_000003_add_user_id_to_employees_table`          | Associação `user_id` nos funcionários      |
+| `2026_05_31_000001_change_profile_photo_to_string`          | Migra fotos de base64 para storage path    |
+| `2026_05_31_000002_add_must_change_password_to_users`       | Flag de mudança obrigatória de password    |
 
 ---
 

@@ -87,8 +87,15 @@ class Employee extends Model
 
     public function getProfilePhotoUrlAttribute(): ?string
     {
-        return $this->profile_photo
-            ? asset('storage/' . $this->profile_photo)
-            : null;
+        if (!$this->profile_photo) {
+            return null;
+        }
+
+        // Compatibilidade com registos legados que ainda têm base64 (antes da migração)
+        if (str_starts_with($this->profile_photo, 'data:') || strlen($this->profile_photo) > 500) {
+            return $this->profile_photo;
+        }
+
+        return asset('storage/' . $this->profile_photo);
     }
 }

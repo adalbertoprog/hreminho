@@ -26,7 +26,13 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
+// Rotas de password isentas do middleware force.password.change (evitar redirect loop)
 Route::middleware('auth')->group(function () {
+    Route::get('/password/change', [PasswordWebController::class, 'changeForm'])->name('password.change');
+    Route::put('/password',        [PasswordWebController::class, 'update'])->name('password.update');
+});
+
+Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/employees',               [EmployeeWebController::class,   'index'])->name('employees.index');
@@ -53,8 +59,6 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
     Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
-
-    Route::put('/password', [PasswordWebController::class, 'update'])->name('password.update');
 
     Route::prefix('docsem')->name('docsem.')->group(function () {
         Route::get('/',                                      [DocsElectroMinhoWebController::class, 'index'])->name('index');

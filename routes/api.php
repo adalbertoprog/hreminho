@@ -17,6 +17,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
+    // Rotas especificas de employees devem vir ANTES do apiResource para evitar conflitos
+    Route::post('employees/bulk-create-users', [BulkUserController::class, 'createEmployeeUsers'])->name('employees.bulk-create-users');
+
     Route::apiResource('employees',   EmployeeController::class);
     Route::apiResource('departments', DepartmentController::class);
     Route::apiResource('positions',   PositionController::class);
@@ -47,9 +50,6 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
     // Portal do funcionario — associacao por codigo
     Route::post('employee-portal/associate', [EmployeeAssociationController::class, 'associate'])->name('employee-portal.associate');
-
-    // Criacao em massa de utilizadores para funcionarios activos
-    Route::post('employees/bulk-create-users', [BulkUserController::class, 'createEmployeeUsers'])->name('employees.bulk-create-users');
 
     // Relatorios
     Route::get('reports/completed-trainings',   [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');

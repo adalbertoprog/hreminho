@@ -12,6 +12,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 
 class QuizController extends Controller
 {
@@ -26,7 +27,7 @@ class QuizController extends Controller
         }
 
         $user      = Auth::user();
-        $isManager = in_array($user->role, ['admin', 'hr']);
+        $isManager = Gate::allows('manage-hr');
 
         // Hide correct-answer flag from employees
         $data = $quiz->toArray();
@@ -306,9 +307,6 @@ class QuizController extends Controller
 
     private function authorizeManager(): void
     {
-        $role = Auth::user()->role;
-        if (!in_array($role, ['admin', 'hr'])) {
-            abort(403, 'Acesso não autorizado.');
-        }
+        Gate::authorize('manage-hr');
     }
 }

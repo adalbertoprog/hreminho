@@ -160,8 +160,8 @@
         <p class="card-title">O Meu Perfil</p>
 
         <div class="profile-avatar">
-            @if($employee && $employee->profile_photo)
-                <img src="data:image/jpeg;base64,{{ $employee->profile_photo }}" alt="Foto">
+            @if($employee && $employee->profile_photo_url)
+                <img src="{{ $employee->profile_photo_url }}" alt="Foto">
             @else
                 {{ strtoupper(substr($user->name, 0, 2)) }}
             @endif

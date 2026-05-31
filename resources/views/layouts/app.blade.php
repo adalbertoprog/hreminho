@@ -220,7 +220,7 @@
         </a>
 
         <nav class="sidebar-nav">
-            @if(auth()->user()->role === 'employee')
+            @can('employee-portal')
                 {{-- ── Portal do Funcionário ── --}}
                 <p class="nav-section-label">O Meu Espaço</p>
                 <a href="{{ route('employee.dashboard') }}" class="nav-item {{ request()->routeIs('employee.dashboard') ? 'active' : '' }}">
@@ -229,7 +229,9 @@
                 <a href="{{ route('employee.dashboard') }}#formacoes" class="nav-item {{ request()->routeIs('employee.training') ? 'active' : '' }}">
                     <span class="nav-icon">🎓</span> Formações
                 </a>
-            @else
+            @endcan
+
+            @can('manage-hr')
                 {{-- ── Back-office (admin / hr) ── --}}
                 <p class="nav-section-label">Principal</p>
                 <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
@@ -269,13 +271,13 @@
                     <span class="nav-icon">📊</span> Relatórios
                 </a>
 
-                @if(auth()->user()->role === 'admin')
+                @can('admin-only')
                 <p class="nav-section-label">Administração</p>
                 <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <span class="nav-icon">🔐</span> Utilizadores
                 </a>
-                @endif
-            @endif
+                @endcan
+            @endcan
         </nav>
 
         <div class="sidebar-user">

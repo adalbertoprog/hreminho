@@ -7,6 +7,7 @@ use App\Models\TrainingVideo;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -93,8 +94,6 @@ class TrainingVideoController extends Controller
 
     private function authorizeManager(): void
     {
-        if (!in_array(Auth::user()->role, ['admin', 'hr'])) {
-            abort(403, 'Acesso nao autorizado.');
-        }
+        Gate::authorize('manage-hr');
     }
 }

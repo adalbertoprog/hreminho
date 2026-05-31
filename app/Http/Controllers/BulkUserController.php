@@ -46,10 +46,11 @@ class BulkUserController extends Controller
                 }
 
                 $user = User::create([
-                    'name'     => $emp->full_name,
-                    'email'    => $email,
-                    'password' => Hash::make('12345678'),
-                    'role'     => 'employee',
+                    'name'                 => $emp->full_name,
+                    'email'               => $email,
+                    'password'            => Hash::make('12345678'),
+                    'role'                => 'employee',
+                    'must_change_password' => true, // Força mudança de password no primeiro login
                 ]);
 
                 $emp->user_id = $user->id;

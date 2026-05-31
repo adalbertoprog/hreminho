@@ -9,6 +9,7 @@ use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Storage;
 
 class EmployeeController extends Controller
 {
@@ -69,7 +70,7 @@ class EmployeeController extends Controller
     {
         $data = $request->validated();
         if (isset($data['photo'])) {
-            $data['profile_photo'] = $data['photo'];
+            $data['profile_photo'] = $this->storePhoto($data['photo']);
             unset($data['photo']);
         }
         $employee = Employee::create($data);
@@ -92,7 +93,11 @@ class EmployeeController extends Controller
     {
         $data = $request->validated();
         if (isset($data['photo'])) {
-            $data['profile_photo'] = $data['photo'];
+            // Apagar foto antiga do storage (se for um path, não base64 legado)
+            if ($employee->profile_photo && !str_starts_with($employee->profile_photo, 'data:') && strlen($employee->profile_photo) <= 500) {
+                Storage::disk('public')->delete($employee->profile_photo);
+            }
+            $data['profile_photo'] = $this->storePhoto($data['photo']);
             unset($data['photo']);
         }
         $employee->update($data);
@@ -105,8 +110,40 @@ class EmployeeController extends Controller
      */
     public function destroy(Employee $employee): JsonResponse
     {
+        // Apagar foto do storage ao eliminar o funcionário
+        if ($employee->profile_photo && !str_starts_with($employee->profile_photo, 'data:') && strlen($employee->profile_photo) <= 500) {
+            Storage::disk('public')->delete($employee->profile_photo);
+        }
         $employee->delete();
 
         return response()->json(['message' => 'Funcionário excluído com sucesso.'], 200);
+    }
+
+    /**
+     * Guarda uma foto (base64 ou URL de data) no storage público e devolve o path relativo.
+     */
+    private function storePhoto(string $photo): string
+    {
+        // Se for base64 data URI, gravar como ficheiro
+        if (str_starts_with($photo, 'data:')) {
+            $parts   = explode(',', $photo, 2);
+            $imgData = base64_decode($parts[1] ?? '');
+            preg_match('/data:image\/(\w+);/', $photo, $m);
+            $ext      = $m[1] ?? 'jpg';
+            $filename = 'employees/photos/' . uniqid() . '.' . $ext;
+            Storage::disk('public')->put($filename, $imgData);
+            return $filename;
+        }
+
+        // Se for base64 puro (sem prefixo data:), tentar gravar
+        if (strlen($photo) > 500 && !str_contains($photo, '/')) {
+            $imgData  = base64_decode($photo);
+            $filename = 'employees/photos/' . uniqid() . '.jpg';
+            Storage::disk('public')->put($filename, $imgData);
+            return $filename;
+        }
+
+        // Já é um path de storage — devolver como está
+        return $photo;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\EmployeeTraining;
 use App\Services\DocsElectroMinhoService;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,5 +22,18 @@ class AppServiceProvider extends ServiceProvider
     {
         // Route model binding: {enrollment} -> EmployeeTraining
         Route::model('enrollment', EmployeeTraining::class);
+
+        // ── Gates de autorização por role ──────────────────────────────
+        // Uso: Gate::allows('manage-hr') ou $this->authorize('manage-hr') nos controllers
+        // Ou nas views: @can('manage-hr') ... @endcan
+
+        // Acesso total de gestão RH (admin e hr)
+        Gate::define('manage-hr', fn($user) => in_array($user->role, ['admin', 'hr']));
+
+        // Apenas admin
+        Gate::define('admin-only', fn($user) => $user->role === 'admin');
+
+        // Portal do funcionário (apenas role employee)
+        Gate::define('employee-portal', fn($user) => $user->role === 'employee');
     }
 }

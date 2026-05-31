@@ -12,6 +12,23 @@ use Illuminate\Validation\Rules\Password;
 class PasswordWebController extends Controller
 {
     /**
+     * Mostra o formulário de mudança de password obrigatória (primeiro login).
+     */
+    public function changeForm()
+    {
+        // Se não precisar de mudar, redirecionar para dashboard
+        if (!Auth::user()->must_change_password) {
+            return redirect()->intended(
+                Auth::user()->role === 'employee'
+                    ? route('employee.dashboard')
+                    : route('dashboard')
+            );
+        }
+
+        return view('auth.change-password');
+    }
+
+    /**
      * Atualiza a palavra-passe do utilizador autenticado.
      */
     public function update(Request $request)
@@ -41,8 +58,17 @@ class PasswordWebController extends Controller
         }
 
         $user->update([
-            'password' => Hash::make($request->password),
+            'password'             => Hash::make($request->password),
+            'must_change_password' => false,
         ]);
+
+        // Se era uma mudança obrigatória, redirecionar para dashboard
+        if ($request->boolean('forced')) {
+            $redirect = $user->role === 'employee'
+                ? route('employee.dashboard')
+                : route('dashboard');
+            return redirect($redirect)->with('success_password', 'Palavra-passe alterada com sucesso!');
+        }
 
         return back()->with('success_password', 'Palavra-passe alterada com sucesso!');
     }
