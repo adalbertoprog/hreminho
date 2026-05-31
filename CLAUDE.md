@@ -23,7 +23,7 @@ Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
 
 O sistema usa dois grupos de rotas:
 
-1. **`routes/web.php`** — Rotas Web que devolvem views Blade (autenticação via `middleware('auth')`)
+1. **`routes/web.php`** — Rotas Web que devolvem views Blade
 2. **`routes/api.php`** — API JSON prefixada em `/api/v1/`, protegida por `middleware('auth:web')`
 
 As rotas API usam sessão (não tokens), porque o `bootstrap/app.php` prepende os middlewares de sessão ao grupo `api`:
@@ -34,6 +34,23 @@ $middleware->api(prepend: [
     \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
     \Illuminate\Session\Middleware\StartSession::class,
 ]);
+```
+
+### Grupos de middleware em web.php
+
+Existem dois grupos distintos de rotas autenticadas:
+
+```php
+// Rotas de password — isentas de ForcePasswordChange (evitar redirect loop)
+Route::middleware('auth')->group(function () {
+    Route::get('/password/change', ...)->name('password.change');
+    Route::put('/password', ...)->name('password.update');
+});
+
+// Todas as outras rotas autenticadas — com verificação de password obrigatória
+Route::middleware(['auth', 'force.password.change'])->group(function () {
+    // dashboard, employees, trainings, portal, etc.
+});
 ```
 
 ### Chamadas fetch() no frontend
@@ -57,6 +74,8 @@ Definidos em `AppServiceProvider::boot()`:
 | `employee-portal` | `employee`        | Acesso ao portal do funcionário              |
 
 Usar com `Gate::authorize('manage-hr')` nos controllers ou `@can('manage-hr')` nas views.
+
+**Importante:** Não usar `in_array($user->role, ['admin', 'hr'])` inline — usar sempre os Gates definidos.
 
 ---
 
@@ -104,14 +123,15 @@ Auth::login($user, $remember);
 
 ### User
 ```
-users: id, name, email, password, role (admin|hr|employee), remember_token
+users: id, name, email, password, role (admin|hr|employee), must_change_password (bool), remember_token
 ```
 - `hasOne(Employee::class)` — link inverso para o registo de funcionário
+- Usa `$fillable` convencional (não o atributo PHP `#[Fillable]`, que tem suporte limitado)
 
 ### Employee
 ```
 employees: id, code, first_name, last_name, email, phone, date_of_birth, gender,
-           nationality, address, work_location, profile_photo (longtext/base64),
+           nationality, address, work_location, profile_photo (string — path relativo em storage),
            position_id, department_id, sector_id, hire_date, status, contract_type,
            end_date, user_id, deleted_at
 ```
@@ -121,7 +141,7 @@ employees: id, code, first_name, last_name, email, phone, date_of_birth, gender,
 - `belongsToMany(Training)` via `employee_trainings`
 - Soft deletes activos
 - Accessor `getFullNameAttribute()` → `first_name last_name`
-- Accessor `getProfilePhotoUrlAttribute()` → URL pública da foto
+- Accessor `getProfilePhotoUrlAttribute()` → URL pública via `asset('storage/' . $path)`, com fallback para base64 legado
 
 ### Training
 ```
@@ -179,12 +199,37 @@ Registo de presenças por funcionário.
 ### Geração em massa de contas
 - Botão "Gerar Acessos" na toolbar da listagem de funcionários
 - POST `/api/v1/employees/bulk-create-users` → `BulkUserController::createEmployeeUsers()`
-- Password padrão: `12345678`
+- Password padrão: `12345678` — flag `must_change_password = true` activado automaticamente
 - Lógica:
   1. Funcionário com email que já tem utilizador → liga `user_id` (contado como `$linked`)
   2. Funcionário com email sem utilizador → cria utilizador com esse email
   3. Funcionário sem email → cria email interno `funXXXX@hrelectrominho.local`
-- Artisan: `php artisan employees:create-users [--dry-run]`
+- Artisan: `php artisan employees:create-users [--dry-run]` (também activa `must_change_password`)
+
+---
+
+## Fotos de Perfil
+
+- Guardadas em `storage/app/public/employees/photos/` (disco `public`)
+- O campo `profile_photo` na tabela guarda o **path relativo** (ex: `employees/photos/abc123.jpg`)
+- Acesso via `$employee->profile_photo_url` (accessor no modelo) → devolve URL pública
+- `EmployeeController::storePhoto()` converte base64 data URI para ficheiro em storage
+- Ao actualizar foto, a foto antiga é apagada do disco automaticamente
+- Ao eliminar funcionário, a foto é apagada do disco automaticamente
+- `EmployeeResource` devolve `photo` como URL pública (nunca base64)
+- A migração `2026_05_31_000001` converteu registos legados de base64 para path
+
+---
+
+## Mudança de Password Obrigatória
+
+- Campo `must_change_password` (boolean, default `false`) na tabela `users`
+- Activado automaticamente ao criar contas via `BulkUserController` e comando `employees:create-users`
+- Middleware `ForcePasswordChange` registado como alias `force.password.change` em `bootstrap/app.php`
+- Aplicado no grupo `['auth', 'force.password.change']` em `routes/web.php` — corre **após** `auth`
+- As rotas `GET /password/change` e `PUT /password` estão num grupo só com `auth` (sem o middleware) para evitar redirect loop
+- View: `auth/change-password.blade.php`
+- Após guardar nova password, `must_change_password` é reposto a `false` e utilizador é redirecionado para o dashboard
 
 ---
 
@@ -201,6 +246,12 @@ Registo de presenças por funcionário.
 
 ### Portal do Funcionário
 - `/employee/dashboard` — lista formações com vídeos/quiz disponíveis
+- Cada card exibe uma etiqueta de estado no canto superior direito:
+  - **✓ Concluído** (verde) — quiz aprovado
+  - **✗ Reprovado** (vermelho) — quiz feito mas não passou
+  - **Por fazer** (amarelo) — tem quiz mas ainda não tentou
+  - **Disponível** (roxo) — só tem vídeo, sem quiz
+- Cards concluídos têm borda verde subtil
 - `/employee/training/{training}` — player de vídeo + quiz
 - Quiz bloqueado até todos os vídeos serem vistos (marcação no frontend via `Set`)
 - Respostas certas ocultas para `role=employee`
@@ -224,6 +275,8 @@ Prefixo: `/api/v1/` — todos requerem sessão autenticada (`auth:web`)
 | Trainings      | `/trainings` (apiResource)    |
 | Users          | `/users` (apiResource)        |
 
+**Nota:** A rota `POST /employees/bulk-create-users` está declarada **antes** do `apiResource('employees')` para evitar conflito com `employees.show`.
+
 ### Inscrições em Formações
 | Método | Rota                          | Acção               |
 |--------|-------------------------------|---------------------|
@@ -233,52 +286,57 @@ Prefixo: `/api/v1/` — todos requerem sessão autenticada (`auth:web`)
 | DELETE | `/enrollments/{enrollment}`   | Remover             |
 
 ### Vídeos
-| Método | Rota                                        |
-|--------|---------------------------------------------|
+| Método | Rota                                                  |
+|--------|-------------------------------------------------------|
 | *      | `/trainings/{training}/videos` (apiResource, shallow) |
 
 ### Quiz
-| Método | Rota                                        | Acção                          |
-|--------|---------------------------------------------|--------------------------------|
+| Método | Rota                                        | Acção                                      |
+|--------|---------------------------------------------|--------------------------------------------|
 | GET    | `/trainings/{training}/quiz`                | Ver quiz (respostas ocultas para employee) |
-| POST   | `/trainings/{training}/quiz`                | Criar quiz (admin/hr)          |
-| PUT    | `/trainings/{training}/quiz`                | Actualizar quiz (admin/hr)     |
-| GET    | `/trainings/{training}/quiz/results`        | Resultados por utilizador (admin/hr) |
-| POST   | `/quiz/{training}/attempt`                  | Submeter tentativa             |
-| GET    | `/quiz/{training}/my-attempts`              | Histórico de tentativas        |
+| POST   | `/trainings/{training}/quiz`                | Criar quiz (admin/hr)                      |
+| PUT    | `/trainings/{training}/quiz`                | Actualizar quiz (admin/hr)                 |
+| GET    | `/trainings/{training}/quiz/results`        | Resultados por utilizador (admin/hr)       |
+| POST   | `/quiz/{training}/attempt`                  | Submeter tentativa                         |
+| GET    | `/quiz/{training}/my-attempts`              | Histórico de tentativas                    |
 
 ### Outros
-| Método | Rota                                        | Acção                          |
-|--------|---------------------------------------------|--------------------------------|
-| POST   | `/employee-portal/associate`                | Associar funcionário por código |
-| POST   | `/employees/bulk-create-users`              | Criar contas em massa          |
-| GET    | `/reports/completed-trainings`              | Relatório formações concluídas |
-| GET    | `/reports/employees-with-trainings`         | Funcionários com formações     |
-| GET    | `/reports/attendance-summary`               | Sumário de presenças           |
+| Método | Rota                                  | Acção                          |
+|--------|---------------------------------------|--------------------------------|
+| POST   | `/employee-portal/associate`          | Associar funcionário por código |
+| POST   | `/employees/bulk-create-users`        | Criar contas em massa          |
+| GET    | `/reports/completed-trainings`        | Relatório formações concluídas |
+| GET    | `/reports/employees-trainings`        | Funcionários com formações     |
+| GET    | `/reports/training-employees`         | Formações com funcionários     |
+| GET    | `/reports/attendance`                 | Sumário de presenças           |
+| GET    | `/reports/validity`                   | Relatório de validade de certificados |
+| POST   | `/reports/send-email`                 | Enviar relatório por email     |
 
 ---
 
 ## Rotas Web
 
-| Rota                              | Controller                          | Notas                        |
-|-----------------------------------|-------------------------------------|------------------------------|
-| `/`                               | —                                   | Página de apresentação       |
-| `/login` / POST `/login`          | `LoginController`                   | Login dual (email ou código) |
-| `/dashboard`                      | `DashboardController`               | Back-office (admin/hr)       |
-| `/employees`                      | `EmployeeWebController`             |                              |
-| `/departments`                    | `DepartmentWebController`           |                              |
-| `/positions`                      | `PositionWebController`             |                              |
-| `/sectors`                        | `SectorWebController`               |                              |
-| `/attendances`                    | `AttendanceWebController`           |                              |
-| `/leaves`                         | `LeaveWebController`                |                              |
-| `/trainings`                      | `TrainingWebController`             |                              |
-| `/users`                          | `UserWebController`                 |                              |
-| `/reports`                        | `ReportWebController`               |                              |
-| `/calendar`                       | `CalendarWebController`             |                              |
-| `/password`                       | `PasswordWebController`             | PUT — alterar password       |
-| `/docsem/*`                       | `DocsElectroMinhoWebController`     | Integração externa           |
-| `/employee/dashboard`             | `EmployeePortalController`          | Portal funcionário           |
-| `/employee/training/{training}`   | `EmployeePortalController`          | Vídeo + quiz                 |
+| Rota                              | Controller                          | Middleware                        | Notas                        |
+|-----------------------------------|-------------------------------------|-----------------------------------|------------------------------|
+| `/`                               | —                                   | —                                 | Página de apresentação       |
+| `/login` / POST `/login`          | `LoginController`                   | `guest`                           | Login dual (email ou código) |
+| POST `/logout`                    | `LoginController`                   | `auth`                            |                              |
+| `GET /password/change`            | `PasswordWebController`             | `auth`                            | Formulário mudança obrigatória |
+| `PUT /password`                   | `PasswordWebController`             | `auth`                            | Alterar password             |
+| `/dashboard`                      | `DashboardController`               | `auth`, `force.password.change`   | Back-office (admin/hr)       |
+| `/employees`                      | `EmployeeWebController`             | `auth`, `force.password.change`   |                              |
+| `/departments`                    | `DepartmentWebController`           | `auth`, `force.password.change`   |                              |
+| `/positions`                      | `PositionWebController`             | `auth`, `force.password.change`   |                              |
+| `/sectors`                        | `SectorWebController`               | `auth`, `force.password.change`   |                              |
+| `/attendances`                    | `AttendanceWebController`           | `auth`, `force.password.change`   |                              |
+| `/leaves`                         | `LeaveWebController`                | `auth`, `force.password.change`   |                              |
+| `/trainings`                      | `TrainingWebController`             | `auth`, `force.password.change`   |                              |
+| `/users`                          | `UserWebController`                 | `auth`, `force.password.change`   |                              |
+| `/reports`                        | `ReportWebController`               | `auth`, `force.password.change`   |                              |
+| `/calendar`                       | `CalendarWebController`             | `auth`, `force.password.change`   |                              |
+| `/docsem/*`                       | `DocsElectroMinhoWebController`     | `auth`, `force.password.change`   | Integração externa           |
+| `/employee/dashboard`             | `EmployeePortalController`          | `auth`, `force.password.change`   | Portal funcionário           |
+| `/employee/training/{training}`   | `EmployeePortalController`          | `auth`, `force.password.change`   | Vídeo + quiz                 |
 
 ---
 
@@ -297,74 +355,54 @@ Integração com sistema externo de gestão documental de subcontratadas.
 
 ## Comandos Artisan Personalizados
 
-| Comando                                          | Descrição                                         |
-|--------------------------------------------------|---------------------------------------------------|
-| `php artisan employees:create-users [--dry-run]` | Cria contas para todos os funcionários activos sem utilizador associado. Password padrão: `12345678`. |
-| `php artisan docsem:sync`                        | Sincroniza funcionários com o sistema DocsElectroMinho. |
+| Comando                                          | Descrição                                                                                      |
+|--------------------------------------------------|------------------------------------------------------------------------------------------------|
+| `php artisan employees:create-users [--dry-run]` | Cria contas para todos os funcionários activos sem utilizador associado. Password padrão: `12345678`. Activa `must_change_password`. |
+| `php artisan docsem:sync`                        | Sincroniza funcionários com o sistema DocsElectroMinho.                                        |
 
 ---
 
 ## Views e Layouts
 
 ### Layouts
-- `layouts/app.blade.php` — layout principal do back-office (sidebar + navbar)
+- `layouts/app.blade.php` — layout principal (sidebar + navbar); sidebar condicional por Gate (`@can`)
 - `layouts/guest.blade.php` — layout para páginas públicas (login, home)
-- `layouts/employee.blade.php` — layout do portal do funcionário
 
 ### Principais Views
-| View                           | Descrição                                          |
-|--------------------------------|----------------------------------------------------|
-| `auth/login.blade.php`         | Formulário de login (campo `login`, tipo `text`)  |
-| `dashboard/index.blade.php`    | Dashboard back-office com métricas                |
-| `employees/index.blade.php`    | CRUD funcionários + associação rápida + "Gerar Acessos" |
-| `trainings/index.blade.php`    | CRUD formações + conteúdo (vídeos/quiz) + resultados |
-| `users/index.blade.php`        | CRUD utilizadores do sistema                      |
-| `employee/dashboard.blade.php` | Portal do funcionário (perfil + banner associação) |
-| `employee/training.blade.php`  | Player de vídeo + questionário                    |
-| `reports/index.blade.php`      | Relatórios (formações, presenças, etc.)           |
-| `docsem/index.blade.php`       | Estado da integração DocsElectroMinho             |
-
----
-
-## Fotos de Perfil
-
-- Guardadas em `storage/app/public/employees/photos/` (disco `public`)
-- Acesso via `$employee->profile_photo_url` (accessor no modelo)
-- `EmployeeController::storePhoto()` converte base64 data URI para ficheiro em storage
-- A migração `2026_05_31_000001` converte registos legados de base64 para path
-- `EmployeeResource` devolve `photo` como URL pública (não base64)
-
----
-
-## Mudança de Password Obrigatória
-
-- Campo `must_change_password` (boolean) na tabela `users`
-- Activado automaticamente ao criar contas via `BulkUserController` e comando `employees:create-users`
-- Middleware `ForcePasswordChange` (registado no grupo `web`) redireciona para `/password/change`
-- View: `auth/change-password.blade.php`
-- Após guardar nova password, `must_change_password` é reposto a `false`
+| View                             | Descrição                                                              |
+|----------------------------------|------------------------------------------------------------------------|
+| `auth/login.blade.php`           | Formulário de login (campo `login`, tipo `text`)                       |
+| `auth/change-password.blade.php` | Formulário de mudança obrigatória de password (primeiro login)         |
+| `dashboard/index.blade.php`      | Dashboard back-office com métricas e gráficos                          |
+| `employees/index.blade.php`      | CRUD funcionários + associação rápida + "Gerar Acessos"                |
+| `trainings/index.blade.php`      | CRUD formações + conteúdo (vídeos/quiz) + resultados                   |
+| `users/index.blade.php`          | CRUD utilizadores do sistema                                           |
+| `employee/dashboard.blade.php`   | Portal: perfil + banner associação + cards de formações com estado     |
+| `employee/training.blade.php`    | Player de vídeo + questionário                                         |
+| `reports/index.blade.php`        | Relatórios (formações, presenças, validade, etc.)                      |
+| `docsem/index.blade.php`         | Estado da integração DocsElectroMinho                                  |
 
 ---
 
 ## Migrations (por ordem)
 
-| Ficheiro                                                    | Descrição                                  |
-|-------------------------------------------------------------|--------------------------------------------|
-| `0001_01_01_000000_create_users_table`                      | Tabela users + sessions + password_resets  |
-| `2024_01_01_000001` a `000010`                              | Estrutura base: positions, departments, sectors, employees, attendances, leaves, trainings, employee_trainings |
-| `2026_04_25_182834_add_work_location_to_employees_table`    | Campo `work_location` nos funcionários     |
-| `2026_04_25_185356_make_employee_nullable_fields`           | Tornar campos opcionais nos funcionários   |
-| `2026_04_26_000001_change_profile_photo_to_longtext`        | Foto de perfil como base64 (longtext)      |
-| `2026_04_28_000001_add_validity_months_to_employee_trainings` | Validade de certificados                 |
-| `2026_05_04_161603_add_deleted_at_to_employees_table`       | Soft deletes nos funcionários              |
-| `2026_05_26_000001_normalize_user_role_enum`                | Normalizar enum de roles                   |
-| `2026_05_26_000002_create_training_videos_table`            | Vídeos de formação                         |
-| `2026_05_26_000003_create_quiz_tables`                      | Quiz, perguntas, opções, tentativas, respostas |
-| `2026_05_27_000001_add_has_video_has_quiz_to_trainings`     | Flags `has_video` e `has_quiz`             |
-| `2026_05_27_000002_add_is_uploaded_to_training_videos`      | Flag `is_uploaded` para distinguir upload/URL |
-| `2026_05_27_000003_add_user_id_to_employees_table`          | Associação `user_id` nos funcionários      |
-| `2026_05_31_000001_change_profile_photo_to_string`          | Migra fotos de base64 para storage path    |
-| `2026_05_31_000002_add_must_change_password_to_users`       | Flag de mudança obrigatória de password    |
+| Ficheiro                                                      | Descrição                                  |
+|---------------------------------------------------------------|--------------------------------------------|
+| `0001_01_01_000000_create_users_table`                        | Tabela users + sessions + password_resets  |
+| `2024_01_01_000001` a `000010`                                | Estrutura base: positions, departments, sectors, employees, attendances, leaves, trainings, employee_trainings |
+| `2026_04_25_182834_add_work_location_to_employees_table`      | Campo `work_location` nos funcionários     |
+| `2026_04_25_185356_make_employee_nullable_fields`             | Tornar campos opcionais nos funcionários   |
+| `2026_04_26_000001_change_profile_photo_to_longtext`          | Foto de perfil como base64 (longtext) — legado |
+| `2026_04_28_000001_add_validity_months_to_employee_trainings` | Validade de certificados                   |
+| `2026_05_04_161603_add_deleted_at_to_employees_table`         | Soft deletes nos funcionários              |
+| `2026_05_26_000001_normalize_user_role_enum`                  | Normalizar enum de roles                   |
+| `2026_05_26_000002_create_training_videos_table`              | Vídeos de formação                         |
+| `2026_05_26_000003_create_quiz_tables`                        | Quiz, perguntas, opções, tentativas, respostas |
+| `2026_05_27_000001_add_has_video_has_quiz_to_trainings`       | Flags `has_video` e `has_quiz`             |
+| `2026_05_27_000002_add_is_uploaded_to_training_videos`        | Flag `is_uploaded` para distinguir upload/URL |
+| `2026_05_27_000003_add_user_id_to_employees_table`            | Associação `user_id` nos funcionários      |
+| `2026_05_31_000001_change_profile_photo_to_string`            | Migra fotos de base64 para storage path    |
+| `2026_05_31_000002_add_must_change_password_to_users`         | Flag de mudança obrigatória de password    |
 
 ---
 
@@ -416,7 +454,7 @@ php artisan migrate
 # 4. Assets
 npm run build
 
-# 5. Storage symlink (para vídeos/uploads)
+# 5. Storage symlink (para fotos e uploads)
 php artisan storage:link
 ```
 

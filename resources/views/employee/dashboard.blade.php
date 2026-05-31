@@ -60,6 +60,7 @@
     text-decoration:none; color:inherit; display:flex; flex-direction:column;
 }
 .training-card:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(0,0,0,.12); }
+.training-card.is-done { border-color:rgba(34,197,94,.35); }
 .training-thumb {
     height:120px;
     background:linear-gradient(135deg,#6366f1 0%,#a78bfa 100%);
@@ -73,6 +74,17 @@
     display:flex; align-items:center; justify-content:center;
     padding-left:4px;
 }
+/* Etiqueta de estado no canto superior direito da thumbnail */
+.status-pill {
+    position:absolute; top:10px; right:10px;
+    padding:3px 10px; border-radius:20px; font-size:.68rem; font-weight:700;
+    letter-spacing:.3px; backdrop-filter:blur(4px);
+}
+.status-pill.done    { background:rgba(34,197,94,.85);  color:#fff; }
+.status-pill.failed  { background:rgba(239,68,68,.85);  color:#fff; }
+.status-pill.pending { background:rgba(245,158,11,.85); color:#fff; }
+.status-pill.new     { background:rgba(99,102,241,.85); color:#fff; }
+
 .training-body { padding:16px; flex:1; display:flex; flex-direction:column; gap:8px; }
 .training-title { font-size:.9rem; font-weight:600; }
 .training-provider { font-size:.78rem; color:var(--text-muted); }
@@ -283,11 +295,24 @@
                 $hasVideo = (bool) $training->has_video;
                 $hasQuiz  = (bool) $training->has_quiz;
                 $attempt  = $quizStatuses[$training->id] ?? null;
+
+                // Determinar estado geral do card
+                if ($hasQuiz) {
+                    if ($attempt?->passed)              { $statusClass = 'done';    $statusLabel = '✓ Concluído'; }
+                    elseif ($attempt && !$attempt->passed) { $statusClass = 'failed';  $statusLabel = '✗ Reprovado'; }
+                    else                                { $statusClass = 'pending'; $statusLabel = 'Por fazer'; }
+                } elseif ($hasVideo) {
+                    // Só vídeo, sem quiz — não há forma de saber se viu; mostrar "Disponível"
+                    $statusClass = 'new'; $statusLabel = 'Disponível';
+                } else {
+                    $statusClass = 'new'; $statusLabel = 'Disponível';
+                }
             @endphp
-            <a href="{{ route('employee.training', $training) }}" class="training-card">
+            <a href="{{ route('employee.training', $training) }}" class="training-card {{ $statusClass === 'done' ? 'is-done' : '' }}">
                 <div class="training-thumb {{ $hasVideo ? 'has-video' : '' }}"
                      style="{{ $hasVideo ? '' : 'background:linear-gradient(135deg,#1e293b,#334155)' }}">
                     @if(!$hasVideo) 🎓 @endif
+                    <span class="status-pill {{ $statusClass }}">{{ $statusLabel }}</span>
                 </div>
                 <div class="training-body">
                     <p class="training-title">{{ $training->title }}</p>
