@@ -10,6 +10,7 @@ use App\Http\Controllers\Web\LeaveWebController;
 use App\Http\Controllers\Web\PositionWebController;
 use App\Http\Controllers\Web\SectorWebController;
 use App\Http\Controllers\Web\TrainingWebController;
+use App\Http\Controllers\Web\TrainingDashboardController;
 use App\Http\Controllers\Web\ReportWebController;
 use App\Http\Controllers\Web\DocsElectroMinhoWebController;
 use App\Http\Controllers\Web\UserWebController;
@@ -53,7 +54,8 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
     Route::get('/sectors',     [SectorWebController::class,     'index'])->name('sectors.index');
     Route::get('/attendances', [AttendanceWebController::class, 'index'])->name('attendances.index');
     Route::get('/leaves',      [LeaveWebController::class,      'index'])->name('leaves.index');
-    Route::get('/trainings',   [TrainingWebController::class,   'index'])->name('trainings.index');
+    Route::get('/trainings',           [TrainingWebController::class,     'index'])->name('trainings.index');
+    Route::get('/trainings/dashboard', [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
     Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
     Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
 

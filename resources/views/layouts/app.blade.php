@@ -259,8 +259,11 @@
                 <a href="{{ route('leaves.index') }}" class="nav-item {{ request()->routeIs('leaves.*') ? 'active' : '' }}">
                     <span class="nav-icon">🌴</span> Férias & Licenças
                 </a>
-                <a href="{{ route('trainings.index') }}" class="nav-item {{ request()->routeIs('trainings.*') ? 'active' : '' }}">
+                <a href="{{ route('trainings.index') }}" class="nav-item {{ request()->routeIs('trainings.index') ? 'active' : '' }}">
                     <span class="nav-icon">🎓</span> Formações
+                </a>
+                <a href="{{ route('trainings.dashboard') }}" class="nav-item {{ request()->routeIs('trainings.dashboard') ? 'active' : '' }}">
+                    <span class="nav-icon">📊</span> Dashboard Formações
                 </a>
                 <a href="{{ route('calendar.index') }}" class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
                     <span class="nav-icon">📆</span> Calendário
