@@ -90,7 +90,7 @@ class TrainingController extends Controller
 
     public function enrollments(Request $request): JsonResponse
     {
-        $query = EmployeeTraining::with(['employee', 'training'])
+        $query = EmployeeTraining::with(['employee', 'training', 'trainingSession'])
             ->whereHas('employee'); // exclui inscrições de funcionários apagados (soft delete)
         if ($request->filled('training_id')) $query->where('training_id', $request->training_id);
         if ($request->filled('employee_id')) $query->where('employee_id', $request->employee_id);
@@ -129,14 +129,15 @@ class TrainingController extends Controller
     public function enroll(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'employee_id' => 'required|exists:employees,id',
-            'training_id' => 'required|exists:trainings,id',
-            'status'      => 'nullable|in:enrolled,completed,failed',
-            'score'       => 'nullable|numeric|min:0|max:100',
-            'start_date'  => 'nullable|date',
-            'end_date'        => 'nullable|date|after_or_equal:start_date',
-            'validity_months' => 'nullable|integer|min:1|max:120',
-            'notes'           => 'nullable|string|max:1000',
+            'employee_id'          => 'required|exists:employees,id',
+            'training_id'          => 'required|exists:trainings,id',
+            'training_session_id'  => 'nullable|exists:training_sessions,id',
+            'status'               => 'nullable|in:enrolled,completed,failed',
+            'score'                => 'nullable|numeric|min:0|max:100',
+            'start_date'           => 'nullable|date',
+            'end_date'             => 'nullable|date|after_or_equal:start_date',
+            'validity_months'      => 'nullable|integer|min:1|max:120',
+            'notes'                => 'nullable|string|max:1000',
         ]);
         $enrollment = EmployeeTraining::create($data);
         return response()->json(['data' => $this->formatEnrollment($enrollment->load(['employee','training']))], 201);
@@ -145,14 +146,15 @@ class TrainingController extends Controller
     public function updateEnrollment(Request $request, EmployeeTraining $enrollment): JsonResponse
     {
         $data = $request->validate([
-            'employee_id' => 'sometimes|exists:employees,id',
-            'training_id' => 'sometimes|exists:trainings,id',
-            'status'      => 'sometimes|in:enrolled,completed,failed',
-            'score'       => 'nullable|numeric|min:0|max:100',
-            'start_date'  => 'nullable|date',
-            'end_date'        => 'nullable|date|after_or_equal:start_date',
-            'validity_months' => 'nullable|integer|min:1|max:120',
-            'notes'           => 'nullable|string|max:1000',
+            'employee_id'          => 'sometimes|exists:employees,id',
+            'training_id'          => 'sometimes|exists:trainings,id',
+            'training_session_id'  => 'nullable|exists:training_sessions,id',
+            'status'               => 'sometimes|in:enrolled,completed,failed',
+            'score'                => 'nullable|numeric|min:0|max:100',
+            'start_date'           => 'nullable|date',
+            'end_date'             => 'nullable|date|after_or_equal:start_date',
+            'validity_months'      => 'nullable|integer|min:1|max:120',
+            'notes'                => 'nullable|string|max:1000',
         ]);
         $enrollment->update($data);
         return response()->json(['data' => $this->formatEnrollment($enrollment->fresh()->load(['employee','training']))]);
@@ -181,11 +183,17 @@ class TrainingController extends Controller
     private function formatEnrollment(EmployeeTraining $e): array
     {
         return [
-            'id'          => $e->id,
-            'employee_id' => $e->employee_id,
-            'training_id' => $e->training_id,
-            'employee'    => $e->employee ? ['id' => $e->employee->id, 'full_name' => $e->employee->full_name] : null,
-            'training'    => $e->training  ? ['id' => $e->training->id,  'title'     => $e->training->title]    : null,
+            'id'                   => $e->id,
+            'employee_id'          => $e->employee_id,
+            'training_id'          => $e->training_id,
+            'training_session_id'  => $e->training_session_id,
+            'employee'             => $e->employee ? ['id' => $e->employee->id, 'full_name' => $e->employee->full_name] : null,
+            'training'             => $e->training  ? ['id' => $e->training->id,  'title'    => $e->training->title]    : null,
+            'training_session'     => $e->training_session_id ? [
+                'id'           => $e->training_session_id,
+                'planned_date' => $e->trainingSession?->planned_date?->format('d/m/Y'),
+                'location'     => $e->trainingSession?->location,
+            ] : null,
             'status'          => $e->status,
             'score'           => $e->score,
             'start_date'      => $e->start_date?->toDateString(),

@@ -91,14 +91,8 @@ class MandatoryTrainingController extends Controller
     {
         Gate::authorize('manage-hr');
 
-        $affectedIds = $mandatoryTraining->scopeAffectedEmployeeIds();
-
-        // IDs que já concluíram ou estão inscritos
-        $doneIds = EmployeeTraining::whereIn('employee_id', $affectedIds)
-            ->where('training_id', $mandatoryTraining->training_id)
-            ->whereIn('status', ['enrolled', 'completed'])
-            ->pluck('employee_id')
-            ->unique();
+        $affectedIds = $mandatoryTraining->affectedEmployeeIds();
+        $doneIds     = $mandatoryTraining->doneEmployeeIds($affectedIds);
 
         $missingEmployees = Employee::whereIn('id', $affectedIds->diff($doneIds))
             ->with(['department', 'position'])
@@ -134,11 +128,8 @@ class MandatoryTrainingController extends Controller
         $rules = MandatoryTraining::with('training')->get();
 
         $summary = $rules->map(function ($rule) {
-            $affectedIds = $rule->scopeAffectedEmployeeIds();
-            $doneIds = EmployeeTraining::whereIn('employee_id', $affectedIds)
-                ->where('training_id', $rule->training_id)
-                ->whereIn('status', ['enrolled', 'completed'])
-                ->pluck('employee_id')->unique();
+            $affectedIds = $rule->affectedEmployeeIds();
+            $doneIds     = $rule->doneEmployeeIds($affectedIds);
 
             $total   = $affectedIds->count();
             $done    = $doneIds->count();
@@ -163,11 +154,8 @@ class MandatoryTrainingController extends Controller
 
     private function format(MandatoryTraining $r): array
     {
-        $affectedIds = $r->scopeAffectedEmployeeIds();
-        $doneIds = EmployeeTraining::whereIn('employee_id', $affectedIds)
-            ->where('training_id', $r->training_id)
-            ->whereIn('status', ['enrolled', 'completed'])
-            ->pluck('employee_id')->unique();
+        $affectedIds = $r->affectedEmployeeIds();
+        $doneIds     = $r->doneEmployeeIds($affectedIds);
 
         $total   = $affectedIds->count();
         $done    = $doneIds->count();

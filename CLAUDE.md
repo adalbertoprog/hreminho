@@ -1,7 +1,7 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Maio 2026 (rev. 31/05/2026).
+Última actualização: Maio 2026 (rev. 31/05/2026 — campos financeiros em training_sessions, plano anual, formações obrigatórias).
 
 ---
 
@@ -171,6 +171,28 @@ employee_trainings: id, employee_id, training_id, status, certificate_path,
                     score, start_date, end_date, notes, validity_months
 ```
 
+### MandatoryTraining
+```
+mandatory_trainings: id, training_id, target_type (all|department|position), target_id (nullable), deadline_days (nullable), notes
+```
+- `belongsTo(Training)`
+- `affectedEmployeeIds()` — devolve Collection de IDs de funcionários activos abrangidos pela regra
+- `doneEmployeeIds(Collection $affectedIds)` — funcionários que já cumpriram (via inscrição ou quiz aprovado)
+- **Nota:** O método chama-se `affectedEmployeeIds()` (não `scopeAffectedEmployeeIds`) — não é um Eloquent query scope
+
+### TrainingSession
+```
+training_sessions: id, training_id, planned_date, planned_end_date (nullable),
+                   location (nullable), max_participants (nullable),
+                   estimated_participants (nullable), cost_per_person decimal(10,2) (nullable),
+                   status (planned|ongoing|completed|cancelled), notes, timestamps
+```
+- `belongsTo(Training)`
+- Accessor `duration_days` — dias entre planned_date e planned_end_date (mínimo 1)
+- Accessor `computed_status` — estado calculado com base nas datas (ignora o campo `status` excepto se `cancelled`)
+- O campo `estimated_total` **não existe na BD** — é calculado no `format()` do controller: `cost_per_person × estimated_participants`
+- Cast `cost_per_person` como `decimal:2` devolve string no Laravel — o controller converte com `(float)` antes de calcular
+
 ### Department / Position / Sector
 Estrutura organizacional. `Department` e `Sector` podem ter foreign keys cruzadas.
 
@@ -300,6 +322,31 @@ Prefixo: `/api/v1/` — todos requerem sessão autenticada (`auth:web`)
 | POST   | `/quiz/{training}/attempt`                  | Submeter tentativa                         |
 | GET    | `/quiz/{training}/my-attempts`              | Histórico de tentativas                    |
 
+### Sessões de Formação (Plano Anual)
+| Método | Rota                                              | Acção                                      |
+|--------|---------------------------------------------------|--------------------------------------------|
+| GET    | `/training-sessions`                              | Listar (filtros: year, month, status, training_id) |
+| POST   | `/training-sessions`                              | Criar sessão                               |
+| PUT    | `/training-sessions/{trainingSession}`            | Actualizar sessão                          |
+| DELETE | `/training-sessions/{trainingSession}`            | Remover sessão                             |
+| GET    | `/training-sessions/annual-summary?year=YYYY`     | Resumo anual por mês e por estado          |
+
+**Nota:** A rota `annual-summary` está declarada **antes** do `index` para evitar conflito de rotas.
+
+O endpoint devolve `estimated_total` calculado (não existe na BD): `cost_per_person × estimated_participants`.
+
+### Formações Obrigatórias
+| Método | Rota                                               | Acção                                 |
+|--------|----------------------------------------------------|---------------------------------------|
+| GET    | `/mandatory-trainings`                             | Listar regras com dados de cumprimento |
+| POST   | `/mandatory-trainings`                             | Criar regra                           |
+| PUT    | `/mandatory-trainings/{mandatoryTraining}`         | Actualizar (apenas deadline_days e notes) |
+| DELETE | `/mandatory-trainings/{mandatoryTraining}`         | Remover regra                         |
+| GET    | `/mandatory-trainings/compliance`                  | Sumário global de cumprimento         |
+| GET    | `/mandatory-trainings/{mandatoryTraining}/gaps`    | Funcionários em falta para uma regra  |
+
+**Nota:** A rota `compliance` está declarada **antes** de `{mandatoryTraining}` para evitar conflito.
+
 ### Outros
 | Método | Rota                                  | Acção                          |
 |--------|---------------------------------------|--------------------------------|
@@ -331,6 +378,8 @@ Prefixo: `/api/v1/` — todos requerem sessão autenticada (`auth:web`)
 | `/attendances`                    | `AttendanceWebController`           | `auth`, `force.password.change`   |                              |
 | `/leaves`                         | `LeaveWebController`                | `auth`, `force.password.change`   |                              |
 | `/trainings`                      | `TrainingWebController`             | `auth`, `force.password.change`   |                              |
+| `/trainings/dashboard`            | `TrainingDashboardController`       | `auth`, `force.password.change`   | Dashboard de formações       |
+| `/trainings/plan`                 | `TrainingPlanWebController`         | `auth`, `force.password.change`   | Plano anual de formações     |
 | `/users`                          | `UserWebController`                 | `auth`, `force.password.change`   |                              |
 | `/reports`                        | `ReportWebController`               | `auth`, `force.password.change`   |                              |
 | `/calendar`                       | `CalendarWebController`             | `auth`, `force.password.change`   |                              |
@@ -375,7 +424,9 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `auth/change-password.blade.php` | Formulário de mudança obrigatória de password (primeiro login)         |
 | `dashboard/index.blade.php`      | Dashboard back-office com métricas e gráficos                          |
 | `employees/index.blade.php`      | CRUD funcionários + associação rápida + "Gerar Acessos"                |
-| `trainings/index.blade.php`      | CRUD formações + conteúdo (vídeos/quiz) + resultados                   |
+| `trainings/index.blade.php`      | CRUD formações + conteúdo (vídeos/quiz) + resultados + obrigatórias    |
+| `trainings/dashboard.blade.php`  | Dashboard de formações: KPIs, evolução, compliance obrigatórias        |
+| `trainings/plan.blade.php`       | Plano anual: vista de calendário (meses) + lista + CRUD de sessões     |
 | `users/index.blade.php`          | CRUD utilizadores do sistema                                           |
 | `employee/dashboard.blade.php`   | Portal: perfil + banner associação + cards de formações com estado     |
 | `employee/training.blade.php`    | Player de vídeo + questionário                                         |
@@ -403,6 +454,9 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `2026_05_27_000003_add_user_id_to_employees_table`            | Associação `user_id` nos funcionários      |
 | `2026_05_31_000001_change_profile_photo_to_string`            | Migra fotos de base64 para storage path    |
 | `2026_05_31_000002_add_must_change_password_to_users`         | Flag de mudança obrigatória de password    |
+| `2026_05_31_000003_create_mandatory_trainings_table`          | Tabela de formações obrigatórias           |
+| `2026_05_31_000004_create_training_sessions_table`            | Tabela do plano anual de formações         |
+| `2026_05_31_000005_add_financial_fields_to_training_sessions` | Campos `estimated_participants` e `cost_per_person` nas sessões |
 
 ---
 
@@ -420,6 +474,48 @@ Integração com sistema externo de gestão documental de subcontratadas.
 
 ---
 
+## Plano Anual de Formações
+
+Rota: `/trainings/plan` — apenas `admin` e `hr`.
+
+### Funcionamento
+- Vista anual: grid de 12 meses com chips das sessões planeadas; clicar num mês abre modal de detalhe
+- Vista lista: tabela filtrável por estado e formação, com colunas financeiras e totalizador
+- Navegação entre anos via botões `‹` / `›`
+
+### Campos financeiros (por sessão)
+| Campo                   | Tipo              | Descrição                                      |
+|-------------------------|-------------------|------------------------------------------------|
+| `estimated_participants`| smallint unsigned | Nº previsto de participantes                   |
+| `cost_per_person`       | decimal(10,2)     | Custo unitário por participante (€)            |
+| `estimated_total`       | —                 | Calculado: `cost_per_person × estimated_participants` (não existe na BD, só na API) |
+
+O totalizador no rodapé da tabela lista só aparece se pelo menos uma sessão tiver custo definido.
+
+### Notas de implementação
+- `annualSummary` carrega `training:id,title,provider` (o `provider` é necessário para o `format()`)
+- O cast `decimal:2` no modelo devolve string — o controller converte com `(float)` antes de calcular `estimated_total`
+- `recalcTotal()` no frontend recalcula em tempo real ao editar participantes ou custo
+
+---
+
+## Formações Obrigatórias
+
+Regras que definem quais formações são obrigatórias para todos os funcionários, um departamento específico, ou um cargo específico.
+
+### Modelo MandatoryTraining
+- `target_type`: `all` | `department` | `position`
+- `target_id`: null para `all`, ID do departamento/cargo nos outros casos
+- `affectedEmployeeIds()` — **método de instância** (não Eloquent scope), devolve Collection de IDs
+- `doneEmployeeIds(Collection)` — verifica cumprimento via inscrição (`enrolled`/`completed`) **ou** quiz aprovado
+
+### Compliance
+- `/api/v1/mandatory-trainings/compliance` — sumário global (taxa por regra)
+- `/api/v1/mandatory-trainings/{id}/gaps` — lista de funcionários em falta para uma regra específica
+- Visível no Dashboard de Formações e na tab "Obrigatórias" em `/trainings`
+
+---
+
 ## Pendente / Trabalho Futuro
 
 Ver `docs/To do.md` para lista completa. Resumo:
@@ -427,7 +523,6 @@ Ver `docs/To do.md` para lista completa. Resumo:
 ### Bugs conhecidos
 - Inscrições: campo de funcionários não apresenta todos
 - Não bloquear score se formação ainda não concluída (data fim futura)
-- Pluralização errada "formaçãooes" no relatório "Funcionários com formação"
 
 ### Funcionalidades planeadas
 - Gestão de equipas (designação a obras)

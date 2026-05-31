@@ -48,4 +48,9 @@ class Training extends Model
     {
         return $this->hasMany(MandatoryTraining::class);
     }
+
+    public function sessions()
+    {
+        return $this->hasMany(TrainingSession::class)->orderBy('planned_date');
+    }
 }

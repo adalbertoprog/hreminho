@@ -160,12 +160,9 @@ class TrainingDashboardController extends Controller
             ->values();
 
         // ── Cumprimento de formações obrigatórias ──────────────────────
-        $mandatoryCompliance = MandatoryTraining::with('training')->get()->map(function ($rule) {
-            $affectedIds = $rule->scopeAffectedEmployeeIds();
-            $doneIds     = EmployeeTraining::whereIn('employee_id', $affectedIds)
-                ->where('training_id', $rule->training_id)
-                ->whereIn('status', ['enrolled', 'completed'])
-                ->pluck('employee_id')->unique();
+        $mandatoryCompliance = MandatoryTraining::with(['training', 'training.quiz'])->get()->map(function ($rule) {
+            $affectedIds = $rule->affectedEmployeeIds();
+            $doneIds     = $rule->doneEmployeeIds($affectedIds);
             $total   = $affectedIds->count();
             $done    = $doneIds->count();
             $missing = $total - $done;

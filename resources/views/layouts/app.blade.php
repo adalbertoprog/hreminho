@@ -265,6 +265,9 @@
                 <a href="{{ route('trainings.dashboard') }}" class="nav-item {{ request()->routeIs('trainings.dashboard') ? 'active' : '' }}">
                     <span class="nav-icon">📊</span> Dashboard Formações
                 </a>
+                <a href="{{ route('trainings.plan') }}" class="nav-item {{ request()->routeIs('trainings.plan') ? 'active' : '' }}">
+                    <span class="nav-icon">📅</span> Plano Anual
+                </a>
                 <a href="{{ route('calendar.index') }}" class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
                     <span class="nav-icon">📆</span> Calendário
                 </a>

@@ -13,6 +13,7 @@ class EmployeeTraining extends Model
     protected $fillable = [
         'employee_id',
         'training_id',
+        'training_session_id',
         'status',
         'certificate_path',
         'score',
@@ -39,6 +40,11 @@ class EmployeeTraining extends Model
     public function training()
     {
         return $this->belongsTo(Training::class);
+    }
+
+    public function trainingSession()
+    {
+        return $this->belongsTo(\App\Models\TrainingSession::class);
     }
 
     // ── Accessors computados ───────────────────────────
@@ -72,7 +78,7 @@ class EmployeeTraining extends Model
         if ($expiry->lt($today)) {
             return 'expired';
         }
-        if ($expiry->diffInDays($today) <= 30) {
+        if ($today->diffInDays($expiry) <= 30) {
             return 'expiring';
         }
         return 'valid';

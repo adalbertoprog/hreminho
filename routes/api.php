@@ -14,6 +14,7 @@ use App\Http\Controllers\BulkUserController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Web\EmployeeAssociationController;
 use App\Http\Controllers\MandatoryTrainingController;
+use App\Http\Controllers\TrainingSessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
@@ -45,6 +46,13 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
     Route::get('trainings/{training}/quiz/results', [QuizController::class, 'results'])->name('trainings.quiz.results');
     Route::post('quiz/{training}/attempt',          [QuizController::class, 'attempt'])->name('quiz.attempt');
     Route::get('quiz/{training}/my-attempts',       [QuizController::class, 'myAttempts'])->name('quiz.my-attempts');
+
+    // Plano anual de formações (annual-summary antes do resource para evitar conflito)
+    Route::get   ('training-sessions/annual-summary',            [TrainingSessionController::class, 'annualSummary'])->name('training-sessions.annual-summary');
+    Route::get   ('training-sessions',                           [TrainingSessionController::class, 'index'])->name('training-sessions.index');
+    Route::post  ('training-sessions',                           [TrainingSessionController::class, 'store'])->name('training-sessions.store');
+    Route::put   ('training-sessions/{trainingSession}',         [TrainingSessionController::class, 'update'])->name('training-sessions.update');
+    Route::delete('training-sessions/{trainingSession}',         [TrainingSessionController::class, 'destroy'])->name('training-sessions.destroy');
 
     // Formações obrigatórias (compliance antes de {mandatoryTraining} para evitar conflito)
     Route::get   ('mandatory-trainings/compliance',               [MandatoryTrainingController::class, 'compliance'])->name('mandatory-trainings.compliance');

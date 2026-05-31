@@ -246,7 +246,13 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
     <form id="enrollForm" onsubmit="submitEnroll(event)">
         <div class="form-grid">
             <div class="fg full"><label>Funcionário *</label><select name="employee_id" id="empSelEnroll" required><option value="">— Selecionar —</option></select></div>
-            <div class="fg full"><label>Formação *</label><select name="training_id" id="trainingSelEnroll" required><option value="">— Selecionar —</option></select></div>
+            <div class="fg full"><label>Formação *</label><select name="training_id" id="trainingSelEnroll" required onchange="loadSessionsForEnroll()"><option value="">— Selecionar —</option></select></div>
+            <div class="fg full" id="sessionSelWrap" style="display:none">
+                <label>Sessão planeada <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
+                <select name="training_session_id" id="sessionSelEnroll">
+                    <option value="">— Sem sessão associada —</option>
+                </select>
+            </div>
             <div class="fg"><label>Status</label>
                 <select name="status">
                     <option value="enrolled">Inscrito</option>
@@ -979,17 +985,48 @@ function openCreateEnroll(){
     document.getElementById('scoreHint').textContent='';
     document.getElementById('enrollTitle').textContent='➕ Nova Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Inscrever';
+    document.getElementById('sessionSelWrap').style.display='none';
+    document.getElementById('sessionSelEnroll').innerHTML='<option value="">— Sem sessão associada —</option>';
     openOverlay('enrollOverlay');
 }
+async function loadSessionsForEnroll() {
+    const trainingId = document.getElementById('trainingSelEnroll').value;
+    const wrap = document.getElementById('sessionSelWrap');
+    const sel  = document.getElementById('sessionSelEnroll');
+    sel.innerHTML = '<option value="">— Sem sessão associada —</option>';
+    if (!trainingId) { wrap.style.display = 'none'; return; }
+    try {
+        const res = await apiFetch('GET', `/training-sessions?training_id=${trainingId}`);
+        const sessions = (res.data ?? []).filter(s => s.status !== 'cancelled');
+        if (!sessions.length) { wrap.style.display = 'none'; return; }
+        sessions.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            const loc = s.location ? ` · ${s.location}` : '';
+            const slots = s.estimated_participants ? ` (${s.enrolled_count}/${s.estimated_participants} inscritos)` : '';
+            opt.textContent = `${s.planned_date_fmt}${s.planned_end_fmt && s.planned_end_fmt !== s.planned_date_fmt ? ' → ' + s.planned_end_fmt : ''}${loc}${slots}`;
+            sel.appendChild(opt);
+        });
+        wrap.style.display = '';
+    } catch(e) { wrap.style.display = 'none'; }
+}
+
 function openEditEnroll(id){
     const e=enrollMap[id];if(!e)return;
     enrollEditId=e.id;
     document.getElementById('enrollForm').reset();
+    document.getElementById('sessionSelWrap').style.display='none';
     const form=document.getElementById('enrollForm');
     const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
     set('employee_id',e.employee_id);set('training_id',e.training_id);set('status',e.status);
     set('score',e.score);set('start_date',e.start_date);set('end_date',e.end_date);
     set('validity_months',e.validity_months);set('notes',e.notes);
+    // Carregar sessões e depois seleccionar a correcta
+    loadSessionsForEnroll().then(() => {
+        if (e.training_session_id) {
+            document.getElementById('sessionSelEnroll').value = e.training_session_id;
+        }
+    });
     document.getElementById('enrollTitle').textContent='✏️ Editar Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Guardar';
     setTimeout(()=>{updateExpiryHint();updateScoreState();},50);
