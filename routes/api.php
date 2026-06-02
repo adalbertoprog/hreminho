@@ -19,60 +19,87 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
-    // Rotas especificas de employees devem vir ANTES do apiResource para evitar conflitos
-    Route::post('employees/bulk-create-users', [BulkUserController::class, 'createEmployeeUsers'])->name('employees.bulk-create-users');
+    // ── Rotas acessíveis a TODOS os utilizadores autenticados ─────────────
+    // (admin, hr e employee)
 
-    Route::apiResource('employees',   EmployeeController::class);
-    Route::apiResource('departments', DepartmentController::class);
-    Route::apiResource('positions',   PositionController::class);
-    Route::apiResource('sectors', SectorController::class);
-
-    Route::apiResource('attendances', AttendanceController::class);
-    Route::apiResource('leaves',      LeaveController::class);
-
-    // Formacoes (catalogo)
-    Route::apiResource('trainings', TrainingController::class);
-    // Inscricoes
-    Route::get('enrollments',                    [TrainingController::class, 'enrollments'])->name('enrollments.index');
-    Route::post('enrollments',                   [TrainingController::class, 'enroll'])->name('enrollments.store');
-    Route::put('enrollments/{enrollment}',        [TrainingController::class, 'updateEnrollment'])->name('enrollments.update');
-    Route::delete('enrollments/{enrollment}',     [TrainingController::class, 'destroyEnrollment'])->name('enrollments.destroy');
-
-    // Videos e questionarios (gestao por admin/hr)
-    Route::apiResource('trainings.videos', TrainingVideoController::class)->shallow();
-    Route::get('trainings/{training}/quiz',         [QuizController::class, 'show'])->name('trainings.quiz.show');
-    Route::post('trainings/{training}/quiz',        [QuizController::class, 'store'])->name('trainings.quiz.store');
-    Route::put('trainings/{training}/quiz',         [QuizController::class, 'update'])->name('trainings.quiz.update');
-    Route::get('trainings/{training}/quiz/results', [QuizController::class, 'results'])->name('trainings.quiz.results');
-    Route::post('quiz/{training}/attempt',          [QuizController::class, 'attempt'])->name('quiz.attempt');
-    Route::get('quiz/{training}/my-attempts',       [QuizController::class, 'myAttempts'])->name('quiz.my-attempts');
-
-    // Plano anual de formações (annual-summary antes do resource para evitar conflito)
-    Route::get   ('training-sessions/annual-summary',            [TrainingSessionController::class, 'annualSummary'])->name('training-sessions.annual-summary');
-    Route::get   ('training-sessions',                           [TrainingSessionController::class, 'index'])->name('training-sessions.index');
-    Route::post  ('training-sessions',                           [TrainingSessionController::class, 'store'])->name('training-sessions.store');
-    Route::put   ('training-sessions/{trainingSession}',         [TrainingSessionController::class, 'update'])->name('training-sessions.update');
-    Route::delete('training-sessions/{trainingSession}',         [TrainingSessionController::class, 'destroy'])->name('training-sessions.destroy');
-
-    // Formações obrigatórias (compliance antes de {mandatoryTraining} para evitar conflito)
-    Route::get   ('mandatory-trainings/compliance',               [MandatoryTrainingController::class, 'compliance'])->name('mandatory-trainings.compliance');
-    Route::get   ('mandatory-trainings',                          [MandatoryTrainingController::class, 'index'])->name('mandatory-trainings.index');
-    Route::post  ('mandatory-trainings',                          [MandatoryTrainingController::class, 'store'])->name('mandatory-trainings.store');
-    Route::put   ('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'update'])->name('mandatory-trainings.update');
-    Route::delete('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'destroy'])->name('mandatory-trainings.destroy');
-    Route::get   ('mandatory-trainings/{mandatoryTraining}/gaps', [MandatoryTrainingController::class, 'gaps'])->name('mandatory-trainings.gaps');
-
-    // Utilizadores
-    Route::apiResource('users', UserController::class);
-
-    // Portal do funcionario — associacao por codigo
+    // Portal do funcionário — associação por código
     Route::post('employee-portal/associate', [EmployeeAssociationController::class, 'associate'])->name('employee-portal.associate');
 
-    // Relatorios
-    Route::get('reports/completed-trainings',   [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');
-    Route::get('reports/employees-trainings',   [ReportController::class, 'employeesWithTrainings'])->name('reports.employees-trainings');
-    Route::get('reports/training-employees',    [ReportController::class, 'trainingWithEmployees'])->name('reports.training-employees');
-    Route::get('reports/attendance',            [ReportController::class, 'attendance'])->name('reports.attendance');
-    Route::get('reports/validity',              [ReportController::class, 'validityReport'])->name('reports.validity');
-    Route::post('reports/send-email',           [ReportController::class, 'sendEmail'])->name('reports.send-email');
+    // Quiz — leitura e submissão (employee só vê quiz sem respostas corretas; ver QuizController::show)
+    Route::get('trainings/{training}/quiz',    [QuizController::class, 'show'])->name('trainings.quiz.show');
+    Route::post('quiz/{training}/attempt',     [QuizController::class, 'attempt'])->name('quiz.attempt');
+    Route::get('quiz/{training}/my-attempts',  [QuizController::class, 'myAttempts'])->name('quiz.my-attempts');
+
+    // Catálogo de formações (leitura) — employee precisa para o portal
+    Route::get('trainings',          [TrainingController::class, 'index'])->name('trainings.index');
+    Route::get('trainings/{training}', [TrainingController::class, 'show'])->name('trainings.show');
+
+    // Vídeos (leitura) — employee precisa para o player
+    Route::get('trainings/{training}/videos',  [TrainingVideoController::class, 'index'])->name('trainings.videos.index');
+    Route::get('videos/{video}',               [TrainingVideoController::class, 'show'])->name('videos.show');
+
+    // ── Rotas exclusivas de admin/hr (manage-hr) ──────────────────────────
+    Route::middleware('can:manage-hr')->group(function () {
+
+        // Funcionários
+        Route::post('employees/bulk-create-users', [BulkUserController::class, 'createEmployeeUsers'])->name('employees.bulk-create-users');
+        Route::apiResource('employees',   EmployeeController::class);
+
+        // Estrutura organizacional
+        Route::apiResource('departments', DepartmentController::class);
+        Route::apiResource('positions',   PositionController::class);
+        Route::apiResource('sectors',     SectorController::class);
+
+        // Presenças e férias
+        Route::apiResource('attendances', AttendanceController::class);
+        Route::apiResource('leaves',      LeaveController::class);
+
+        // Gestão do catálogo de formações (escrita)
+        Route::post('trainings',             [TrainingController::class, 'store'])->name('trainings.store');
+        Route::put('trainings/{training}',   [TrainingController::class, 'update'])->name('trainings.update');
+        Route::delete('trainings/{training}',[TrainingController::class, 'destroy'])->name('trainings.destroy');
+
+        // Inscrições
+        Route::get('enrollments',                  [TrainingController::class, 'enrollments'])->name('enrollments.index');
+        Route::post('enrollments',                 [TrainingController::class, 'enroll'])->name('enrollments.store');
+        Route::put('enrollments/{enrollment}',      [TrainingController::class, 'updateEnrollment'])->name('enrollments.update');
+        Route::delete('enrollments/{enrollment}',   [TrainingController::class, 'destroyEnrollment'])->name('enrollments.destroy');
+
+        // Vídeos (escrita)
+        Route::post('trainings/{training}/videos',   [TrainingVideoController::class, 'store'])->name('trainings.videos.store');
+        Route::put('videos/{video}',                 [TrainingVideoController::class, 'update'])->name('videos.update');
+        Route::delete('videos/{video}',              [TrainingVideoController::class, 'destroy'])->name('videos.destroy');
+
+        // Quiz (gestão)
+        Route::post('trainings/{training}/quiz',        [QuizController::class, 'store'])->name('trainings.quiz.store');
+        Route::put('trainings/{training}/quiz',         [QuizController::class, 'update'])->name('trainings.quiz.update');
+        Route::get('trainings/{training}/quiz/results', [QuizController::class, 'results'])->name('trainings.quiz.results');
+
+        // Plano anual (annual-summary antes do index para evitar conflito de rotas)
+        Route::get   ('training-sessions/annual-summary',        [TrainingSessionController::class, 'annualSummary'])->name('training-sessions.annual-summary');
+        Route::get   ('training-sessions',                       [TrainingSessionController::class, 'index'])->name('training-sessions.index');
+        Route::post  ('training-sessions',                       [TrainingSessionController::class, 'store'])->name('training-sessions.store');
+        Route::put   ('training-sessions/{trainingSession}',     [TrainingSessionController::class, 'update'])->name('training-sessions.update');
+        Route::delete('training-sessions/{trainingSession}',     [TrainingSessionController::class, 'destroy'])->name('training-sessions.destroy');
+
+        // Formações obrigatórias (compliance antes de {mandatoryTraining} para evitar conflito)
+        Route::get   ('mandatory-trainings/compliance',               [MandatoryTrainingController::class, 'compliance'])->name('mandatory-trainings.compliance');
+        Route::get   ('mandatory-trainings',                          [MandatoryTrainingController::class, 'index'])->name('mandatory-trainings.index');
+        Route::post  ('mandatory-trainings',                          [MandatoryTrainingController::class, 'store'])->name('mandatory-trainings.store');
+        Route::put   ('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'update'])->name('mandatory-trainings.update');
+        Route::delete('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'destroy'])->name('mandatory-trainings.destroy');
+        Route::get   ('mandatory-trainings/{mandatoryTraining}/gaps', [MandatoryTrainingController::class, 'gaps'])->name('mandatory-trainings.gaps');
+
+        // Utilizadores
+        Route::apiResource('users', UserController::class);
+
+        // Relatórios
+        Route::get('reports/completed-trainings', [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');
+        Route::get('reports/employees-trainings', [ReportController::class, 'employeesWithTrainings'])->name('reports.employees-trainings');
+        Route::get('reports/training-employees',  [ReportController::class, 'trainingWithEmployees'])->name('reports.training-employees');
+        Route::get('reports/attendance',          [ReportController::class, 'attendance'])->name('reports.attendance');
+        Route::get('reports/validity',            [ReportController::class, 'validityReport'])->name('reports.validity');
+        Route::get('reports/gaps',                [ReportController::class, 'gapAnalysis'])->name('reports.gaps');
+        Route::post('reports/send-email',         [ReportController::class, 'sendEmail'])->name('reports.send-email');
+    });
 });

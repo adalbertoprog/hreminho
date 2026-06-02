@@ -35,43 +35,49 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'force.password.change'])->group(function () {
+
+    // Dashboard — redireciona employees para o portal (ver DashboardController)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/employees',               [EmployeeWebController::class,   'index'])->name('employees.index');
-    Route::post('/employees',              [EmployeeWebController::class,   'store'])->name('employees.store');
-    Route::put('/employees/{employee}',    [EmployeeWebController::class,   'update'])->name('employees.update');
-    Route::delete('/employees/{employee}', [EmployeeWebController::class,   'destroy'])->name('employees.destroy');
+    // ── Rotas exclusivas admin/hr ─────────────────────────────────────────
+    Route::middleware('can:manage-hr')->group(function () {
+        Route::get('/employees',               [EmployeeWebController::class,   'index'])->name('employees.index');
+        Route::post('/employees',              [EmployeeWebController::class,   'store'])->name('employees.store');
+        Route::put('/employees/{employee}',    [EmployeeWebController::class,   'update'])->name('employees.update');
+        Route::delete('/employees/{employee}', [EmployeeWebController::class,   'destroy'])->name('employees.destroy');
 
-    Route::get('/departments',                 [DepartmentWebController::class, 'index'])->name('departments.index');
-    Route::post('/departments',                [DepartmentWebController::class, 'store'])->name('departments.store');
-    Route::put('/departments/{department}',    [DepartmentWebController::class, 'update'])->name('departments.update');
-    Route::delete('/departments/{department}', [DepartmentWebController::class, 'destroy'])->name('departments.destroy');
+        Route::get('/departments',                 [DepartmentWebController::class, 'index'])->name('departments.index');
+        Route::post('/departments',                [DepartmentWebController::class, 'store'])->name('departments.store');
+        Route::put('/departments/{department}',    [DepartmentWebController::class, 'update'])->name('departments.update');
+        Route::delete('/departments/{department}', [DepartmentWebController::class, 'destroy'])->name('departments.destroy');
 
-    Route::get('/positions',               [PositionWebController::class,   'index'])->name('positions.index');
-    Route::post('/positions',              [PositionWebController::class,   'store'])->name('positions.store');
-    Route::put('/positions/{position}',    [PositionWebController::class,   'update'])->name('positions.update');
-    Route::delete('/positions/{position}', [PositionWebController::class,   'destroy'])->name('positions.destroy');
+        Route::get('/positions',               [PositionWebController::class,   'index'])->name('positions.index');
+        Route::post('/positions',              [PositionWebController::class,   'store'])->name('positions.store');
+        Route::put('/positions/{position}',    [PositionWebController::class,   'update'])->name('positions.update');
+        Route::delete('/positions/{position}', [PositionWebController::class,   'destroy'])->name('positions.destroy');
 
-    Route::get('/sectors',     [SectorWebController::class,     'index'])->name('sectors.index');
-    Route::get('/attendances', [AttendanceWebController::class, 'index'])->name('attendances.index');
-    Route::get('/leaves',      [LeaveWebController::class,      'index'])->name('leaves.index');
-    Route::get('/trainings',           [TrainingWebController::class,     'index'])->name('trainings.index');
-    Route::get('/trainings/dashboard', [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
-    Route::get('/trainings/plan',      [TrainingPlanWebController::class,   'index'])->name('trainings.plan');
-    Route::get('/users',       [UserWebController::class,       'index'])->name('users.index');
-    Route::get('/reports',     [ReportWebController::class,    'index'])->name('reports.index');
+        Route::get('/sectors',     [SectorWebController::class,     'index'])->name('sectors.index');
+        Route::get('/attendances', [AttendanceWebController::class, 'index'])->name('attendances.index');
+        Route::get('/leaves',      [LeaveWebController::class,      'index'])->name('leaves.index');
+        Route::get('/trainings',           [TrainingWebController::class,       'index'])->name('trainings.index');
+        Route::get('/trainings/dashboard', [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
+        Route::get('/trainings/plan',      [TrainingPlanWebController::class,   'index'])->name('trainings.plan');
+        Route::get('/users',   [UserWebController::class,   'index'])->name('users.index');
+        Route::get('/reports', [ReportWebController::class, 'index'])->name('reports.index');
 
-    Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
-    Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
+        Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
+        Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
 
-    Route::prefix('docsem')->name('docsem.')->group(function () {
-        Route::get('/',                                      [DocsElectroMinhoWebController::class, 'index'])->name('index');
-        Route::post('/sync',                                 [DocsElectroMinhoWebController::class, 'syncTodos'])->name('sync');
-        Route::post('/sync/{employee}',                      [DocsElectroMinhoWebController::class, 'syncFuncionario'])->name('sync.employee');
-        Route::get('/employee/{employee}/documentos',        [DocsElectroMinhoWebController::class, 'documentosFuncionario'])->name('employee.documentos');
-        Route::get('/ping',                                  [DocsElectroMinhoWebController::class, 'ping'])->name('ping');
+        Route::prefix('docsem')->name('docsem.')->group(function () {
+            Route::get('/',                               [DocsElectroMinhoWebController::class, 'index'])->name('index');
+            Route::post('/sync',                          [DocsElectroMinhoWebController::class, 'syncTodos'])->name('sync');
+            Route::post('/sync/{employee}',               [DocsElectroMinhoWebController::class, 'syncFuncionario'])->name('sync.employee');
+            Route::get('/employee/{employee}/documentos', [DocsElectroMinhoWebController::class, 'documentosFuncionario'])->name('employee.documentos');
+            Route::get('/ping',                           [DocsElectroMinhoWebController::class, 'ping'])->name('ping');
+        });
     });
 
+    // ── Portal do funcionário ─────────────────────────────────────────────
     Route::prefix('employee')->name('employee.')->group(function () {
         Route::get('/dashboard',           [EmployeePortalController::class, 'dashboard'])->name('dashboard');
         Route::get('/training/{training}', [EmployeePortalController::class, 'training'])->name('training');

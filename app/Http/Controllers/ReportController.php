@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\EmployeeTraining;
+use App\Models\MandatoryTraining;
 use App\Models\Training;
+use App\Models\TrainingSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
 
 class ReportController extends Controller
@@ -268,6 +271,140 @@ class ReportController extends Controller
                 'total'    => $kpiAll->count(),
             ],
             'total' => $rows->count(),
+        ]);
+    }
+
+    // ── 6. Gap Analysis ─────────────────────────────────────────────────
+    public function gapAnalysis(Request $request): JsonResponse
+    {
+        $today = Carbon::today();
+
+        // ── 6a. Formações obrigatórias não cumpridas ─────────────────────
+        $mandatoryRules = MandatoryTraining::with('training')->get();
+        $mandatoryGaps  = $mandatoryRules->flatMap(function ($rule) {
+            $affectedIds = $rule->affectedEmployeeIds();
+            $doneIds     = $rule->doneEmployeeIds($affectedIds);
+            $missingIds  = $affectedIds->diff($doneIds);
+
+            if ($missingIds->isEmpty()) return collect();
+
+            return Employee::whereIn('id', $missingIds)
+                ->with(['department', 'position', 'sector'])
+                ->orderBy('first_name')
+                ->get()
+                ->map(fn($e) => [
+                    'employee_id'    => $e->id,
+                    'employee_code'  => $e->code,
+                    'employee_name'  => $e->full_name,
+                    'department'     => $e->department?->department ?? '—',
+                    'position'       => $e->position?->position ?? '—',
+                    'sector'         => $e->sector?->sector ?? '—',
+                    'training_id'    => $rule->training_id,
+                    'training_title' => $rule->training?->title ?? '—',
+                    'target_type'    => $rule->target_type,
+                    'target_id'      => $rule->target_id,
+                    'target_name'    => $rule->target_name,
+                    'deadline_days'  => $rule->deadline_days,
+                ]);
+        })->values();
+
+        // ── 6b. Certificados expirados ou a expirar (30 dias) ────────────
+        $today_str = $today->toDateString();
+        $soon_str  = $today->copy()->addDays(30)->toDateString();
+
+        $expiredRows = EmployeeTraining::with(['employee.department', 'employee.position', 'training'])
+            ->whereHas('employee')
+            ->whereNotNull('validity_months')
+            ->whereNotNull('end_date')
+            ->where('status', 'completed')
+            ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) <= ?", [$soon_str])
+            ->orderByRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) ASC")
+            ->get()
+            ->map(function ($r) use ($today) {
+                $expiry    = $r->end_date->copy()->addMonths($r->validity_months);
+                $daysLeft  = $today->diffInDays($expiry, false);
+                return [
+                    'employee_id'    => $r->employee_id,
+                    'employee_code'  => $r->employee?->code ?? '—',
+                    'employee_name'  => $r->employee?->full_name ?? '—',
+                    'department'     => $r->employee?->department?->department ?? '—',
+                    'position'       => $r->employee?->position?->position ?? '—',
+                    'training_id'    => $r->training_id,
+                    'training_title' => $r->training?->title ?? '—',
+                    'expiry_date'    => $expiry->toDateString(),
+                    'days_left'      => $daysLeft,
+                    'status'         => $daysLeft < 0 ? 'expired' : 'expiring',
+                ];
+            });
+
+        // ── 6c. Funcionários activos sem nenhuma formação ────────────────
+        $noTraining = Employee::where('status', 'active')
+            ->whereDoesntHave('employeeTrainings')
+            ->with(['department', 'position', 'sector'])
+            ->orderBy('first_name')
+            ->get()
+            ->map(fn($e) => [
+                'employee_id'   => $e->id,
+                'employee_code' => $e->code,
+                'employee_name' => $e->full_name,
+                'department'    => $e->department?->department ?? '—',
+                'position'      => $e->position?->position ?? '—',
+                'sector'        => $e->sector?->sector ?? '—',
+                'hire_date'     => $e->hire_date?->toDateString(),
+            ]);
+
+        // ── 6d. Plano vs execução — sessões com preenchimento abaixo de 70% ──
+        $year = $request->input('year', Carbon::now()->year);
+        $planGaps = TrainingSession::with('training:id,title,provider')
+            ->withCount([
+                'enrollments as enrolled_count',
+            ])
+            ->whereYear('planned_date', $year)
+            ->where('status', '!=', 'cancelled')
+            ->whereNotNull('estimated_participants')
+            ->get()
+            ->map(function ($s) {
+                $enrolled  = (int) $s->enrolled_count;
+                $target    = $s->estimated_participants;
+                $fillRate  = $target > 0 ? round(($enrolled / $target) * 100) : 0;
+                return [
+                    'session_id'             => $s->id,
+                    'training_title'         => $s->training?->title ?? '—',
+                    'training_provider'      => $s->training?->provider ?? '—',
+                    'planned_date'           => $s->planned_date?->toDateString(),
+                    'planned_date_fmt'       => $s->planned_date?->format('d/m/Y'),
+                    'location'               => $s->location,
+                    'status'                 => $s->status,
+                    'estimated_participants' => $target,
+                    'enrolled_count'         => $enrolled,
+                    'fill_rate'              => $fillRate,
+                    'gap'                    => max(0, $target - $enrolled),
+                ];
+            })
+            ->filter(fn($s) => $s['fill_rate'] < 70)
+            ->sortBy('fill_rate')
+            ->values();
+
+        return response()->json([
+            'mandatory_gaps' => [
+                'data'  => $mandatoryGaps,
+                'total' => $mandatoryGaps->count(),
+            ],
+            'expired_certificates' => [
+                'data'     => $expiredRows,
+                'total'    => $expiredRows->count(),
+                'expired'  => $expiredRows->where('status', 'expired')->count(),
+                'expiring' => $expiredRows->where('status', 'expiring')->count(),
+            ],
+            'no_training' => [
+                'data'  => $noTraining,
+                'total' => $noTraining->count(),
+            ],
+            'plan_gaps' => [
+                'data'  => $planGaps,
+                'total' => $planGaps->count(),
+                'year'  => (int) $year,
+            ],
         ]);
     }
 

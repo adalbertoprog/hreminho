@@ -16,13 +16,19 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $defaultPassword = env('DEFAULT_ADMIN_PASSWORD');
+        if (empty($defaultPassword)) {
+            throw new \RuntimeException('DEFAULT_ADMIN_PASSWORD não está definida no .env. Defina-a antes de correr o seeder.');
+        }
+
         // Default admin user
         User::firstOrCreate(
             ['email' => 'admin@hreminho.com'],
             [
-                'name'     => 'Admin',
-                'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD')),
-                'role'     => 'admin',
+                'name'                => 'Admin',
+                'password'            => Hash::make($defaultPassword),
+                'role'                => 'admin',
+                'must_change_password' => true,
             ]
         );
 
@@ -30,9 +36,10 @@ class DatabaseSeeder extends Seeder
         User::firstOrCreate(
             ['email' => 'hr@hreminho.com'],
             [
-                'name'     => 'HR Manager',
-                'password' => Hash::make(env('DEFAULT_ADMIN_PASSWORD')),
-                'role'     => 'hr',
+                'name'                => 'HR Manager',
+                'password'            => Hash::make($defaultPassword),
+                'role'                => 'hr',
+                'must_change_password' => true,
             ]
         );
 

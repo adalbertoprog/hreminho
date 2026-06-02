@@ -252,6 +252,27 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     tr.row-expired  { background:#fff5f5!important; }
     tr.row-expiring { background:#fffbeb!important; }
 }
+/* ── Gap Analysis ── */
+.gap-section { background:var(--bg-card); border:1px solid var(--border); border-radius:12px; margin-bottom:20px; overflow:hidden; }
+.gap-section-header { display:flex; align-items:flex-start; gap:14px; padding:16px 20px; border-bottom:1px solid var(--border); background:rgba(99,102,241,0.04); }
+.gap-section-icon { font-size:1.4rem; margin-top:2px; }
+.gap-section-title { font-size:.9rem; font-weight:700; color:var(--text-primary); }
+.gap-section-sub { font-size:.78rem; color:var(--text-muted); margin-top:2px; }
+.gap-rule { border-bottom:1px solid var(--border); }
+.gap-rule:last-child { border-bottom:none; }
+.gap-rule-header { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:12px 20px; cursor:pointer; user-select:none; transition:background .15s; }
+.gap-rule-header:hover { background:rgba(99,102,241,.04); }
+.gap-rule-title { font-weight:600; font-size:.87rem; flex:1; min-width:120px; }
+.gap-rule-meta { font-size:.78rem; color:var(--text-muted); }
+.gap-rule-chevron { font-size:.7rem; color:var(--text-muted); transition:transform .2s; margin-left:auto; flex-shrink:0; }
+.gap-rule.open .gap-rule-chevron { transform:rotate(180deg); }
+.gap-rule-body { display:none; padding:0 20px 12px; }
+.gap-rule.open .gap-rule-body { display:block; }
+.gap-badge { display:inline-block; padding:2px 10px; border-radius:20px; font-size:.72rem; font-weight:700; }
+.gap-badge-danger { background:rgba(239,68,68,.15); color:var(--danger); }
+.gap-emp-list { display:flex; flex-wrap:wrap; gap:6px; padding:4px 0; }
+.gap-emp-chip { display:inline-flex; align-items:center; gap:5px; background:rgba(99,102,241,.1); color:var(--text-primary); padding:3px 10px; border-radius:20px; font-size:.75rem; }
+.gap-emp-chip em { color:var(--text-muted); font-style:normal; font-family:monospace; font-size:.7rem; }
 /* ── Print Header ── */
 .print-header { display: none; margin-bottom: 24px; border-bottom: 2px solid #6366f1; padding-bottom: 14px; }
 .print-header-top { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
@@ -319,6 +340,7 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     <button class="report-tab" onclick="switchTab('trainings')">📚 Formações por Funcionários</button>
     <button class="report-tab" onclick="switchTab('attendance')">📅 Assiduidade</button>
     <button class="report-tab" onclick="switchTab('validity')">⏳ Validade de Formações</button>
+    <button class="report-tab" onclick="switchTab('gaps')" id="tab-btn-gaps">🔍 Lacunas</button>
 </div>
 
 {{-- TAB 1: Funcionários com Formações --}}
@@ -504,6 +526,52 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
                 <tr><td colspan="10" class="state-msg">A carregar…</td></tr>
             </tbody>
         </table>
+    </div>
+</div>
+
+{{-- TAB 5: Lacunas --}}
+<div id="tab-gaps" style="display:none">
+    <div class="filter-bar">
+        <div class="filter-group">
+            <label>Ano (Plano)</label>
+            <select id="g-year">
+                @for($y = now()->year - 1; $y <= now()->year + 1; $y++)
+                    <option value="{{ $y }}" {{ $y == now()->year ? 'selected' : '' }}>{{ $y }}</option>
+                @endfor
+            </select>
+        </div>
+        <div class="filter-actions">
+            <button class="btn btn-primary" onclick="loadGaps()">🔍 Analisar</button>
+            <button class="btn btn-secondary" onclick="resetGaps()">↺ Limpar</button>
+        </div>
+    </div>
+
+    {{-- KPI strip --}}
+    <div class="v-kpi-strip" id="g-kpi-strip" style="margin-bottom:24px">
+        <div class="v-kpi" style="border-color:rgba(239,68,68,.3)">
+            <span class="kpi-label" style="color:#ef4444">⚠️ Obrigatórias</span>
+            <span class="kpi-value" id="g-kpi-mandatory" style="color:#ef4444">—</span>
+            <span class="kpi-sub">funcionários em falta</span>
+        </div>
+        <div class="v-kpi" style="border-color:rgba(245,158,11,.3)">
+            <span class="kpi-label" style="color:#f59e0b">🔔 Certificados</span>
+            <span class="kpi-value" id="g-kpi-certs" style="color:#f59e0b">—</span>
+            <span class="kpi-sub">expirados ou a expirar</span>
+        </div>
+        <div class="v-kpi" style="border-color:rgba(99,102,241,.3)">
+            <span class="kpi-label" style="color:var(--accent-light)">🚫 Sem Formação</span>
+            <span class="kpi-value" id="g-kpi-none" style="color:var(--accent-light)">—</span>
+            <span class="kpi-sub">funcionários sem registos</span>
+        </div>
+        <div class="v-kpi" style="border-color:rgba(16,185,129,.3)">
+            <span class="kpi-label" style="color:#10b981">📅 Plano vs Execução</span>
+            <span class="kpi-value" id="g-kpi-plan" style="color:#10b981">—</span>
+            <span class="kpi-sub">sessões abaixo de 70%</span>
+        </div>
+    </div>
+
+    <div id="g-content">
+        <div class="state-msg">Clique em "Analisar" para carregar as lacunas.</div>
     </div>
 </div>
 
@@ -791,16 +859,17 @@ async function loadDropdowns() {
 
 function switchTab(tab) {
     currentTab = tab;
-    ['employees','trainings','attendance','validity'].forEach(t => {
+    ['employees','trainings','attendance','validity','gaps'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
     });
     document.querySelectorAll('.report-tab').forEach((btn, i) => {
-        btn.classList.toggle('active', ['employees','trainings','attendance','validity'][i] === tab);
+        btn.classList.toggle('active', ['employees','trainings','attendance','validity','gaps'][i] === tab);
     });
     if (tab === 'employees'  && !document.getElementById('e-count').dataset.loaded) loadEmployees();
     if (tab === 'trainings'  && !document.getElementById('t-count').dataset.loaded) loadTrainings();
     if (tab === 'attendance' && !document.getElementById('a-count').dataset.loaded) loadAttendance();
     if (tab === 'validity'   && !document.getElementById('v-count').dataset.loaded) loadValidity();
+    if (tab === 'gaps'       && !gapsLoaded) loadGaps();
 }
 
 function qs(params) {
@@ -1029,6 +1098,7 @@ function resetAttendance() {
 ══════════════════════════════════════════ */
 let validityData = [];
 let vActiveKpi   = '';
+let gapsLoaded   = false;
 
 const vLabel = { valid:'✅ Válida', expiring:'🔔 A expirar', expired:'⚠️ Expirada' };
 const vClass  = { valid:'vbadge-valid', expiring:'vbadge-expiring', expired:'vbadge-expired' };
@@ -1104,6 +1174,178 @@ function resetValidity() {
     vActiveKpi = '';
     document.querySelectorAll('.v-kpi').forEach(el => el.classList.remove('active-filter'));
     loadValidity();
+}
+
+/* ══════════════════════════════════════════
+   TAB LACUNAS (GAP ANALYSIS)
+══════════════════════════════════════════ */
+async function loadGaps() {
+    gapsLoaded = true;
+    const content = document.getElementById('g-content');
+    content.innerHTML = '<div class="state-msg">A analisar lacunas…</div>';
+    ['g-kpi-mandatory','g-kpi-certs','g-kpi-none','g-kpi-plan'].forEach(id => {
+        document.getElementById(id).textContent = '…';
+    });
+
+    const year = document.getElementById('g-year').value;
+    const res  = await fetch(`/api/v1/reports/gaps?year=${year}`, {credentials:'same-origin'}).then(r => r.json());
+
+    const mandatory = res.mandatory_gaps?.data   || [];
+    const certs     = res.expired_certificates?.data || [];
+    const none      = res.no_training?.data      || [];
+    const plan      = res.plan_gaps?.data        || [];
+
+    // Group mandatory gaps by rule (training + target scope)
+    const mandatoryGrouped = Object.values(mandatory.reduce((acc, r) => {
+        const key = `${r.training_id}-${r.target_type||'all'}-${r.target_id||''}`;
+        if (!acc[key]) acc[key] = { training_title: r.training_title, target_name: r.target_name, target_type: r.target_type, target_id: r.target_id, employees: [] };
+        acc[key].employees.push(r);
+        return acc;
+    }, {}));
+
+    document.getElementById('g-kpi-mandatory').textContent = mandatory.length;
+    document.getElementById('g-kpi-certs').textContent     = certs.length;
+    document.getElementById('g-kpi-none').textContent      = none.length;
+    document.getElementById('g-kpi-plan').textContent      = plan.length;
+    document.getElementById('g-kpi-mandatory').dataset.loaded = '1';
+
+    let html = '';
+
+    /* --- Secção 1: Formações Obrigatórias em Falta --- */
+    html += `<div class="gap-section">
+        <div class="gap-section-header">
+            <span class="gap-section-icon" style="color:#ef4444">⚠️</span>
+            <div>
+                <div class="gap-section-title">Formações Obrigatórias em Falta</div>
+                <div class="gap-section-sub">${mandatoryGrouped.length} regra(s) com ${mandatory.length} funcionário(s) em incumprimento</div>
+            </div>
+        </div>`;
+    if (!mandatoryGrouped.length) {
+        html += `<div class="state-msg" style="padding:16px">✅ Sem lacunas em formações obrigatórias.</div>`;
+    } else {
+        mandatoryGrouped.forEach((rule, idx) => {
+            const targetLabel = rule.target_name || 'Todos os funcionários';
+            html += `<div class="gap-rule" id="gap-rule-${idx}">
+                <div class="gap-rule-header" onclick="toggleGapRule(${idx})">
+                    <span class="gap-rule-title">📚 ${rule.training_title}</span>
+                    <span class="gap-rule-meta">${targetLabel}</span>
+                    <span class="gap-badge gap-badge-danger">${rule.employees.length} em falta</span>
+                    <span class="gap-rule-chevron">▼</span>
+                </div>
+                <div class="gap-rule-body">
+                    <div class="gap-emp-list">
+                        ${rule.employees.map(e => `<span class="gap-emp-chip">${e.employee_name} <em>${e.employee_code}</em></span>`).join('')}
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
+    html += `</div>`;
+
+    /* --- Secção 2: Certificados Expirados/A Expirar --- */
+    html += `<div class="gap-section">
+        <div class="gap-section-header">
+            <span class="gap-section-icon" style="color:#f59e0b">🔔</span>
+            <div>
+                <div class="gap-section-title">Certificados Expirados ou a Expirar (30 dias)</div>
+                <div class="gap-section-sub">${certs.length} registo(s) requerem atenção</div>
+            </div>
+        </div>`;
+    if (!certs.length) {
+        html += `<div class="state-msg" style="padding:16px">✅ Nenhum certificado expirado ou a expirar.</div>`;
+    } else {
+        html += `<div class="table-wrap"><table>
+            <thead><tr><th>Funcionário</th><th>Código</th><th>Formação</th><th>Expira em</th><th>Dias</th><th>Estado</th></tr></thead>
+            <tbody>${certs.map(r => {
+                const cls = r.status === 'expired' ? 'row-expired' : 'row-expiring';
+                const badge = r.status === 'expired'
+                    ? '<span class="vbadge vbadge-expired">⚠️ Expirada</span>'
+                    : '<span class="vbadge vbadge-expiring">🔔 A expirar</span>';
+                const daysLabel = r.days_left < 0 ? `há ${Math.abs(r.days_left)} dias` : `em ${r.days_left} dia(s)`;
+                return `<tr class="${cls}">
+                    <td style="font-weight:600">${r.employee_name}</td>
+                    <td><span style="font-family:monospace;font-size:.78rem;color:var(--text-muted)">${r.employee_code}</span></td>
+                    <td>${r.training_title}</td>
+                    <td style="font-weight:600">${fmt(r.expiry_date)}</td>
+                    <td style="font-size:.82rem;color:var(--text-muted)">${daysLabel}</td>
+                    <td>${badge}</td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table></div>`;
+    }
+    html += `</div>`;
+
+    /* --- Secção 3: Funcionários sem Formações --- */
+    html += `<div class="gap-section">
+        <div class="gap-section-header">
+            <span class="gap-section-icon" style="color:var(--accent-light)">🚫</span>
+            <div>
+                <div class="gap-section-title">Funcionários sem Nenhuma Formação</div>
+                <div class="gap-section-sub">${none.length} funcionário(s) sem qualquer registo de formação</div>
+            </div>
+        </div>`;
+    if (!none.length) {
+        html += `<div class="state-msg" style="padding:16px">✅ Todos os funcionários têm pelo menos uma formação.</div>`;
+    } else {
+        html += `<div class="gap-emp-list" style="padding:12px 16px">
+            ${none.map(e => `<span class="gap-emp-chip">${e.employee_name} <em>${e.employee_code}</em></span>`).join('')}
+        </div>`;
+    }
+    html += `</div>`;
+
+    /* --- Secção 4: Plano vs Execução --- */
+    html += `<div class="gap-section">
+        <div class="gap-section-header">
+            <span class="gap-section-icon" style="color:#10b981">📅</span>
+            <div>
+                <div class="gap-section-title">Plano vs Execução — Sessões Abaixo de 70%</div>
+                <div class="gap-section-sub">${plan.length} sessão(ões) com taxa de preenchimento insuficiente em ${year}</div>
+            </div>
+        </div>`;
+    if (!plan.length) {
+        html += `<div class="state-msg" style="padding:16px">✅ Todas as sessões atingiram pelo menos 70% de preenchimento.</div>`;
+    } else {
+        html += `<div class="table-wrap"><table>
+            <thead><tr><th>Formação</th><th>Data</th><th>Local</th><th>Previsto</th><th>Inscrito</th><th>Taxa</th><th>Estado</th></tr></thead>
+            <tbody>${plan.map(s => {
+                const fillColor = (s.fill_rate ?? 0) >= 50 ? 'var(--warning)' : 'var(--danger)';
+                return `<tr>
+                    <td style="font-weight:600">${s.training_title}</td>
+                    <td>${s.planned_date_fmt || fmt(s.planned_date)}</td>
+                    <td style="color:var(--text-muted)">${s.location || '—'}</td>
+                    <td style="text-align:center">${s.estimated_participants ?? s.max_participants ?? '—'}</td>
+                    <td style="text-align:center">${s.enrolled_count}</td>
+                    <td><span style="color:${fillColor};font-weight:700">${s.fill_rate ?? 0}%</span></td>
+                    <td>${gapStatusBadge(s.status)}</td>
+                </tr>`;
+            }).join('')}</tbody>
+        </table></div>`;
+    }
+    html += `</div>`;
+
+    content.innerHTML = html;
+}
+
+function toggleGapRule(idx) {
+    document.getElementById('gap-rule-' + idx)?.classList.toggle('open');
+}
+
+function gapStatusBadge(status) {
+    const colors = {
+        planned:   'background:rgba(99,102,241,.15);color:var(--accent-light)',
+        ongoing:   'background:rgba(245,158,11,.15);color:#f59e0b',
+        completed: 'background:rgba(34,197,94,.15);color:#22c55e',
+        cancelled: 'background:rgba(156,163,175,.15);color:var(--text-muted)',
+    };
+    const label = { planned:'Planeada', ongoing:'Em curso', completed:'Concluída', cancelled:'Cancelada' };
+    const style = colors[status] || colors.planned;
+    return `<span style="${style};padding:2px 10px;border-radius:20px;font-size:.72rem;font-weight:700">${label[status]||status}</span>`;
+}
+
+function resetGaps() {
+    gapsLoaded = false;
+    document.getElementById('g-year').value = '{{ now()->year }}';
+    loadGaps();
 }
 
 function buildValidityPrintTable(rows) {

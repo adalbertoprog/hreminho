@@ -357,6 +357,7 @@ O endpoint devolve `estimated_total` calculado (não existe na BD): `cost_per_pe
 | GET    | `/reports/training-employees`         | Formações com funcionários     |
 | GET    | `/reports/attendance`                 | Sumário de presenças           |
 | GET    | `/reports/validity`                   | Relatório de validade de certificados |
+| GET    | `/reports/gaps`                       | Análise de lacunas (obrigatórias, certificados, sem formação, plano vs execução) |
 | POST   | `/reports/send-email`                 | Enviar relatório por email     |
 
 ---
