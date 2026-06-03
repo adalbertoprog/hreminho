@@ -1,17 +1,17 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Maio 2026 (rev. 31/05/2026 — campos financeiros em training_sessions, plano anual, formações obrigatórias).
+Última actualização: Junho 2026 (rev. 03/06/2026 — versão Laravel corrigida para 13, composer setup script).
 
 ---
 
 ## Visão Geral
 
-**HRElectrominho** é um sistema de gestão de recursos humanos (RH) desenvolvido em Laravel 11 com Blade templating. Destina-se à empresa Electrominho e gere funcionários, departamentos, presenças, férias, formações, vídeos, questionários e documentos.
+**HRElectrominho** é um sistema de gestão de recursos humanos (RH) desenvolvido em Laravel 13 com Blade templating. Destina-se à empresa Electrominho e gere funcionários, departamentos, presenças, férias, formações, vídeos, questionários e documentos.
 
 - **URL local**: `http://hreminho.test`
 - **Base de dados**: MySQL — `dbhreminho`
-- **Framework**: Laravel 11 (bootstrap/app.php — sem Kernel.php)
+- **Framework**: Laravel 13 (bootstrap/app.php — sem Kernel.php)
 - **PHP**: 8.3+
 - **Frontend**: Blade + CSS custom (dark theme com variáveis CSS), sem framework JS (vanilla JS)
 
@@ -536,6 +536,14 @@ Ver `docs/To do.md` para lista completa. Resumo:
 ## Setup Local
 
 ```bash
+# Setup completo num único comando (composer.json → scripts.setup)
+composer run setup
+php artisan storage:link
+```
+
+Ou passo a passo:
+
+```bash
 # 1. Dependências
 composer install
 npm install
@@ -556,7 +564,7 @@ php artisan storage:link
 
 ### Desenvolvimento
 ```bash
-composer run dev   # Laravel server + queue + logs + Vite
+composer run dev   # Laravel server + queue + logs (Pail) + Vite em simultâneo
 ```
 
 ### Variáveis .env relevantes
