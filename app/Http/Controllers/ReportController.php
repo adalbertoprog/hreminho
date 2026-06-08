@@ -6,11 +6,13 @@ use App\Models\Attendance;
 use App\Models\Employee;
 use App\Models\EmployeeTraining;
 use App\Models\MandatoryTraining;
+use App\Models\QuizAttempt;
 use App\Models\Training;
 use App\Models\TrainingSession;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Mail;
 
 class ReportController extends Controller
@@ -280,18 +282,84 @@ class ReportController extends Controller
         $today = Carbon::today();
 
         // ── 6a. Formações obrigatórias não cumpridas ─────────────────────
-        $mandatoryRules = MandatoryTraining::with('training')->get();
-        $mandatoryGaps  = $mandatoryRules->flatMap(function ($rule) {
-            $affectedIds = $rule->affectedEmployeeIds();
-            $doneIds     = $rule->doneEmployeeIds($affectedIds);
-            $missingIds  = $affectedIds->diff($doneIds);
+        //
+        // Pré-carregamento único: todos os funcionários activos + relações + inscrições.
+        // Evita N queries por regra (anteriormente: affectedEmployeeIds, doneEmployeeIds
+        // e Employee::whereIn por cada regra obrigatória).
+        $allActiveEmployees = Employee::where('status', 'active')
+            ->with(['department', 'position', 'sector'])
+            ->orderBy('first_name')
+            ->get()
+            ->keyBy('id'); // indexed por id para O(1) lookup
+
+        // Inscrições válidas (enrolled ou completed) agrupadas por training_id
+        $enrolledByTraining = EmployeeTraining::whereIn('employee_id', $allActiveEmployees->keys())
+            ->whereIn('status', ['enrolled', 'completed'])
+            ->get()
+            ->groupBy('training_id')
+            ->map(fn($group) => $group->pluck('employee_id')->unique()->values());
+
+        // Quiz aprovados: user_id → employee_id (para funcionários activos com user_id definido)
+        $userToEmployee = $allActiveEmployees
+            ->filter(fn($e) => $e->user_id !== null)
+            ->mapWithKeys(fn($e) => [$e->user_id => $e->id]);
+
+        // Todas as quiz_ids relevantes de uma vez
+        $mandatoryRules = MandatoryTraining::with('training.quiz')->get();
+
+        $quizIds = $mandatoryRules
+            ->map(fn($r) => $r->training?->quiz?->id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        // Aprovados por quiz_id → Collection de employee_ids
+        $approvedByQuiz = collect();
+        if ($quizIds->isNotEmpty()) {
+            $approvedByQuiz = QuizAttempt::whereIn('quiz_id', $quizIds)
+                ->where('passed', true)
+                ->get()
+                ->groupBy('quiz_id')
+                ->map(function ($attempts) use ($userToEmployee) {
+                    return $attempts
+                        ->pluck('user_id')
+                        ->unique()
+                        ->map(fn($uid) => $userToEmployee->get($uid))
+                        ->filter()
+                        ->values();
+                });
+        }
+
+        $mandatoryGaps = $mandatoryRules->flatMap(function ($rule) use ($allActiveEmployees, $enrolledByTraining, $approvedByQuiz) {
+            // Filtrar funcionários afectados em memória (sem query)
+            $affectedEmployees = match ($rule->target_type) {
+                'department' => $allActiveEmployees->filter(fn($e) => $e->department_id == $rule->target_id),
+                'position'   => $allActiveEmployees->filter(fn($e) => $e->position_id == $rule->target_id),
+                default      => $allActiveEmployees,
+            };
+
+            if ($affectedEmployees->isEmpty()) return collect();
+
+            $affectedIds = $affectedEmployees->keys();
+
+            // IDs que já cumpriram — via inscrição
+            $doneViaEnrollment = ($enrolledByTraining->get($rule->training_id) ?? collect())
+                ->intersect($affectedIds);
+
+            // IDs que já cumpriram — via quiz aprovado
+            $quizId = $rule->training?->quiz?->id;
+            $doneViaQuiz = $quizId
+                ? ($approvedByQuiz->get($quizId) ?? collect())->intersect($affectedIds)
+                : collect();
+
+            $doneIds   = $doneViaEnrollment->merge($doneViaQuiz)->unique();
+            $missingIds = $affectedIds->diff($doneIds);
 
             if ($missingIds->isEmpty()) return collect();
 
-            return Employee::whereIn('id', $missingIds)
-                ->with(['department', 'position', 'sector'])
-                ->orderBy('first_name')
-                ->get()
+            return $affectedEmployees
+                ->only($missingIds->toArray())
+                ->sortBy('first_name')
                 ->map(fn($e) => [
                     'employee_id'    => $e->id,
                     'employee_code'  => $e->code,
@@ -305,7 +373,8 @@ class ReportController extends Controller
                     'target_id'      => $rule->target_id,
                     'target_name'    => $rule->target_name,
                     'deadline_days'  => $rule->deadline_days,
-                ]);
+                ])
+                ->values();
         })->values();
 
         // ── 6b. Certificados expirados ou a expirar (30 dias) ────────────

@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage;
 
 class TrainingVideo extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['training_id', 'title', 'url', 'description', 'order', 'is_uploaded'];
 
     protected $casts = [
