@@ -113,12 +113,6 @@
         <div class="kpi-label">Certificados expirados</div>
         <span class="kpi-sub sub-amber">{{ $kpis['expiringCount'] }} a expirar (30 dias)</span>
     </div>
-    <div class="kpi kpi-amber">
-        <div class="kpi-icon">👤</div>
-        <div class="kpi-value">{{ $kpis['noTrainingCount'] }}</div>
-        <div class="kpi-label">Funcionários sem formação</div>
-        <span class="kpi-sub sub-red">ativos sem nenhuma inscrição</span>
-    </div>
 </div>
 
 {{-- ── Evolução mensal + Dept completion ── --}}
@@ -225,32 +219,6 @@
         </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <h3>👤 Funcionários Sem Nenhuma Formação</h3>
-            @if($kpis['noTrainingCount'] > 8)
-            <span style="font-size:.78rem;color:var(--text-muted)">+{{ $kpis['noTrainingCount'] - 8 }} mais</span>
-            @endif
-        </div>
-        <div class="card-body">
-            @forelse($noTrainingEmployees as $emp)
-            <div class="list-item">
-                <div class="list-avatar" style="background:rgba(99,102,241,.4)">
-                    {{ strtoupper(substr($emp->first_name, 0, 1) . substr($emp->last_name, 0, 1)) }}
-                </div>
-                <div class="list-info">
-                    <strong>{{ $emp->full_name }}</strong>
-                    <span>{{ $emp->position->position ?? '—' }} · {{ $emp->department->department ?? '—' }}</span>
-                </div>
-                <div class="list-meta">
-                    <span class="badge badge-purple">{{ $emp->code }}</span>
-                </div>
-            </div>
-            @empty
-            <div class="empty-state">✅ Todos os funcionários têm pelo menos uma formação.</div>
-            @endforelse
-        </div>
-    </div>
 
 </div>
 

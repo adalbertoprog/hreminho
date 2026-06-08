@@ -41,14 +41,9 @@ class TrainingDashboardController extends Controller
             ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) < ?", [$today])
             ->count();
 
-        // Funcionários ativos sem nenhuma inscrição em formação
-        $activeEmployeeIds   = Employee::where('status', 'active')->pluck('id');
-        $enrolledEmployeeIds = EmployeeTraining::whereIn('employee_id', $activeEmployeeIds)->pluck('employee_id')->unique();
-        $noTrainingCount     = $activeEmployeeIds->diff($enrolledEmployeeIds)->count();
-
         $kpis = compact(
             'totalTrainings', 'totalEnrollments', 'totalCompleted',
-            'totalFailed', 'globalRate', 'expiringCount', 'expiredCount', 'noTrainingCount'
+            'totalFailed', 'globalRate', 'expiringCount', 'expiredCount'
         );
 
         // ── Taxa de conclusão por departamento ─────────────────────────
@@ -106,14 +101,6 @@ class TrainingDashboardController extends Controller
                     'days_left' => $days,
                 ];
             });
-
-        // ── Funcionários sem formações ─────────────────────────────────
-        $noTrainingEmployees = Employee::where('status', 'active')
-            ->whereDoesntHave('employeeTrainings')
-            ->with(['department', 'position'])
-            ->orderBy('first_name')
-            ->take(8)
-            ->get();
 
         // ── Evolução mensal (12 meses) ─────────────────────────────────
         $months = collect(range(11, 0))->map(fn($i) => Carbon::now()->subMonths($i));
@@ -191,7 +178,6 @@ class TrainingDashboardController extends Controller
             'deptCompletion',
             'highFailTrainings',
             'expiringEnrollments',
-            'noTrainingEmployees',
             'chartEvolution',
             'chartDept',
             'topByApproval',

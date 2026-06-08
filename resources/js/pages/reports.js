@@ -585,17 +585,16 @@ async function loadGaps() {
     gapsLoaded = true;
     const content = document.getElementById('g-content');
     content.innerHTML = '<div class="state-msg">A analisar lacunas…</div>';
-    ['g-kpi-mandatory','g-kpi-certs','g-kpi-none','g-kpi-plan'].forEach(id => {
+    ['g-kpi-mandatory','g-kpi-certs','g-kpi-plan'].forEach(id => {
         document.getElementById(id).textContent = '…';
     });
 
     const year = document.getElementById('g-year').value;
     const res  = await fetch(`/api/v1/reports/gaps?year=${year}`, {credentials:'same-origin'}).then(r => r.json());
 
-    const mandatory = res.mandatory_gaps?.data   || [];
+    const mandatory = res.mandatory_gaps?.data       || [];
     const certs     = res.expired_certificates?.data || [];
-    const none      = res.no_training?.data      || [];
-    const plan      = res.plan_gaps?.data        || [];
+    const plan      = res.plan_gaps?.data            || [];
 
     // Group mandatory gaps by rule (training + target scope)
     const mandatoryGrouped = Object.values(mandatory.reduce((acc, r) => {
@@ -607,7 +606,6 @@ async function loadGaps() {
 
     document.getElementById('g-kpi-mandatory').textContent = mandatory.length;
     document.getElementById('g-kpi-certs').textContent     = certs.length;
-    document.getElementById('g-kpi-none').textContent      = none.length;
     document.getElementById('g-kpi-plan').textContent      = plan.length;
     document.getElementById('g-kpi-mandatory').dataset.loaded = '1';
 
@@ -677,25 +675,7 @@ async function loadGaps() {
     }
     html += `</div>`;
 
-    /* --- Secção 3: Funcionários sem Formações --- */
-    html += `<div class="gap-section">
-        <div class="gap-section-header">
-            <span class="gap-section-icon" style="color:var(--accent-light)">🚫</span>
-            <div>
-                <div class="gap-section-title">Funcionários sem Nenhuma Formação</div>
-                <div class="gap-section-sub">${none.length} funcionário(s) sem qualquer registo de formação</div>
-            </div>
-        </div>`;
-    if (!none.length) {
-        html += `<div class="state-msg" style="padding:16px">✅ Todos os funcionários têm pelo menos uma formação.</div>`;
-    } else {
-        html += `<div class="gap-emp-list" style="padding:12px 16px">
-            ${none.map(e => `<span class="gap-emp-chip">${e.employee_name} <em>${e.employee_code}</em></span>`).join('')}
-        </div>`;
-    }
-    html += `</div>`;
-
-    /* --- Secção 4: Plano vs Execução --- */
+    /* --- Secção 3: Plano vs Execução --- */
     html += `<div class="gap-section">
         <div class="gap-section-header">
             <span class="gap-section-icon" style="color:#10b981">📅</span>

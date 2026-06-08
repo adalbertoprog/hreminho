@@ -406,23 +406,7 @@ class ReportController extends Controller
                 ];
             });
 
-        // ── 6c. Funcionários activos sem nenhuma formação ────────────────
-        $noTraining = Employee::where('status', 'active')
-            ->whereDoesntHave('employeeTrainings')
-            ->with(['department', 'position', 'sector'])
-            ->orderBy('first_name')
-            ->get()
-            ->map(fn($e) => [
-                'employee_id'   => $e->id,
-                'employee_code' => $e->code,
-                'employee_name' => $e->full_name,
-                'department'    => $e->department?->department ?? '—',
-                'position'      => $e->position?->position ?? '—',
-                'sector'        => $e->sector?->sector ?? '—',
-                'hire_date'     => $e->hire_date?->toDateString(),
-            ]);
-
-        // ── 6d. Plano vs execução — sessões com preenchimento abaixo de 70% ──
+        // ── 6c. Plano vs execução — sessões com preenchimento abaixo de 70% ──
         $year = $request->input('year', Carbon::now()->year);
         $planGaps = TrainingSession::with('training:id,title,provider')
             ->withCount([
@@ -464,10 +448,6 @@ class ReportController extends Controller
                 'total'    => $expiredRows->count(),
                 'expired'  => $expiredRows->where('status', 'expired')->count(),
                 'expiring' => $expiredRows->where('status', 'expiring')->count(),
-            ],
-            'no_training' => [
-                'data'  => $noTraining,
-                'total' => $noTraining->count(),
             ],
             'plan_gaps' => [
                 'data'  => $planGaps,

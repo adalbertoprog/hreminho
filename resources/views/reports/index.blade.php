@@ -558,11 +558,6 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
             <span class="kpi-value" id="g-kpi-certs" style="color:#f59e0b">—</span>
             <span class="kpi-sub">expirados ou a expirar</span>
         </div>
-        <div class="v-kpi" style="border-color:rgba(99,102,241,.3)">
-            <span class="kpi-label" style="color:var(--accent-light)">🚫 Sem Formação</span>
-            <span class="kpi-value" id="g-kpi-none" style="color:var(--accent-light)">—</span>
-            <span class="kpi-sub">funcionários sem registos</span>
-        </div>
         <div class="v-kpi" style="border-color:rgba(16,185,129,.3)">
             <span class="kpi-label" style="color:#10b981">📅 Plano vs Execução</span>
             <span class="kpi-value" id="g-kpi-plan" style="color:#10b981">—</span>
