@@ -4,6 +4,22 @@
 
 @section('styles')
 <style>
+.emp-picker{border:1px solid var(--border);border-radius:9px;background:var(--bg-dark);transition:border-color .2s;position:relative}
+.emp-picker:focus-within{border-color:var(--accent)}
+.emp-chips{display:flex;flex-wrap:wrap;gap:5px;padding:7px 10px;min-height:40px;cursor:text;align-items:center}
+.emp-chip{display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,.18);color:var(--accent-light);border-radius:6px;padding:3px 8px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.emp-chip button{background:none;border:none;cursor:pointer;color:inherit;opacity:.7;font-size:.9rem;line-height:1;padding:0;display:flex;align-items:center}
+.emp-chip button:hover{opacity:1}
+.emp-search{border:none;outline:none;background:transparent;color:var(--text);font-size:.875rem;flex:1;min-width:160px}
+.emp-dropdown{display:none;max-height:200px;overflow-y:auto;border-top:1px solid var(--border)}
+.emp-dropdown.open{display:block}
+.emp-opt{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;cursor:pointer;font-size:.875rem;transition:background .12s}
+.emp-opt:hover,.emp-opt.focused{background:var(--bg-hover)}
+.emp-opt.selected{color:var(--accent-light)}
+.emp-opt-check{opacity:0;color:var(--accent-light);font-weight:700}
+.emp-opt.selected .emp-opt-check{opacity:1}
+.emp-empty{padding:10px 14px;font-size:.82rem;color:var(--text-muted)}
+.emp-count{font-size:.74rem;color:var(--accent-light);font-weight:600;margin-left:6px}
 .toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px}
 .toolbar h2{font-size:1.25rem;font-weight:700}
 .btn-primary{display:inline-flex;align-items:center;gap:7px;background:var(--accent);color:#fff;border:none;padding:9px 20px;border-radius:9px;font-size:.875rem;font-weight:600;cursor:pointer;transition:.15s}
@@ -245,7 +261,22 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
     <div class="modal-title" id="enrollTitle">Nova Inscrição</div>
     <form id="enrollForm" onsubmit="submitEnroll(event)">
         <div class="form-grid">
-            <div class="fg full"><label>Funcionário *</label><select name="employee_id" id="empSelEnroll" required><option value="">— Selecionar —</option></select></div>
+            <div class="fg full">
+                <label>Funcionários * <span id="enrollEmpCountLabel" class="emp-count"></span></label>
+                <div class="emp-picker" id="enrollEmpPicker">
+                    <div class="emp-chips" id="enrollEmpChips" onclick="document.getElementById('enrollEmpSearch').focus()">
+                        <input type="text" class="emp-search" id="enrollEmpSearch"
+                               placeholder="Pesquisar e selecionar funcionários..."
+                               autocomplete="off"
+                               oninput="enrollFilterEmpOptions()"
+                               onkeydown="enrollEmpKeydown(event)"
+                               onfocus="enrollOpenEmpDropdown()">
+                    </div>
+                    <div class="emp-dropdown" id="enrollEmpDropdown">
+                        <div class="emp-empty" id="enrollEmpEmpty" style="display:none">Sem resultados</div>
+                    </div>
+                </div>
+            </div>
             <div class="fg full"><label>Formação *</label><select name="training_id" id="trainingSelEnroll" required onchange="loadSessionsForEnroll()"><option value="">— Selecionar —</option></select></div>
             <div class="fg full" id="sessionSelWrap" style="display:none">
                 <label>Sessão planeada <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>

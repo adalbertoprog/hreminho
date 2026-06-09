@@ -14,6 +14,9 @@ let catalogSort='title_asc'; // title_asc | title_desc | inscricoes_asc | inscri
 let enrollMap={}, trainingMap={};
 let resAllRows = [], resSummaryData = null, resCurrentTrainingTitle = '';
 
+/* ── Estado multiselect funcionários (modal inscrição) ── */
+let enrollSelectedEmps = {}, enrollEmpFocusIdx = -1;
+
 const statusLabel   = {enrolled:'Inscrito', completed:'Concluído', failed:'Reprovado'};
 const statusClass   = {enrolled:'badge-enrolled', completed:'badge-completed', failed:'badge-failed'};
 const validityLabel = {valid:'✅ Válida', expiring:'🔔 A expirar', expired:'⚠️ Expirada'};
@@ -35,9 +38,16 @@ async function boot(){
     employees = emp.data??[];
     trainings = tr.data??[];
 
+    const enrollDd = document.getElementById('enrollEmpDropdown');
+    const enrollEmpty = document.getElementById('enrollEmpEmpty');
     employees.forEach(e=>{
-        const o=`<option value="${e.id}">${e.full_name} (${e.code})</option>`;
-        document.getElementById('empSelEnroll').innerHTML+=o;
+        const div = document.createElement('div');
+        div.className = 'emp-opt';
+        div.dataset.id    = e.id;
+        div.dataset.label = `${e.full_name} (${e.code})`;
+        div.innerHTML = `<span>${e.full_name} <span style="color:var(--text-muted);font-size:.82rem">(${e.code})</span></span><span class="emp-opt-check">✓</span>`;
+        div.addEventListener('click', () => enrollToggleEmp(div));
+        enrollDd.insertBefore(div, enrollEmpty);
     });
     cbInit();
     trainings.forEach(t=>{
@@ -385,6 +395,81 @@ function updateExpiryHint(){
 function openOverlay(id){document.getElementById(id).classList.add('open');}
 function closeOverlay(id){document.getElementById(id).classList.remove('open');}
 
+
+/* ── Emp-picker do modal de inscrição (/trainings) ── */
+function enrollOpenEmpDropdown() {
+    document.getElementById('enrollEmpDropdown').classList.add('open');
+    enrollFilterEmpOptions();
+}
+function enrollCloseEmpDropdown() {
+    document.getElementById('enrollEmpDropdown').classList.remove('open');
+    document.getElementById('enrollEmpSearch').value = '';
+    document.querySelectorAll('#enrollEmpDropdown .emp-opt').forEach(o => o.style.display = '');
+    document.getElementById('enrollEmpEmpty').style.display = 'none';
+    enrollEmpFocusIdx = -1;
+}
+function enrollFilterEmpOptions() {
+    const q = document.getElementById('enrollEmpSearch').value.toLowerCase().trim();
+    const opts = document.querySelectorAll('#enrollEmpDropdown .emp-opt');
+    let visible = 0;
+    opts.forEach(o => { const m = !q || o.dataset.label.toLowerCase().includes(q); o.style.display = m ? '' : 'none'; if (m) visible++; });
+    document.getElementById('enrollEmpEmpty').style.display = visible === 0 ? '' : 'none';
+    enrollEmpFocusIdx = -1;
+}
+function enrollToggleEmp(optEl) {
+    const id = optEl.dataset.id, label = optEl.dataset.label;
+    if (enrollSelectedEmps[id]) { delete enrollSelectedEmps[id]; optEl.classList.remove('selected'); }
+    else { enrollSelectedEmps[id] = label; optEl.classList.add('selected'); }
+    enrollRenderChips();
+    document.getElementById('enrollEmpSearch').focus();
+}
+function enrollRemoveEmp(id) {
+    delete enrollSelectedEmps[id];
+    const opt = document.querySelector(`#enrollEmpDropdown .emp-opt[data-id="${id}"]`);
+    if (opt) opt.classList.remove('selected');
+    enrollRenderChips();
+}
+function enrollRenderChips() {
+    const container = document.getElementById('enrollEmpChips');
+    container.querySelectorAll('.emp-chip').forEach(c => c.remove());
+    const search = document.getElementById('enrollEmpSearch');
+    Object.entries(enrollSelectedEmps).forEach(([id, label]) => {
+        const chip = document.createElement('span');
+        chip.className = 'emp-chip'; chip.dataset.id = id;
+        chip.innerHTML = `${label} <button type="button" onclick="enrollRemoveEmp('${id}')" title="Remover">✕</button>`;
+        container.insertBefore(chip, search);
+    });
+    const count = Object.keys(enrollSelectedEmps).length;
+    document.getElementById('enrollEmpCountLabel').textContent = count > 0 ? `(${count} selecionado${count > 1 ? 's' : ''})` : '';
+}
+function enrollEmpKeydown(e) {
+    const dd = document.getElementById('enrollEmpDropdown');
+    const opts = [...dd.querySelectorAll('.emp-opt:not([style*="display: none"])')];
+    if (e.key === 'ArrowDown') { e.preventDefault(); enrollEmpFocusIdx = Math.min(enrollEmpFocusIdx + 1, opts.length - 1); opts.forEach((o, i) => o.classList.toggle('focused', i === enrollEmpFocusIdx)); if (opts[enrollEmpFocusIdx]) opts[enrollEmpFocusIdx].scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); enrollEmpFocusIdx = Math.max(enrollEmpFocusIdx - 1, 0); opts.forEach((o, i) => o.classList.toggle('focused', i === enrollEmpFocusIdx)); if (opts[enrollEmpFocusIdx]) opts[enrollEmpFocusIdx].scrollIntoView({ block: 'nearest' }); }
+    else if (e.key === 'Enter') { e.preventDefault(); if (enrollEmpFocusIdx >= 0 && opts[enrollEmpFocusIdx]) enrollToggleEmp(opts[enrollEmpFocusIdx]); }
+    else if (e.key === 'Escape') { enrollCloseEmpDropdown(); }
+    else if (e.key === 'Backspace' && e.target.value === '') { const ids = Object.keys(enrollSelectedEmps); if (ids.length) enrollRemoveEmp(ids[ids.length - 1]); }
+}
+function enrollResetEmpPicker() {
+    enrollSelectedEmps = {};
+    document.querySelectorAll('#enrollEmpDropdown .emp-opt').forEach(o => o.classList.remove('selected', 'focused'));
+    enrollRenderChips();
+    enrollCloseEmpDropdown();
+}
+function enrollSetSingleEmp(id, label) {
+    enrollResetEmpPicker();
+    if (!id) return;
+    enrollSelectedEmps[id] = label;
+    const opt = document.querySelector(`#enrollEmpDropdown .emp-opt[data-id="${id}"]`);
+    if (opt) opt.classList.add('selected');
+    enrollRenderChips();
+}
+document.addEventListener('click', function(e) {
+    const picker = document.getElementById('enrollEmpPicker');
+    if (picker && !picker.contains(e.target)) enrollCloseEmpDropdown();
+});
+
 function openCreateEnroll(){
     enrollEditId=null;
     document.getElementById('enrollForm').reset();
@@ -396,7 +481,9 @@ function openCreateEnroll(){
     document.getElementById('enrollSubmitBtn').textContent='Inscrever';
     document.getElementById('sessionSelWrap').style.display='none';
     document.getElementById('sessionSelEnroll').innerHTML='<option value="">— Sem sessão associada —</option>';
+    enrollResetEmpPicker();
     openOverlay('enrollOverlay');
+    setTimeout(()=>document.getElementById('enrollEmpSearch').focus(), 120);
 }
 async function loadSessionsForEnroll() {
     const trainingId = document.getElementById('trainingSelEnroll').value;
@@ -427,7 +514,8 @@ function openEditEnroll(id){
     document.getElementById('sessionSelWrap').style.display='none';
     const form=document.getElementById('enrollForm');
     const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
-    set('employee_id',e.employee_id);set('training_id',e.training_id);set('status',e.status);
+    enrollSetSingleEmp(String(e.employee_id), e.employee?.full_name ?? '---');
+    set('training_id',e.training_id);set('status',e.status);
     set('score',e.score);set('start_date',e.start_date);set('end_date',e.end_date);
     set('validity_months',e.validity_months);set('notes',e.notes);
     // Carregar sessões e depois seleccionar a correcta
@@ -443,16 +531,39 @@ function openEditEnroll(id){
 }
 async function submitEnroll(ev){
     ev.preventDefault();
-    const btn=document.getElementById('enrollSubmitBtn');btn.disabled=true;btn.textContent='A guardar...';
-    const data={};
+    const empIds = Object.keys(enrollSelectedEmps);
+    if(!enrollEditId && empIds.length === 0){
+        toast('Seleciona pelo menos um funcionário.','err');
+        document.getElementById('enrollEmpSearch').focus();
+        return;
+    }
+    const btn=document.getElementById('enrollSubmitBtn');btn.disabled=true;
+    const base={};
     const scoreBlocked = document.getElementById('scoreInput').dataset.blocked === '1';
-    new FormData(document.getElementById('enrollForm')).forEach((v,k)=>{if(v!=='')data[k]=v;});
-    // Se o campo score estava bloqueado (data futura), não enviar — preservar valor existente
-    if(scoreBlocked) delete data.score;
+    new FormData(document.getElementById('enrollForm')).forEach((v,k)=>{if(v!=='')base[k]=v;});
+    if(scoreBlocked) delete base.score;
     try{
-        if(enrollEditId) await apiFetch('PUT',`/enrollments/${enrollEditId}`,data);
-        else             await apiFetch('POST','/enrollments',data);
-        toast(enrollEditId?'Inscrição atualizada!':'Inscrição criada!','ok');
+        if(enrollEditId){
+            btn.textContent='A guardar...';
+            base.employee_id = empIds[0];
+            await apiFetch('PUT',`/enrollments/${enrollEditId}`,base);
+            toast('Inscrição atualizada!','ok');
+        } else {
+            btn.textContent = empIds.length > 1 ? `A inscrever ${empIds.length}...` : 'A inscrever...';
+            const results = await Promise.allSettled(
+                empIds.map(id => apiFetch('POST','/enrollments',{...base, employee_id: id}))
+            );
+            const ok  = results.filter(r=>r.status==='fulfilled').length;
+            const err = results.filter(r=>r.status==='rejected').length;
+            if(ok > 0 && err === 0) toast(`${ok} inscrição(ões) criada(s) com sucesso!`,'ok');
+            else if(ok > 0)         toast(`${ok} criada(s), ${err} com erro.`,'ok');
+            else {
+                // Mostrar o erro da primeira falha
+                const firstErr = results.find(r=>r.status==='rejected')?.reason;
+                toast(firstErr?.message ?? 'Erro ao criar inscrições.','err');
+                return; // não fechar modal nem recarregar
+            }
+        }
         closeOverlay('enrollOverlay');
         loadEnrollments();
         loadAlerts();
@@ -1348,6 +1459,12 @@ Object.assign(window, {
     pickQuestionType,
     saveQuiz,
     openCreateEnroll,
+    openEditEnroll,
+    submitEnroll,
+    enrollRemoveEmp,
+    enrollFilterEmpOptions,
+    enrollEmpKeydown,
+    enrollOpenEmpDropdown,
     applyCatalogFilters,
     resetCatalogFilters,
     setCatalogSort,
@@ -1357,4 +1474,7 @@ Object.assign(window, {
     updateExpiryHint,
     cbKeydown,
     filterByValidity,
+    submitMandatory,
+    submitTraining,
+    updateScoreState,
 });

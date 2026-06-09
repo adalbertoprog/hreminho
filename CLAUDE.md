@@ -1,7 +1,7 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Junho 2026 (rev. 03/06/2026 — versão Laravel corrigida para 13, composer setup script).
+Última actualização: Junho 2026 (rev. 09/06/2026).
 
 ---
 
@@ -522,12 +522,11 @@ Regras que definem quais formações são obrigatórias para todos os funcionár
 Ver `docs/To do.md` para lista completa. Resumo:
 
 ### Bugs conhecidos
-- Inscrições: campo de funcionários não apresenta todos
 - Não bloquear score se formação ainda não concluída (data fim futura)
 
 ### Funcionalidades planeadas
+- Inscrições em `/trainings`: adicionar suporte a inscrição de múltiplos funcionários de uma vez (já implementado em `/calendar` com multiselect + tags; `/trainings` usa `<select>` simples)
 - Gestão de equipas (designação a obras)
-- Exportação Excel nos relatórios
 - Aplicativo móvel / dispositivo biométrico para controlo de presenças
 - Gestão documental de empresas subcontratadas (portal próprio)
 
