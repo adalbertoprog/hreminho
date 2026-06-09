@@ -310,6 +310,16 @@ thead th.sortable.sort-desc .sort-arrow{opacity:1;color:var(--accent-light)}
                 </div>
             </div>
             <div class="fg full"><label>Notas</label><textarea name="notes" rows="2" placeholder="Opcional..."></textarea></div>
+            <div class="fg full" id="certUploadWrap" style="display:none">
+                <label>Certificado</label>
+                <div id="certCurrentWrap" style="display:none;margin-bottom:6px">
+                    <a id="certCurrentLink" href="#" target="_blank" class="btn-sm" style="font-size:.82rem">📄 Ver certificado actual</a>
+                    <button type="button" onclick="removeCertificate()" class="btn-sm btn-danger" style="font-size:.82rem;margin-left:6px">🗑 Remover</button>
+                </div>
+                <input type="file" id="certFileInput" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="onCertFileChange(event)">
+                <button type="button" class="btn-sm" onclick="document.getElementById('certFileInput').click()">📎 Selecionar ficheiro</button>
+                <span id="certFileName" style="margin-left:8px;font-size:.85rem;color:var(--text-muted)"></span>
+            </div>
         </div>
         <div class="modal-foot">
             <button type="button" class="btn-cancel" onclick="closeOverlay('enrollOverlay')">Cancelar</button>

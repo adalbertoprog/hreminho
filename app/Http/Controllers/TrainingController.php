@@ -6,6 +6,7 @@ use App\Models\EmployeeTraining;
 use App\Models\Training;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class TrainingController extends Controller
 {
@@ -139,6 +140,15 @@ class TrainingController extends Controller
             'validity_months'      => 'nullable|integer|min:1|max:120',
             'notes'                => 'nullable|string|max:1000',
         ]);
+
+        // Não permitir score se a formação ainda não terminou
+        if (isset($data['score']) && isset($data['end_date']) && now()->startOfDay()->lt($data['end_date'])) {
+            return response()->json(['message' => 'Não é possível atribuir pontuação antes da data de fim da formação.'], 422);
+        }
+        if (isset($data['score']) && !isset($data['end_date'])) {
+            return response()->json(['message' => 'É necessário definir a data de fim para registar pontuação.'], 422);
+        }
+
         $enrollment = EmployeeTraining::create($data);
         return response()->json(['data' => $this->formatEnrollment($enrollment->load(['employee','training']))], 201);
     }
@@ -155,13 +165,55 @@ class TrainingController extends Controller
             'end_date'             => 'nullable|date|after_or_equal:start_date',
             'validity_months'      => 'nullable|integer|min:1|max:120',
             'notes'                => 'nullable|string|max:1000',
+            'certificate_path'     => 'nullable|string',
         ]);
+
+        // Remover certificado do disco se foi explicitamente apagado
+        if (array_key_exists('certificate_path', $data) && $data['certificate_path'] === null && $enrollment->certificate_path) {
+            Storage::disk('public')->delete($enrollment->certificate_path);
+        }
+
+        // Não permitir score se a formação ainda não terminou
+        $endDate = $data['end_date'] ?? $enrollment->end_date?->toDateString();
+        if (isset($data['score']) && $data['score'] !== null) {
+            if (!$endDate) {
+                return response()->json(['message' => 'É necessário definir a data de fim para registar pontuação.'], 422);
+            }
+            if (now()->startOfDay()->lt($endDate)) {
+                return response()->json(['message' => 'Não é possível atribuir pontuação antes da data de fim da formação.'], 422);
+            }
+        }
+
         $enrollment->update($data);
         return response()->json(['data' => $this->formatEnrollment($enrollment->fresh()->load(['employee','training']))]);
     }
 
+    public function uploadCertificate(Request $request, EmployeeTraining $enrollment): JsonResponse
+    {
+        $request->validate([
+            'certificate' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120', // 5 MB
+        ]);
+
+        // Apagar certificado anterior se existir
+        if ($enrollment->certificate_path) {
+            Storage::disk('public')->delete($enrollment->certificate_path);
+        }
+
+        $path = $request->file('certificate')->store('certificates', 'public');
+        $enrollment->update(['certificate_path' => $path]);
+
+        return response()->json([
+            'certificate_path' => $path,
+            'certificate_url'  => asset('storage/' . $path),
+        ]);
+    }
+
     public function destroyEnrollment(EmployeeTraining $enrollment): JsonResponse
     {
+        // Apagar certificado do disco se existir
+        if ($enrollment->certificate_path) {
+            Storage::disk('public')->delete($enrollment->certificate_path);
+        }
         $enrollment->delete();
         return response()->json(null, 204);
     }
@@ -194,15 +246,17 @@ class TrainingController extends Controller
                 'planned_date' => $e->trainingSession?->planned_date?->format('d/m/Y'),
                 'location'     => $e->trainingSession?->location,
             ] : null,
-            'status'          => $e->status,
-            'score'           => $e->score,
-            'start_date'      => $e->start_date?->toDateString(),
-            'end_date'        => $e->end_date?->toDateString(),
-            'validity_months' => $e->validity_months,
-            'expiry_date'     => $e->expiry_date?->toDateString(),
-            'validity_status' => $e->validity_status,
-            'notes'           => $e->notes,
-            'created_at'      => $e->created_at?->toDateTimeString(),
+            'status'           => $e->status,
+            'score'            => $e->score,
+            'start_date'       => $e->start_date?->toDateString(),
+            'end_date'         => $e->end_date?->toDateString(),
+            'validity_months'  => $e->validity_months,
+            'expiry_date'      => $e->expiry_date?->toDateString(),
+            'validity_status'  => $e->validity_status,
+            'notes'            => $e->notes,
+            'certificate_path' => $e->certificate_path,
+            'certificate_url'  => $e->certificate_path ? asset('storage/' . $e->certificate_path) : null,
+            'created_at'       => $e->created_at?->toDateTimeString(),
         ];
     }
 }

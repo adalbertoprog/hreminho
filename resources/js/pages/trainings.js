@@ -345,9 +345,11 @@ function updateScoreState(){
     const endVal  = document.getElementById('endDateInput').value;
     const scoreEl = document.getElementById('scoreInput');
     const hintEl  = document.getElementById('scoreHint');
+    const certWrap = document.getElementById('certUploadWrap');
     if(!endVal){
         scoreEl.disabled = false;
         hintEl.textContent = '';
+        if(certWrap) certWrap.style.display = 'none';
         return;
     }
     const today = new Date(); today.setHours(0,0,0,0);
@@ -357,10 +359,12 @@ function updateScoreState(){
         scoreEl.dataset.blocked = '1';
         hintEl.textContent = '⚠️ Não é possível atribuir pontuação — a formação ainda não foi concluída.';
         hintEl.style.color = '#f59e0b';
+        if(certWrap) certWrap.style.display = 'none';
     } else {
         scoreEl.disabled = false;
         delete scoreEl.dataset.blocked;
         hintEl.textContent = '';
+        if(certWrap) certWrap.style.display = '';
     }
 }
 
@@ -482,6 +486,11 @@ function openCreateEnroll(){
     document.getElementById('sessionSelWrap').style.display='none';
     document.getElementById('sessionSelEnroll').innerHTML='<option value="">— Sem sessão associada —</option>';
     enrollResetEmpPicker();
+    // Reset certificado
+    document.getElementById('certUploadWrap').style.display = 'none';
+    document.getElementById('certCurrentWrap').style.display = 'none';
+    document.getElementById('certFileInput').value = '';
+    document.getElementById('certFileName').textContent = '';
     openOverlay('enrollOverlay');
     setTimeout(()=>document.getElementById('enrollEmpSearch').focus(), 120);
 }
@@ -526,6 +535,26 @@ function openEditEnroll(id){
     });
     document.getElementById('enrollTitle').textContent='✏️ Editar Inscrição';
     document.getElementById('enrollSubmitBtn').textContent='Guardar';
+    // Certificado
+    const certWrap = document.getElementById('certUploadWrap');
+    const certCurrentWrap = document.getElementById('certCurrentWrap');
+    const certLink = document.getElementById('certCurrentLink');
+    document.getElementById('certFileInput').value = '';
+    document.getElementById('certFileName').textContent = '';
+    if(e.certificate_url){
+        certCurrentWrap.style.display = '';
+        certLink.href = e.certificate_url;
+    } else {
+        certCurrentWrap.style.display = 'none';
+    }
+    // Mostrar campo de certificado directamente se a formação já terminou
+    if(e.end_date){
+        const today = new Date(); today.setHours(0,0,0,0);
+        const endDate = new Date(e.end_date + 'T00:00:00');
+        certWrap.style.display = endDate <= today ? '' : 'none';
+    } else {
+        certWrap.style.display = 'none';
+    }
     setTimeout(()=>{updateExpiryHint();updateScoreState();},50);
     openOverlay('enrollOverlay');
 }
@@ -547,6 +576,14 @@ async function submitEnroll(ev){
             btn.textContent='A guardar...';
             base.employee_id = empIds[0];
             await apiFetch('PUT',`/enrollments/${enrollEditId}`,base);
+            // Upload de certificado se seleccionado
+            if(document.getElementById('certFileInput').files.length){
+                try {
+                    await uploadCertificate(enrollEditId);
+                } catch(certErr){
+                    toast((certErr?.message ?? 'Erro ao carregar certificado.') + ' Os restantes dados foram guardados.', 'err');
+                }
+            }
             toast('Inscrição atualizada!','ok');
         } else {
             btn.textContent = empIds.length > 1 ? `A inscrever ${empIds.length}...` : 'A inscrever...';
@@ -1443,6 +1480,39 @@ async function openGaps(ruleId) {
 }
 
 /* ── Expor funções para o escopo global (necessário para onclick inline no HTML) ── */
+/* ── Certificado ── */
+function onCertFileChange(event){
+    const file = event.target.files[0];
+    document.getElementById('certFileName').textContent = file ? file.name : '';
+}
+
+async function uploadCertificate(enrollmentId){
+    const fileInput = document.getElementById('certFileInput');
+    if(!fileInput.files.length) return;
+    const form = new FormData();
+    form.append('certificate', fileInput.files[0]);
+    const r = await fetch(`/api/v1/enrollments/${enrollmentId}/certificate`, {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'X-CSRF-TOKEN': CSRF, 'Accept': 'application/json' },
+        body: form,
+    });
+    if(!r.ok){ const e = await r.json().catch(()=>({message:'Erro ao carregar certificado'})); throw e; }
+    return r.json();
+}
+
+async function removeCertificate(){
+    if(!enrollEditId) return;
+    if(!confirm('Remover o certificado desta inscrição?')) return;
+    try {
+        await apiFetch('PUT', `/enrollments/${enrollEditId}`, { certificate_path: null });
+        document.getElementById('certCurrentWrap').style.display = 'none';
+        document.getElementById('certCurrentLink').href = '#';
+        toast('Certificado removido.', 'ok');
+    } catch(e){ toast(e.message ?? 'Erro ao remover certificado.', 'err'); }
+}
+
+
 Object.assign(window, {
     switchTab,
     ctSwitch,
@@ -1477,4 +1547,6 @@ Object.assign(window, {
     submitMandatory,
     submitTraining,
     updateScoreState,
+    onCertFileChange,
+    removeCertificate,
 });

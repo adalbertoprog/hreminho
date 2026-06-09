@@ -521,9 +521,6 @@ Regras que definem quais formações são obrigatórias para todos os funcionár
 
 Ver `docs/To do.md` para lista completa. Resumo:
 
-### Bugs conhecidos
-- Não bloquear score se formação ainda não concluída (data fim futura)
-
 ### Funcionalidades planeadas
 - Inscrições em `/trainings`: adicionar suporte a inscrição de múltiplos funcionários de uma vez (já implementado em `/calendar` com multiselect + tags; `/trainings` usa `<select>` simples)
 - Gestão de equipas (designação a obras)

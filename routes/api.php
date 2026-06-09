@@ -64,6 +64,7 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
         Route::post('enrollments',                 [TrainingController::class, 'enroll'])->name('enrollments.store');
         Route::put('enrollments/{enrollment}',      [TrainingController::class, 'updateEnrollment'])->name('enrollments.update');
         Route::delete('enrollments/{enrollment}',   [TrainingController::class, 'destroyEnrollment'])->name('enrollments.destroy');
+        Route::post('enrollments/{enrollment}/certificate', [TrainingController::class, 'uploadCertificate'])->name('enrollments.certificate');
 
         // Vídeos (escrita)
         Route::post('trainings/{training}/videos',   [TrainingVideoController::class, 'store'])->name('trainings.videos.store');
