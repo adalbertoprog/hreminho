@@ -592,6 +592,12 @@ async function submitEnroll(ev){
             );
             const ok  = results.filter(r=>r.status==='fulfilled').length;
             const err = results.filter(r=>r.status==='rejected').length;
+            // Upload de certificado para cada inscrição criada com sucesso
+            const hasCert = document.getElementById('certFileInput').files.length > 0;
+            if(hasCert && ok > 0){
+                const created = results.filter(r=>r.status==='fulfilled').map(r=>r.value?.data?.id).filter(Boolean);
+                await Promise.allSettled(created.map(id => uploadCertificate(id)));
+            }
             if(ok > 0 && err === 0) toast(`${ok} inscrição(ões) criada(s) com sucesso!`,'ok');
             else if(ok > 0)         toast(`${ok} criada(s), ${err} com erro.`,'ok');
             else {

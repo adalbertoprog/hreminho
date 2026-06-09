@@ -199,7 +199,18 @@ class TrainingController extends Controller
             Storage::disk('public')->delete($enrollment->certificate_path);
         }
 
-        $path = $request->file('certificate')->store('certificates', 'public');
+        $file      = $request->file('certificate');
+        $extension = $file->getClientOriginalExtension();
+        $filename  = uniqid('cert_', true) . '.' . $extension;
+        $path      = 'certificates/' . $filename;
+
+        // Ler conteúdo em memória e escrever directamente (necessário no Windows/Laragon)
+        $tmpPath  = $file->getPathname();
+        $contents = $tmpPath ? @file_get_contents($tmpPath) : false;
+        if ($contents === false || !Storage::disk('public')->put($path, $contents)) {
+            return response()->json(['message' => 'Erro ao guardar o ficheiro.'], 500);
+        }
+
         $enrollment->update(['certificate_path' => $path]);
 
         return response()->json([
