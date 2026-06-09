@@ -208,4 +208,4 @@ function toast(msg,type='ok') {
 document.querySelectorAll('.overlay').forEach(o=>{ o.addEventListener('click',e=>{ if(e.target===o) o.classList.remove('open'); }); });
 boot();
 </script>
-@endsecti
+@endsection
