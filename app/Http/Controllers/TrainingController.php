@@ -83,7 +83,7 @@ class TrainingController extends Controller
     public function destroy(Training $training): JsonResponse
     {
         $training->delete();
-        return response()->json(['message' => 'Formação excluída com sucesso.']);
+        return response()->json(null, 204);
     }
 
     // ── Inscrições (employee_trainings) ─────────────────
@@ -163,7 +163,7 @@ class TrainingController extends Controller
     public function destroyEnrollment(EmployeeTraining $enrollment): JsonResponse
     {
         $enrollment->delete();
-        return response()->json(['message' => 'Inscrição excluída com sucesso.']);
+        return response()->json(null, 204);
     }
 
     private function formatTraining(Training $t): array

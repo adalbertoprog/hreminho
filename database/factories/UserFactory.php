@@ -51,6 +51,6 @@ class UserFactory extends Factory
 
     public function hr(): static
     {
-        return $this->state(fn () => ['role' => 'HR']);
+        return $this->state(fn () => ['role' => 'hr']);
     }
 }

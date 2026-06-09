@@ -54,9 +54,10 @@ class DashboardController extends Controller
 
         // Grafico 1: Funcionarios por departamento (Donut)
         $employees_by_dept = Department::withCount('employees')
-            ->having('employees_count', '>', 0)
             ->orderByDesc('employees_count')
-            ->get(['id', 'department', 'employees_count']);
+            ->get(['id', 'department', 'employees_count'])
+            ->filter(fn($d) => $d->employees_count > 0)
+            ->values();
 
         $chart_dept = [
             'labels' => $employees_by_dept->pluck('department')->toArray(),
@@ -65,9 +66,10 @@ class DashboardController extends Controller
 
         // Grafico 2: Funcionarios por setor (Barras horizontais)
         $employees_by_sector = Sector::withCount('employees')
-            ->having('employees_count', '>', 0)
             ->orderByDesc('employees_count')
-            ->get(['id', 'sector', 'employees_count']);
+            ->get(['id', 'sector', 'employees_count'])
+            ->filter(fn($s) => $s->employees_count > 0)
+            ->values();
 
         $chart_sector = [
             'labels' => $employees_by_sector->pluck('sector')->toArray(),
@@ -76,10 +78,11 @@ class DashboardController extends Controller
 
         // Grafico 3: Funcionarios por formacao (Top 10)
         $top_trainings_emp = Training::withCount(['employeeTrainings' => fn($q) => $q->whereHas('employee')])
-            ->having('employee_trainings_count', '>', 0)
             ->orderByDesc('employee_trainings_count')
+            ->get(['id', 'title', 'employee_trainings_count'])
+            ->filter(fn($t) => $t->employee_trainings_count > 0)
             ->take(10)
-            ->get(['id', 'title', 'employee_trainings_count']);
+            ->values();
 
         $chart_training_employees = [
             'labels' => $top_trainings_emp->map(fn($t) =>
@@ -114,10 +117,11 @@ class DashboardController extends Controller
 
         // Grafico 5: Top 6 formacoes - barras de progresso
         $top_trainings = Training::withCount(['employeeTrainings' => fn($q) => $q->whereHas('employee')])
-            ->having('employee_trainings_count', '>', 0)
             ->orderByDesc('employee_trainings_count')
+            ->get(['id', 'title', 'employee_trainings_count'])
+            ->filter(fn($t) => $t->employee_trainings_count > 0)
             ->take(6)
-            ->get(['id', 'title', 'employee_trainings_count']);
+            ->values();
 
         $top_trainings_chart = $top_trainings->map(function ($training) {
             $completed = EmployeeTraining::whereHas('employee')

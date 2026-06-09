@@ -11,14 +11,8 @@ class PositionFactory extends Factory
 
     public function definition(): array
     {
-        $positions = [
-            'Software Engineer', 'HR Specialist', 'Project Manager', 'Data Analyst',
-            'Marketing Manager', 'Financial Analyst', 'Operations Manager', 'Sales Representative',
-            'UX Designer', 'DevOps Engineer', 'Product Manager', 'Business Analyst',
-        ];
-
         return [
-            'position'    => $this->faker->unique()->randomElement($positions),
+            'position'    => $this->faker->unique()->words(3, true),
             'description' => $this->faker->optional()->sentence(),
         ];
     }

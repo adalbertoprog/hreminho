@@ -15,14 +15,15 @@ return new class extends Migration
         });
 
         // Auto-populate: match existing employees to users by email
+        // (sintaxe sem alias — compatível com MySQL e SQLite)
         DB::statement('
-            UPDATE employees e
-            SET e.user_id = (
-                SELECT u.id FROM users u
-                WHERE u.email = e.email
+            UPDATE employees
+            SET user_id = (
+                SELECT id FROM users
+                WHERE users.email = employees.email
                 LIMIT 1
             )
-            WHERE e.email IS NOT NULL
+            WHERE email IS NOT NULL
         ');
     }
 

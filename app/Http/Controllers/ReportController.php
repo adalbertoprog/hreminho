@@ -13,10 +13,26 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 
 class ReportController extends Controller
 {
+    /** Expressão SQL para adicionar meses ao campo end_date — compatível com MySQL e SQLite. */
+    private function expiryExpr(): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "date(end_date, '+' || validity_months || ' months')"
+            : "DATE_ADD(end_date, INTERVAL validity_months MONTH)";
+    }
+
+    /** Expressão SQL para adicionar dias a uma data literal — compatível com MySQL e SQLite. */
+    private function addDaysExpr(string $date, int $days): string
+    {
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "date('{$date}', '+{$days} days')"
+            : "DATE_ADD('{$date}', INTERVAL {$days} DAY)";
+    }
     // ── 1. Formações concluídas ──────────────────────────────────────
     public function completedTrainings(Request $request): JsonResponse
     {
@@ -226,17 +242,19 @@ class ReportController extends Controller
         }
 
         // Filtro por estado de validade (SQL nativo para suportar cálculo de data)
+        $expiry   = $this->expiryExpr();
+        $soon     = $this->addDaysExpr($today, 30);
         if ($request->filled('validity_status')) {
             match ($request->validity_status) {
-                'expired'  => $query->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) < ?", [$today]),
-                'expiring' => $query->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) >= ?", [$today])
-                                    ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) <= DATE_ADD(?, INTERVAL 30 DAY)", [$today]),
-                'valid'    => $query->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) > DATE_ADD(?, INTERVAL 30 DAY)", [$today]),
+                'expired'  => $query->whereRaw("{$expiry} < ?", [$today]),
+                'expiring' => $query->whereRaw("{$expiry} >= ?", [$today])
+                                    ->whereRaw("{$expiry} <= {$soon}"),
+                'valid'    => $query->whereRaw("{$expiry} > {$soon}"),
                 default    => null,
             };
         }
 
-        $rows = $query->orderByRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) ASC")->get();
+        $rows = $query->orderByRaw("{$expiry} ASC")->get();
 
         // KPIs totais (sem filtro de estado — sobre o conjunto filtrado por func/setor/formação)
         $kpiQuery = EmployeeTraining::whereHas('employee')
@@ -381,13 +399,15 @@ class ReportController extends Controller
         $today_str = $today->toDateString();
         $soon_str  = $today->copy()->addDays(30)->toDateString();
 
+        $expiryGap  = $this->expiryExpr();
+        $soonGap    = $this->addDaysExpr($today_str, 30);
         $expiredRows = EmployeeTraining::with(['employee.department', 'employee.position', 'training'])
             ->whereHas('employee')
             ->whereNotNull('validity_months')
             ->whereNotNull('end_date')
             ->where('status', 'completed')
-            ->whereRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) <= ?", [$soon_str])
-            ->orderByRaw("DATE_ADD(end_date, INTERVAL validity_months MONTH) ASC")
+            ->whereRaw("{$expiryGap} <= {$soonGap}")
+            ->orderByRaw("{$expiryGap} ASC")
             ->get()
             ->map(function ($r) use ($today) {
                 $expiry    = $r->end_date->copy()->addMonths($r->validity_months);

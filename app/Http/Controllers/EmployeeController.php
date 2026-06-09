@@ -116,7 +116,7 @@ class EmployeeController extends Controller
         }
         $employee->delete();
 
-        return response()->json(['message' => 'Funcionário excluído com sucesso.'], 200);
+        return response()->json(null, 204);
     }
 
     /**
