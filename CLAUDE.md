@@ -170,6 +170,11 @@ quiz_answers: id, attempt_id, question_id, option_id
 employee_trainings: id, employee_id, training_id, status, certificate_path,
                     score, start_date, end_date, notes, validity_months
 ```
+- `certificate_path` — path relativo em `storage/app/public/certificates/`; acesso via `certificate_url` (URL pública) devolvido pelo `formatEnrollment()`
+- Upload via `POST /api/v1/enrollments/{id}/certificate` (multipart, campo `certificate`, max 5 MB, PDF/JPG/PNG)
+- Remoção via `PUT /api/v1/enrollments/{id}` com `{ certificate_path: null }` — apaga o ficheiro do disco
+- Score só pode ser registado se `end_date` for hoje ou no passado — validado no frontend (`updateScoreState`) e no backend (`enroll` e `updateEnrollment`)
+- Upload usa `file_get_contents` + `Storage::disk('public')->put()` directamente (evita problema com `upload_tmp_dir` no Windows/Laragon)
 
 ### MandatoryTraining
 ```
