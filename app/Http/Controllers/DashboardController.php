@@ -22,6 +22,11 @@ class DashboardController extends Controller
             return redirect()->route('employee.dashboard');
         }
 
+        // Redirect managers to attendances
+        if (Auth::user()->role === 'manager') {
+            return redirect()->route('attendances.index');
+        }
+
         $today = Carbon::today();
 
         // Stats cards

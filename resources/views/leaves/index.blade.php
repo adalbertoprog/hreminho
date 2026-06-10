@@ -158,6 +158,7 @@ tbody tr:hover{background:rgba(255,255,255,.025)}
 const API  = '/api/v1';
 const CSRF = document.querySelector('meta[name="csrf-token"]').content;
 let editId=null, deleteId=null, page=1, filters={};
+const leaveCache={};
 const typeLabel   = {vacation:'Férias',sick:'Doença',unpaid:'Não remunerada'};
 const typeClass   = {vacation:'badge-vacation',sick:'badge-sick',unpaid:'badge-unpaid'};
 const statusLabel = {pending:'Pendente',approved:'Aprovado',rejected:'Rejeitado'};
@@ -193,6 +194,7 @@ async function loadTable(){
 function renderTable(rows){
     const tbody=document.getElementById('leaveBody');
     if(!rows.length){tbody.innerHTML='<tr class="state-row"><td colspan="7">Nenhum pedido encontrado.</td></tr>';return;}
+    rows.forEach(l=>leaveCache[l.id]=l);
     tbody.innerHTML=rows.map(l=>{
         const sd=l.start_date?new Date(l.start_date+'T00:00:00').toLocaleDateString('pt-PT'):'—';
         const ed=l.end_date  ?new Date(l.end_date  +'T00:00:00').toLocaleDateString('pt-PT'):'—';
@@ -209,7 +211,7 @@ function renderTable(rows){
                     <button class="btn-sm btn-approve" onclick="quickStatus(${l.id},'approved')">✅</button>
                     <button class="btn-sm btn-reject"  onclick="quickStatus(${l.id},'rejected')">❌</button>
                 `:''}
-                <button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(l)})'>✏️</button>
+                <button class="btn-sm btn-edit" onclick="openEdit(leaveCache[${l.id}])">✏️</button>
                 <button class="btn-sm btn-del"  onclick="openDelete(${l.id})">🗑</button>
             </td>
         </tr>`;

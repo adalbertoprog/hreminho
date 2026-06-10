@@ -9,6 +9,7 @@ use App\Models\Employee;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class EmployeeController extends Controller
@@ -19,6 +20,21 @@ class EmployeeController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Employee::with(['position', 'department', 'sector']);
+
+        // Manager: restringir aos funcionários do(s) seu(s) dept/sector
+        $user = Auth::user();
+        if ($user->role === 'manager') {
+            $emp = $user->employee;
+            $managedIds = collect();
+            if ($emp) {
+                $managedIds = $managedIds->merge(
+                    Employee::whereHas('department', fn($q) => $q->where('manager_id', $emp->id))->pluck('id')
+                )->merge(
+                    Employee::whereHas('sector', fn($q) => $q->where('manager_id', $emp->id))->pluck('id')
+                )->unique();
+            }
+            $query->whereIn('id', $managedIds);
+        }
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);

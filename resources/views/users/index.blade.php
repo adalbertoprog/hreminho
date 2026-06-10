@@ -50,6 +50,7 @@ tbody tr:hover td { background:rgba(255,255,255,.025); }
 .badge-admin    { background:rgba(99,102,241,.2);  color:var(--accent-light); }
 .badge-hr       { background:rgba(245,158,11,.15); color:var(--warning); }
 .badge-employee { background:rgba(34,197,94,.15);  color:var(--success); }
+.badge-manager  { background:rgba(6,182,212,.15);  color:#06b6d4; }
 
 .user-cell { display:flex; align-items:center; gap:10px; }
 .user-avatar-sm {
@@ -134,6 +135,7 @@ tbody tr:hover td { background:rgba(255,255,255,.025); }
         <option value="">Todos os perfis</option>
         <option value="admin">Admin</option>
         <option value="hr">HR</option>
+        <option value="manager">Gestor</option>
         <option value="employee">Employee</option>
     </select>
     <button class="btn btn-primary" onclick="openCreate()">＋ Novo utilizador</button>
@@ -184,6 +186,7 @@ tbody tr:hover td { background:rgba(255,255,255,.025); }
                     <option value="">Selecionar perfil…</option>
                     <option value="admin">Admin</option>
                     <option value="hr">HR</option>
+                    <option value="manager">Gestor</option>
                     <option value="employee">Employee</option>
                 </select>
             </div>
@@ -261,7 +264,7 @@ function initials(name) {
 }
 
 function roleBadge(role) {
-    const map = { admin: ['badge-admin','Admin'], hr: ['badge-hr','HR'], employee: ['badge-employee','Employee'] };
+    const map = { admin: ['badge-admin','Admin'], hr: ['badge-hr','HR'], manager: ['badge-manager','Gestor'], employee: ['badge-employee','Employee'] };
     const [cls, label] = map[role] || ['','–'];
     return `<span class="badge ${cls}">${label}</span>`;
 }

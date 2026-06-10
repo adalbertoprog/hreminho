@@ -90,13 +90,20 @@ async function loadStats() {
 }
 
 async function boot() {
-    const [d, p, s, u] = await Promise.all([
+    const [d, p, s, u, cfg] = await Promise.all([
         apiFetch('GET', '/departments?per_page=200').catch(() => ({ data: [] })),
         apiFetch('GET', '/positions?per_page=200').catch(() => ({ data: [] })),
         apiFetch('GET', '/sectors?per_page=200').catch(() => ({ data: [] })),
         apiFetch('GET', '/users?per_page=200&role=employee').catch(() => ({ data: [] })),
+        apiFetch('GET', '/settings').catch(() => ({ data: {} })),
     ]);
     depts = d.data ?? []; positions = p.data ?? []; sectors = s.data ?? []; systemUsers = u.data ?? [];
+
+    // Mostrar padrão global no hint do campo expected_check_in
+    const attSettings = cfg.data?.attendance ?? [];
+    const globalCheckIn = attSettings.find(s => s.key === 'attendance_default_check_in')?.value;
+    const hint = document.getElementById('checkInGlobalHint');
+    if (hint && globalCheckIn) hint.textContent = `(padrão global: ${globalCheckIn})`;
 
     ['fDept', 'fDeptModal'].forEach(id => {
         const el = document.getElementById(id);
@@ -323,7 +330,7 @@ function openEdit(empId) {
     set('code', emp.code); set('first_name', emp.first_name); set('last_name', emp.last_name);
     set('email', emp.email); set('phone', emp.phone); set('date_of_birth', emp.date_of_birth);
     set('gender', emp.gender); set('nationality', emp.nationality); set('address', emp.address);
-    set('work_location', emp.work_location); set('position_id', emp.position_id);
+    set('work_location', emp.work_location); set('expected_check_in', emp.expected_check_in ?? ''); set('position_id', emp.position_id);
     set('department_id', emp.department_id); set('sector_id', emp.sector_id ?? '');
     set('hire_date', emp.hire_date); set('status', emp.status); set('contract_type', emp.contract_type); set('end_date', emp.end_date);
     set('user_id', emp.user_id ?? '');
@@ -340,6 +347,8 @@ async function submitForm(e) {
     const data = {}; new FormData(document.getElementById('empForm')).forEach((v, k) => { if (v !== '') data[k] = v; });
     if (data.user_id) data.user_id = parseInt(data.user_id);
     else delete data.user_id;
+    // Permitir limpar o override de hora de entrada (enviar null explicitamente)
+    if (editId && !data.expected_check_in) data.expected_check_in = null;
     if (photoBase64) data.photo = photoBase64;
     try {
         if (editId) await apiFetch('PUT', `/employees/${editId}`, data);

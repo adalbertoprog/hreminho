@@ -17,6 +17,7 @@ use App\Http\Controllers\Web\DocsElectroMinhoWebController;
 use App\Http\Controllers\Web\UserWebController;
 use App\Http\Controllers\Web\PasswordWebController;
 use App\Http\Controllers\Web\CalendarWebController;
+use App\Http\Controllers\Web\SettingsWebController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn() => view('home'))->name('home');
@@ -57,7 +58,6 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::delete('/positions/{position}', [PositionWebController::class,   'destroy'])->name('positions.destroy');
 
         Route::get('/sectors',     [SectorWebController::class,     'index'])->name('sectors.index');
-        Route::get('/attendances', [AttendanceWebController::class, 'index'])->name('attendances.index');
         Route::get('/leaves',      [LeaveWebController::class,      'index'])->name('leaves.index');
         Route::get('/trainings',           [TrainingWebController::class,       'index'])->name('trainings.index');
         Route::get('/trainings/dashboard', [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
@@ -68,6 +68,8 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
         Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
 
+        Route::get('/settings', [SettingsWebController::class, 'index'])->name('settings.index');
+
         Route::prefix('docsem')->name('docsem.')->group(function () {
             Route::get('/',                               [DocsElectroMinhoWebController::class, 'index'])->name('index');
             Route::post('/sync',                          [DocsElectroMinhoWebController::class, 'syncTodos'])->name('sync');
@@ -75,6 +77,11 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
             Route::get('/employee/{employee}/documentos', [DocsElectroMinhoWebController::class, 'documentosFuncionario'])->name('employee.documentos');
             Route::get('/ping',                           [DocsElectroMinhoWebController::class, 'ping'])->name('ping');
         });
+    });
+
+    // ── Presenças — acesso a admin, hr e manager ─────────────────────────
+    Route::middleware('can:manage-attendance')->group(function () {
+        Route::get('/attendances', [AttendanceWebController::class, 'index'])->name('attendances.index');
     });
 
     // ── Portal do funcionário ─────────────────────────────────────────────

@@ -42,7 +42,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name'                  => 'required|string|max:255',
             'email'                 => 'required|email|unique:users,email',
-            'role'                  => 'required|in:admin,hr,employee',
+            'role'                  => 'required|in:admin,hr,manager,employee',
             'password'              => 'required|string|min:8|confirmed',
         ]);
 
@@ -63,7 +63,7 @@ class UserController extends Controller
         $data = $request->validate([
             'name'     => 'sometimes|string|max:255',
             'email'    => ['sometimes', 'email', Rule::unique('users', 'email')->ignore($user->id)],
-            'role'     => 'sometimes|in:admin,hr,employee',
+            'role'     => 'sometimes|in:admin,hr,manager,employee',
             'password' => 'nullable|string|min:8|confirmed',
         ]);
 

@@ -21,6 +21,7 @@ class Employee extends Model
         'nationality',
         'address',
         'work_location',
+        'expected_check_in',
         'profile_photo',
         'position_id',
         'department_id',

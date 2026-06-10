@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Leave;
+use App\Services\LeaveAttendanceSync;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -51,32 +52,41 @@ class LeaveController extends Controller
         ]);
 
         $leave = Leave::create($data);
+        (new LeaveAttendanceSync)->sync($leave);
         return response()->json(['data' => $this->format($leave->load('employee'))], 201);
     }
 
-    public function show(Leave $leave): JsonResponse
+    public function show(int $leaveId): JsonResponse
     {
+        $leave = Leave::findOrFail($leaveId);
         return response()->json(['data' => $this->format($leave->load('employee'))]);
     }
 
-    public function update(Request $request, Leave $leave): JsonResponse
+    public function update(Request $request, int $leaveId): JsonResponse
     {
+        $leave = Leave::findOrFail($leaveId);
+        $startDateRef = $request->input('start_date') ?? $leave->start_date?->toDateString();
         $data = $request->validate([
             'employee_id'     => 'sometimes|exists:employees,id',
             'leave_type'      => 'sometimes|in:vacation,sick,unpaid',
             'start_date'      => 'sometimes|date',
-            'end_date'        => 'sometimes|date|after_or_equal:start_date',
+            'end_date'        => 'sometimes|date|after_or_equal:' . $startDateRef,
             'reason'          => 'sometimes|string|max:1000',
             'status'          => 'nullable|in:pending,approved,rejected',
             'manager_comment' => 'nullable|string|max:1000',
         ]);
 
         $leave->update($data);
-        return response()->json(['data' => $this->format($leave->fresh()->load('employee'))]);
+        $leave->refresh();
+
+        (new LeaveAttendanceSync)->sync($leave);
+        return response()->json(['data' => $this->format($leave->load('employee'))]);
     }
 
-    public function destroy(Leave $leave): JsonResponse
+    public function destroy(int $leaveId): JsonResponse
     {
+        $leave = Leave::findOrFail($leaveId);
+        (new LeaveAttendanceSync)->removeAttendances($leave);
         $leave->delete();
         return response()->json(['message' => 'Licença excluída com sucesso.']);
     }

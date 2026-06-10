@@ -30,6 +30,9 @@ class AppServiceProvider extends ServiceProvider
         // Acesso total de gestão RH (admin e hr)
         Gate::define('manage-hr', fn($user) => in_array($user->role, ['admin', 'hr']));
 
+        // Gestão de presenças (admin, hr e manager)
+        Gate::define('manage-attendance', fn($user) => in_array($user->role, ['admin', 'hr', 'manager']));
+
         // Apenas admin
         Gate::define('admin-only', fn($user) => $user->role === 'admin');
 

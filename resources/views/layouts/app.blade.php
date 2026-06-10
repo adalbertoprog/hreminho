@@ -282,8 +282,23 @@
                 <a href="{{ route('users.index') }}" class="nav-item {{ request()->routeIs('users.*') ? 'active' : '' }}">
                     <span class="nav-icon">🔐</span> Utilizadores
                 </a>
+                <a href="{{ route('settings.index') }}" class="nav-item {{ request()->routeIs('settings.*') ? 'active' : '' }}">
+                    <span class="nav-icon">⚙️</span> Definições
+                </a>
                 @endcan
             @endcan
+
+            @if(auth()->user()->role === 'manager')
+                {{-- ── Gestor de Departamento/Sector ── --}}
+                <p class="nav-section-label">Principal</p>
+                <a href="{{ route('dashboard') }}" class="nav-item {{ request()->routeIs('dashboard') ? 'active' : '' }}">
+                    <span class="nav-icon">🏠</span> Dashboard
+                </a>
+                <p class="nav-section-label">Operações</p>
+                <a href="{{ route('attendances.index') }}" class="nav-item {{ request()->routeIs('attendances.*') ? 'active' : '' }}">
+                    <span class="nav-icon">📅</span> Presenças
+                </a>
+            @endif
         </nav>
 
         <div class="sidebar-user">

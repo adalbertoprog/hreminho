@@ -15,6 +15,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\Web\EmployeeAssociationController;
 use App\Http\Controllers\MandatoryTrainingController;
 use App\Http\Controllers\TrainingSessionController;
+use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
@@ -38,6 +39,15 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
     Route::get('trainings/{training}/videos',  [TrainingVideoController::class, 'index'])->name('trainings.videos.index');
     Route::get('videos/{video}',               [TrainingVideoController::class, 'show'])->name('videos.show');
 
+    // ── Presenças — admin, hr e manager ──────────────────────────────────
+    Route::middleware('can:manage-attendance')->group(function () {
+        Route::apiResource('attendances', AttendanceController::class);
+        // Leitura de funcionários e settings necessária para a view de presenças
+        Route::get('employees-for-attendance', [EmployeeController::class, 'index'])->name('employees.for-attendance');
+        // Settings (leitura) — manager precisa para calcular preview de status
+        Route::get('settings', [SettingsController::class, 'index'])->name('settings.read');
+    });
+
     // ── Rotas exclusivas de admin/hr (manage-hr) ──────────────────────────
     Route::middleware('can:manage-hr')->group(function () {
 
@@ -50,8 +60,7 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
         Route::apiResource('positions',   PositionController::class);
         Route::apiResource('sectors',     SectorController::class);
 
-        // Presenças e férias
-        Route::apiResource('attendances', AttendanceController::class);
+        // Férias
         Route::apiResource('leaves',      LeaveController::class);
 
         // Gestão do catálogo de formações (escrita)
@@ -90,6 +99,9 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
         Route::put   ('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'update'])->name('mandatory-trainings.update');
         Route::delete('mandatory-trainings/{mandatoryTraining}',      [MandatoryTrainingController::class, 'destroy'])->name('mandatory-trainings.destroy');
         Route::get   ('mandatory-trainings/{mandatoryTraining}/gaps', [MandatoryTrainingController::class, 'gaps'])->name('mandatory-trainings.gaps');
+
+        // Configurações do sistema (leitura em manage-attendance; escrita apenas aqui)
+        Route::put('settings',  [SettingsController::class, 'update'])->name('settings.update');
 
         // Utilizadores
         Route::apiResource('users', UserController::class);
