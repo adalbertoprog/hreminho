@@ -1,6 +1,6 @@
 @extends('layouts.app')
-@section('title','Calendário de Formações')
-@section('page-title','Calendário de Formações')
+@section('title','Calendário')
+@section('page-title','Calendário')
 
 @section('styles')
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
@@ -110,13 +110,39 @@
 @keyframes slideIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 .cal-meta{display:flex;align-items:center;gap:12px;font-size:.82rem;color:var(--text-muted);margin-bottom:12px}
 .cal-meta strong{color:var(--text-primary)}
+/* Event type filter chips */
+.type-filters{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;align-items:center}
+.type-chip{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:20px;font-size:.78rem;font-weight:700;cursor:pointer;border:2px solid transparent;transition:.15s;user-select:none}
+.type-chip.active{border-color:currentColor;opacity:1}
+.type-chip:not(.active){opacity:.45}
+.type-chip-training{background:rgba(99,102,241,.15);color:#818cf8}
+.type-chip-leave{background:rgba(8,145,178,.15);color:#22d3ee}
+.type-chip-attendance{background:rgba(239,68,68,.12);color:#f87171}
+/* Legend additions */
+.legend-dot-vacation{background:#0891b2}.legend-dot-sick{background:#d97706}.legend-dot-unpaid{background:#7c3aed}
+.legend-dot-absent{background:#ef4444}.legend-dot-late{background:#f59e0b}
+/* Leave detail */
+.leave-type-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:.76rem;font-weight:700}
+.badge-vacation{background:rgba(8,145,178,.15);color:#22d3ee}
+.badge-sick{background:rgba(217,119,6,.15);color:#fbbf24}
+.badge-unpaid{background:rgba(124,58,237,.15);color:#a78bfa}
+.badge-pending{background:rgba(245,158,11,.15);color:#f59e0b}
+.badge-approved{background:rgba(34,197,94,.15);color:#22c55e}
+.badge-rejected{background:rgba(239,68,68,.12);color:#ef4444}
 </style>
 @endsection
 
 @section('content')
 <div class="toolbar">
-    <h2>📅 Calendário de Formações</h2>
+    <h2>📅 Calendário</h2>
     <button class="btn-primary" onclick="openCreateForm(null)">+ Nova Inscrição</button>
+</div>
+
+<div class="type-filters">
+    <span style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">Mostrar:</span>
+    <span class="type-chip type-chip-training active" data-type="trainings" onclick="toggleType(this)">📚 Formações</span>
+    <span class="type-chip type-chip-leave active" data-type="leaves" onclick="toggleType(this)">🏖️ Licenças</span>
+    <span class="type-chip type-chip-attendance active" data-type="attendances" onclick="toggleType(this)">⚠️ Ausências/Atrasos</span>
 </div>
 
 <div class="filters">
@@ -146,6 +172,11 @@
     <div class="legend-item"><div class="legend-dot legend-dot-enrolled"></div> Inscrito</div>
     <div class="legend-item"><div class="legend-dot legend-dot-completed"></div> Concluído</div>
     <div class="legend-item"><div class="legend-dot legend-dot-failed"></div> Reprovado</div>
+    <div class="legend-item" style="margin-left:8px"><div class="legend-dot legend-dot-vacation"></div> Férias</div>
+    <div class="legend-item"><div class="legend-dot legend-dot-sick"></div> Doença</div>
+    <div class="legend-item"><div class="legend-dot legend-dot-unpaid"></div> N.Rem.</div>
+    <div class="legend-item" style="margin-left:8px"><div class="legend-dot legend-dot-absent"></div> Ausente</div>
+    <div class="legend-item"><div class="legend-dot legend-dot-late"></div> Atrasado</div>
     <span class="cal-hint">💡 Clica num dia para criar uma inscrição</span>
 </div>
 
@@ -285,6 +316,51 @@
 </div>
 </div>
 
+{{-- Modal Detalhe Licença --}}
+<div class="overlay" id="leaveDetailOverlay">
+<div class="modal">
+    <div class="modal-header">
+        <div class="modal-title" id="ldTitle">—</div>
+        <button class="modal-close" onclick="closeOverlay('leaveDetailOverlay')">✕</button>
+    </div>
+    <div class="detail-grid">
+        <div class="detail-item"><label>Funcionário</label><span id="ldEmployee">—</span></div>
+        <div class="detail-item"><label>Código</label><span id="ldCode">—</span></div>
+        <div class="detail-item"><label>Tipo</label><span id="ldType">—</span></div>
+        <div class="detail-item"><label>Estado</label><span id="ldStatus">—</span></div>
+        <div class="detail-item"><label>Início</label><span id="ldStart">—</span></div>
+        <div class="detail-item"><label>Fim</label><span id="ldEnd">—</span></div>
+        <div class="detail-item full" id="ldReasonRow"><label>Motivo</label><span id="ldReason">—</span></div>
+        <div class="detail-item full" id="ldCommentRow" style="display:none"><label>Comentário</label><span id="ldComment">—</span></div>
+    </div>
+    <div class="detail-actions">
+        <button class="btn-edit-detail" onclick="goToLeave()">✏️ Ver em Licenças</button>
+    </div>
+</div>
+</div>
+
+{{-- Modal Detalhe Presença --}}
+<div class="overlay" id="attDetailOverlay">
+<div class="modal">
+    <div class="modal-header">
+        <div class="modal-title" id="adTitle">—</div>
+        <button class="modal-close" onclick="closeOverlay('attDetailOverlay')">✕</button>
+    </div>
+    <div class="detail-grid">
+        <div class="detail-item"><label>Funcionário</label><span id="adEmployee">—</span></div>
+        <div class="detail-item"><label>Código</label><span id="adCode">—</span></div>
+        <div class="detail-item"><label>Data</label><span id="adDate">—</span></div>
+        <div class="detail-item"><label>Estado</label><span id="adStatus">—</span></div>
+        <div class="detail-item" id="adCheckInRow"><label>Entrada</label><span id="adCheckIn">—</span></div>
+        <div class="detail-item" id="adCheckOutRow"><label>Saída</label><span id="adCheckOut">—</span></div>
+        <div class="detail-item full" id="adNotesRow" style="display:none"><label>Notas</label><span id="adNotes">—</span></div>
+    </div>
+    <div class="detail-actions">
+        <button class="btn-edit-detail" onclick="goToAttendances()">✏️ Ver em Presenças</button>
+    </div>
+</div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 @endsection
 
@@ -392,10 +468,20 @@ document.addEventListener('click', function(e){
 });
 
 /* ── Filtros calendário ── */
+let activeTypes=new Set(['trainings','leaves','attendances']);
+
+function toggleType(chip){
+    const t=chip.dataset.type;
+    if(activeTypes.has(t)){if(activeTypes.size>1){activeTypes.delete(t);chip.classList.remove('active');}}
+    else{activeTypes.add(t);chip.classList.add('active');}
+    reloadEvents();
+}
+
 function buildParams() {
     const p=new URLSearchParams();
     const s=document.getElementById('fStatus').value, t=document.getElementById('fTraining').value, e=document.getElementById('fEmployee').value;
     if(s)p.set('status',s); if(t)p.set('training_id',t); if(e)p.set('employee_id',e);
+    p.set('types',[...activeTypes].join(','));
     return p;
 }
 function reloadEvents(){if(calendar)calendar.refetchEvents();}
@@ -544,8 +630,15 @@ document.addEventListener('DOMContentLoaded', function(){
 
         eventClick:function(info){
             const p=info.event.extendedProps;
+            if(p.type==='leave'){
+                openLeaveDetail(p); return;
+            }
+            if(p.type==='attendance'){
+                openAttDetail(p); return;
+            }
+            // training
             _lastEventProps={
-                id:info.event.id, employee_id:p.employee_id,
+                id:p.enrollment_id||info.event.id, employee_id:p.employee_id,
                 employee_label:(p.employee||'')+(p.employeeCode?` (${p.employeeCode})`:''),
                 training_id:p.training_id, status:p.status, score:p.score,
                 start_date:info.event.startStr?.substring(0,10), end_date:p.end_date_raw,
@@ -559,6 +652,47 @@ document.addEventListener('DOMContentLoaded', function(){
     });
     calendar.render();
 });
+
+/* ── Leave detail ── */
+const leaveTypeLabel={vacation:'Férias',sick:'Doença',unpaid:'Não remunerada'};
+const leaveStatusLabel={pending:'Pendente',approved:'Aprovado',rejected:'Rejeitado'};
+const leaveStatusClass={pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected'};
+const leaveTypeBadge={vacation:'badge-vacation',sick:'badge-sick',unpaid:'badge-unpaid'};
+
+function openLeaveDetail(p){
+    document.getElementById('ldTitle').textContent=(p.leave_type_label||'Licença')+' — '+p.employee;
+    document.getElementById('ldEmployee').textContent=p.employee||'—';
+    document.getElementById('ldCode').textContent=p.employeeCode||'—';
+    document.getElementById('ldType').innerHTML=`<span class="leave-type-badge ${leaveTypeBadge[p.leave_type]??''}">${leaveTypeLabel[p.leave_type]??p.leave_type}</span>`;
+    document.getElementById('ldStatus').innerHTML=`<span class="leave-type-badge ${leaveStatusClass[p.status]??''}">${leaveStatusLabel[p.status]??p.status}</span>`;
+    document.getElementById('ldStart').textContent=p.start_date||'—';
+    document.getElementById('ldEnd').textContent=p.end_date||'—';
+    document.getElementById('ldReason').textContent=p.reason||'—';
+    const cmtRow=document.getElementById('ldCommentRow');
+    if(p.manager_comment){cmtRow.style.display='';document.getElementById('ldComment').textContent=p.manager_comment;}
+    else cmtRow.style.display='none';
+    openOverlay('leaveDetailOverlay');
+}
+function goToLeave(){window.location.href='/leaves';}
+
+/* ── Attendance detail ── */
+const attStatusLabel={absent:'Ausente',late:'Atrasado'};
+const attStatusClass={absent:'badge-rejected',late:'badge-pending'};
+
+function openAttDetail(p){
+    document.getElementById('adTitle').textContent=(attStatusLabel[p.status]||p.status)+' — '+p.employee;
+    document.getElementById('adEmployee').textContent=p.employee||'—';
+    document.getElementById('adCode').textContent=p.employeeCode||'—';
+    document.getElementById('adDate').textContent=p.date||'—';
+    document.getElementById('adStatus').innerHTML=`<span class="leave-type-badge ${attStatusClass[p.status]??''}">${attStatusLabel[p.status]??p.status}</span>`;
+    document.getElementById('adCheckIn').textContent=p.check_in||'—';
+    document.getElementById('adCheckOut').textContent=p.check_out||'—';
+    const notesRow=document.getElementById('adNotesRow');
+    if(p.notes){notesRow.style.display='';document.getElementById('adNotes').textContent=p.notes;}
+    else notesRow.style.display='none';
+    openOverlay('attDetailOverlay');
+}
+function goToAttendances(){window.location.href='/attendances';}
 
 document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));});
