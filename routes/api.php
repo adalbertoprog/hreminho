@@ -13,8 +13,10 @@ use App\Http\Controllers\QuizController;
 use App\Http\Controllers\BulkUserController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\Web\EmployeeAssociationController;
+use App\Http\Controllers\Web\EmployeeLeaveController;
 use App\Http\Controllers\MandatoryTrainingController;
 use App\Http\Controllers\TrainingSessionController;
+use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\SettingsController;
 use Illuminate\Support\Facades\Route;
 
@@ -25,6 +27,16 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
     // Portal do funcionário — associação por código
     Route::post('employee-portal/associate', [EmployeeAssociationController::class, 'associate'])->name('employee-portal.associate');
+
+    // Portal — funcionário submete pedido de licença (qualquer autenticado com employee)
+    Route::post('employee-portal/leaves',                    [EmployeeLeaveController::class, 'store'])->name('employee-portal.leaves.store');
+    Route::delete('employee-portal/leaves/{leaveId}',        [EmployeeLeaveController::class, 'cancel'])->name('employee-portal.leaves.cancel');
+
+    // Portal — manager aprova/rejeita pedidos dos seus funcionários
+    Route::middleware('can:manage-attendance')->group(function () {
+        Route::put('employee-portal/leaves/{leaveId}/approve', [EmployeeLeaveController::class, 'approve'])->name('employee-portal.leaves.approve');
+        Route::put('employee-portal/leaves/{leaveId}/reject',  [EmployeeLeaveController::class, 'reject'])->name('employee-portal.leaves.reject');
+    });
 
     // Quiz — leitura e submissão (employee só vê quiz sem respostas corretas; ver QuizController::show)
     Route::get('trainings/{training}/quiz',    [QuizController::class, 'show'])->name('trainings.quiz.show');
@@ -102,6 +114,12 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
         // Configurações do sistema (leitura em manage-attendance; escrita apenas aqui)
         Route::put('settings',  [SettingsController::class, 'update'])->name('settings.update');
+
+        // Feriados
+        Route::get   ('holidays',          [HolidayController::class, 'index'])->name('holidays.index');
+        Route::post  ('holidays',          [HolidayController::class, 'store'])->name('holidays.store');
+        Route::put   ('holidays/{holiday}',[HolidayController::class, 'update'])->name('holidays.update');
+        Route::delete('holidays/{holiday}',[HolidayController::class, 'destroy'])->name('holidays.destroy');
 
         // Utilizadores
         Route::apiResource('users', UserController::class);

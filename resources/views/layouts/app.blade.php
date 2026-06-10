@@ -229,6 +229,21 @@
                 <a href="{{ route('employee.dashboard') }}#formacoes" class="nav-item {{ request()->routeIs('employee.training') ? 'active' : '' }}">
                     <span class="nav-icon">🎓</span> Formações
                 </a>
+                <a href="{{ route('employee.leaves') }}" class="nav-item {{ request()->routeIs('employee.leaves') ? 'active' : '' }}">
+                    <span class="nav-icon">🏖️</span> Licenças e Férias
+                </a>
+            @endcan
+
+            @can('manage-attendance')
+                @php $pendingCount = \App\Models\Leave::where('status','pending')->count(); @endphp
+                @if(auth()->user()->role === 'manager' || auth()->user()->role === 'admin' || auth()->user()->role === 'hr')
+                <a href="{{ route('manager.leaves') }}" class="nav-item {{ request()->routeIs('manager.leaves') ? 'active' : '' }}">
+                    <span class="nav-icon">📋</span> Pedidos de Licença
+                    @if($pendingCount > 0)
+                        <span style="margin-left:auto;background:#f59e0b;color:#000;border-radius:10px;padding:1px 7px;font-size:.68rem;font-weight:800">{{ $pendingCount }}</span>
+                    @endif
+                </a>
+                @endif
             @endcan
 
             @can('manage-hr')

@@ -44,6 +44,36 @@
 .toast.ok  { background:#22c55e; color:#fff; }
 .toast.err { background:#ef4444; color:#fff; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+/* Holidays */
+.holiday-table { width:100%; border-collapse:collapse; font-size:.85rem; margin-top:16px; }
+.holiday-table th { padding:8px 12px; text-align:left; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); border-bottom:1px solid var(--border); }
+.holiday-table td { padding:9px 12px; border-bottom:1px solid rgba(255,255,255,.04); color:var(--text-primary); }
+.holiday-table tr:last-child td { border-bottom:none; }
+.holiday-table tr:hover td { background:rgba(255,255,255,.02); }
+.btn-sm { padding:4px 10px; border-radius:6px; font-size:.76rem; font-weight:600; cursor:pointer; border:1px solid; transition:.15s; }
+.btn-sm-edit { background:rgba(99,102,241,.12); border-color:rgba(99,102,241,.25); color:var(--accent-light); }
+.btn-sm-edit:hover { background:rgba(99,102,241,.25); }
+.btn-sm-del  { background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.2); color:#ef4444; }
+.btn-sm-del:hover { background:rgba(239,68,68,.22); }
+.badge-nat   { display:inline-block; padding:2px 8px; border-radius:5px; font-size:.72rem; font-weight:700; background:rgba(99,102,241,.15); color:#818cf8; }
+.badge-loc   { display:inline-block; padding:2px 8px; border-radius:5px; font-size:.72rem; font-weight:700; background:rgba(245,158,11,.15); color:#f59e0b; }
+.badge-rec   { display:inline-block; padding:2px 8px; border-radius:5px; font-size:.72rem; font-weight:700; background:rgba(34,197,94,.12); color:#22c55e; }
+.hol-form { display:grid; grid-template-columns:1fr 1fr 1fr auto auto; gap:10px; align-items:end; margin-bottom:16px; }
+@media(max-width:700px){ .hol-form{ grid-template-columns:1fr 1fr; } }
+.hol-input { background:var(--bg-input,var(--bg-sidebar)); border:1px solid var(--border); color:var(--text-primary); padding:8px 12px; border-radius:8px; font-size:.85rem; width:100%; outline:none; transition:border-color .15s; }
+.hol-input:focus { border-color:var(--accent); }
+.hol-label { font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:4px; }
+.yr-filter { display:flex; gap:8px; align-items:center; margin-bottom:12px; }
+.overlay { display:none; position:fixed; inset:0; z-index:200; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); align-items:center; justify-content:center; padding:14px; }
+.overlay.open { display:flex; }
+.modal-hol { background:var(--bg-card); border:1px solid var(--border); border-radius:16px; padding:28px; width:100%; max-width:480px; box-shadow:0 24px 80px rgba(0,0,0,.5); }
+.modal-hol h3 { font-size:1rem; font-weight:700; margin:0 0 20px; }
+.modal-hol .fg { margin-bottom:14px; }
+.modal-hol label { display:block; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:5px; }
+.modal-hol input, .modal-hol select { width:100%; background:var(--bg-input,var(--bg-sidebar)); border:1px solid var(--border); color:var(--text-primary); padding:8px 12px; border-radius:8px; font-size:.875rem; outline:none; transition:border-color .15s; }
+.modal-hol input:focus, .modal-hol select:focus { border-color:var(--accent); }
+.modal-foot { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
+.btn-cancel { padding:8px 18px; border-radius:8px; background:rgba(255,255,255,.06); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-size:.875rem; font-weight:600; }
 </style>
 @endsection
 
@@ -60,7 +90,58 @@
         </div>
     </div>
 
+
+    <div class="settings-section" style="max-width:900px">
+        <h2>📅 Feriados</h2>
+
+        <div class="yr-filter">
+            <label style="font-size:.78rem;font-weight:600;color:var(--text-muted)">Ano:</label>
+            <select class="hol-input" id="holYear" style="width:110px" onchange="loadHolidays()">
+                <option value="">Todos</option>
+            </select>
+            <button class="btn btn-primary" onclick="openHolModal()">+ Adicionar Feriado</button>
+        </div>
+
+        <div id="holTableWrap">
+            <div style="color:var(--text-muted);font-size:.85rem">A carregar...</div>
+        </div>
+    </div>
+
 </div>
+
+{{-- Modal feriado --}}
+<div class="overlay" id="holOverlay">
+<div class="modal-hol">
+    <h3 id="holModalTitle">➕ Novo Feriado</h3>
+    <div class="fg">
+        <label>Nome *</label>
+        <input id="holName" type="text" placeholder="Ex: Dia da Liberdade" maxlength="100">
+    </div>
+    <div class="fg">
+        <label>Data *</label>
+        <input id="holDate" type="date">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="fg">
+            <label>Tipo</label>
+            <select id="holType">
+                <option value="national">Nacional</option>
+                <option value="local">Local</option>
+            </select>
+        </div>
+        <div class="fg" style="display:flex;flex-direction:column;justify-content:flex-end">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:.85rem;font-weight:500;color:var(--text-primary)">
+                <input type="checkbox" id="holRepeats" style="width:auto;margin:0"> Repete anualmente
+            </label>
+        </div>
+    </div>
+    <div class="modal-foot">
+        <button class="btn-cancel" onclick="closeHolModal()">Cancelar</button>
+        <button class="btn btn-primary" id="holSaveBtn" onclick="saveHoliday()">Guardar</button>
+    </div>
+</div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 @endsection
 
@@ -142,5 +223,99 @@ async function saveSettings() {
 }
 
 loadSettings();
+
+/* ── Holidays ──────────────────────────────────────────── */
+let holEditId = null;
+const typeLabel = {national:'Nacional', local:'Local'};
+
+function populateYearFilter() {
+    const sel = document.getElementById('holYear');
+    const cur = new Date().getFullYear();
+    for (let y = cur + 1; y >= cur - 3; y--) {
+        const opt = document.createElement('option');
+        opt.value = y; opt.textContent = y;
+        if (y === cur) opt.selected = true;
+        sel.appendChild(opt);
+    }
+}
+
+async function loadHolidays() {
+    const yr = document.getElementById('holYear').value;
+    const wrap = document.getElementById('holTableWrap');
+    wrap.innerHTML = '<div style="color:var(--text-muted);font-size:.85rem">A carregar...</div>';
+    try {
+        const res = await apiFetch('GET', '/holidays' + (yr ? `?year=${yr}` : ''));
+        const rows = res.data ?? [];
+        if (!rows.length) { wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;margin-top:8px">Nenhum feriado encontrado.</p>'; return; }
+        wrap.innerHTML = `<table class="holiday-table">
+            <thead><tr>
+                <th>Nome</th><th>Data</th><th>Tipo</th><th>Recorrente</th><th></th>
+            </tr></thead>
+            <tbody>${rows.map(h => `<tr>
+                <td style="font-weight:500">${h.name}</td>
+                <td style="color:var(--text-muted)">${h.date_formatted}</td>
+                <td><span class="${h.type==='national'?'badge-nat':'badge-loc'}">${typeLabel[h.type]??h.type}</span></td>
+                <td>${h.repeats_yearly ? '<span class="badge-rec">Sim</span>' : '<span style="color:var(--text-muted);font-size:.78rem">Não</span>'}</td>
+                <td style="white-space:nowrap;text-align:right">
+                    <button class="btn-sm btn-sm-edit" onclick='openHolModal(${JSON.stringify(h)})'>✏️</button>
+                    <button class="btn-sm btn-sm-del"  onclick="deleteHoliday(${h.id})">🗑</button>
+                </td>
+            </tr>`).join('')}</tbody>
+        </table>`;
+    } catch(e) { toast(e.message || 'Erro ao carregar feriados.', 'err'); }
+}
+
+function openHolModal(h = null) {
+    holEditId = h ? h.id : null;
+    document.getElementById('holModalTitle').textContent = h ? '✏️ Editar Feriado' : '➕ Novo Feriado';
+    document.getElementById('holName').value    = h?.name ?? '';
+    document.getElementById('holDate').value    = h?.date ?? '';
+    document.getElementById('holType').value    = h?.type ?? 'national';
+    document.getElementById('holRepeats').checked = h ? !!h.repeats_yearly : true;
+    document.getElementById('holOverlay').classList.add('open');
+    setTimeout(() => document.getElementById('holName').focus(), 80);
+}
+
+function closeHolModal() {
+    document.getElementById('holOverlay').classList.remove('open');
+}
+
+async function saveHoliday() {
+    const name = document.getElementById('holName').value.trim();
+    const date = document.getElementById('holDate').value;
+    if (!name || !date) { toast('Preencha o nome e a data.', 'err'); return; }
+    const btn = document.getElementById('holSaveBtn');
+    btn.disabled = true;
+    const body = {
+        name,
+        date,
+        type:           document.getElementById('holType').value,
+        repeats_yearly: document.getElementById('holRepeats').checked,
+    };
+    try {
+        if (holEditId) await apiFetch('PUT',  `/holidays/${holEditId}`, body);
+        else           await apiFetch('POST', '/holidays', body);
+        toast(holEditId ? 'Feriado actualizado!' : 'Feriado adicionado!', 'ok');
+        closeHolModal();
+        loadHolidays();
+    } catch(e) { toast(e.message || 'Erro ao guardar.', 'err'); }
+    finally { btn.disabled = false; }
+}
+
+async function deleteHoliday(id) {
+    if (!confirm('Eliminar este feriado?')) return;
+    try {
+        await apiFetch('DELETE', `/holidays/${id}`);
+        toast('Feriado eliminado.', 'ok');
+        loadHolidays();
+    } catch(e) { toast(e.message || 'Erro ao eliminar.', 'err'); }
+}
+
+document.getElementById('holOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('holOverlay')) closeHolModal();
+});
+
+populateYearFilter();
+loadHolidays();
 </script>
 @endsection

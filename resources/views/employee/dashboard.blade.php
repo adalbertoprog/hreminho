@@ -405,49 +405,30 @@
     @endif
 </div>
 
-{{-- ── Licenças ── --}}
-<div style="margin-top:32px">
-    <p class="section-title">🏖️ Licenças e Férias</p>
-    @if($leaves->isEmpty())
-        <p style="color:var(--text-muted);font-size:.88rem">Sem pedidos de licença registados.</p>
-    @else
-    <div class="card" style="padding:0;overflow:hidden">
-        <table style="width:100%;border-collapse:collapse;font-size:.84rem">
-            <thead>
-                <tr style="background:rgba(255,255,255,.03)">
-                    <th style="padding:10px 16px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted)">Tipo</th>
-                    <th style="padding:10px 16px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted)">Início</th>
-                    <th style="padding:10px 16px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted)">Fim</th>
-                    <th style="padding:10px 16px;text-align:left;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-muted)">Estado</th>
-                </tr>
-            </thead>
-            <tbody>
-                @php
-                    $leaveTypeLabels   = ['vacation'=>'Férias','sick'=>'Doença','unpaid'=>'Não rem.'];
-                    $leaveTypeColors   = ['vacation'=>'#0891b2','sick'=>'#d97706','unpaid'=>'#7c3aed'];
-                    $leaveStatusLabels = ['pending'=>'Pendente','approved'=>'Aprovado','rejected'=>'Rejeitado'];
-                    $leaveStatusColors = ['pending'=>'#f59e0b','approved'=>'#22c55e','rejected'=>'#ef4444'];
-                @endphp
-                @foreach($leaves as $leave)
-                <tr style="border-top:1px solid var(--border)">
-                    <td style="padding:10px 16px">
-                        <span style="display:inline-block;padding:2px 10px;border-radius:6px;font-size:.74rem;font-weight:700;background:{{ $leaveTypeColors[$leave->leave_type]??'#6366f1' }}22;color:{{ $leaveTypeColors[$leave->leave_type]??'#818cf8' }}">
-                            {{ $leaveTypeLabels[$leave->leave_type] ?? $leave->leave_type }}
-                        </span>
-                    </td>
-                    <td style="padding:10px 16px;color:var(--text-muted)">{{ $leave->start_date?->format('d/m/Y') }}</td>
-                    <td style="padding:10px 16px;color:var(--text-muted)">{{ $leave->end_date?->format('d/m/Y') }}</td>
-                    <td style="padding:10px 16px">
-                        <span style="display:inline-block;padding:2px 10px;border-radius:6px;font-size:.74rem;font-weight:700;background:{{ $leaveStatusColors[$leave->status]??'#6366f1' }}22;color:{{ $leaveStatusColors[$leave->status]??'#818cf8' }}">
-                            {{ $leaveStatusLabels[$leave->status] ?? $leave->status }}
-                        </span>
-                    </td>
-                </tr>
-                @endforeach
-            </tbody>
-        </table>
+{{-- ── Link rápido para licenças ── --}}
+<div style="margin-top:20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+    <p class="section-title" style="margin:0">🏖️ Licenças e Férias</p>
+    <a href="{{ route('employee.leaves') }}" style="font-size:.84rem;color:var(--accent-light);font-weight:600;text-decoration:none">
+        Ver todos os pedidos →
+    </a>
+</div>
+@php
+    $lvPending  = $leaves->where('status','pending')->count();
+    $lvApproved = $leaves->where('status','approved')->count();
+@endphp
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-top:12px">
+    <div class="card" style="text-align:center;padding:14px 10px">
+        <div style="font-size:1.4rem;font-weight:800;color:#22c55e">{{ $lvApproved }}</div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Aprovados</div>
     </div>
-    @endif
+    <div class="card" style="text-align:center;padding:14px 10px">
+        <div style="font-size:1.4rem;font-weight:800;color:#f59e0b">{{ $lvPending }}</div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Pendentes</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px 10px;cursor:pointer" onclick="window.location='{{ route('employee.leaves') }}'">
+        <div style="font-size:1.4rem;font-weight:800;color:var(--accent-light)">+</div>
+        <div style="font-size:.72rem;color:var(--text-muted);margin-top:3px;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Novo Pedido</div>
+    </div>
 </div>
 @endif
 

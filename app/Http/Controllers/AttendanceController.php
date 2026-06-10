@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Employee;
+use App\Models\Holiday;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 
 class AttendanceController extends Controller
@@ -170,11 +172,15 @@ class AttendanceController extends Controller
      */
     private function resolveStatus(array $data, ?Attendance $existing = null): array
     {
-        $status = $data['status'] ?? $existing?->status;
-
         // Se foi fornecido um status explícito (qualquer valor válido), respeitar
         if (!empty($data['status'])) {
-            $data['status'] = $status;
+            return $data;
+        }
+
+        // Verificar se a data é feriado — tem prioridade sobre tudo
+        $date = $data['date'] ?? $existing?->date;
+        if ($date && Holiday::isHoliday($date)) {
+            $data['status'] = 'holiday';
             return $data;
         }
 

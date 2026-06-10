@@ -84,9 +84,16 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('/attendances', [AttendanceWebController::class, 'index'])->name('attendances.index');
     });
 
-    // ── Portal do funcionário ─────────────────────────────────────────────
-    Route::prefix('employee')->name('employee.')->group(function () {
-        Route::get('/dashboard',           [EmployeePortalController::class, 'dashboard'])->name('dashboard');
-        Route::get('/training/{training}', [EmployeePortalController::class, 'training'])->name('training');
+    // ── Portal do funcionário ─────────────────────────────────────────
+    Route::middleware('can:employee-portal')->group(function () {
+        Route::get('/employee/dashboard',          [EmployeePortalController::class, 'dashboard'])->name('employee.dashboard');
+        Route::get('/employee/training/{training}', [EmployeePortalController::class, 'training'])->name('employee.training');
+        Route::get('/employee/leaves',             [EmployeePortalController::class, 'leaves'])->name('employee.leaves');
     });
+
+    // ── Aprovação de licenças — manager ──────────────────────────────
+    Route::middleware('can:manage-attendance')->group(function () {
+        Route::get('/manager/leaves', [EmployeePortalController::class, 'managerLeaves'])->name('manager.leaves');
+    });
+
 });
