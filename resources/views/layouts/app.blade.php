@@ -287,6 +287,11 @@
                     <span class="nav-icon">📆</span> Calendário
                 </a>
 
+                <p class="nav-section-label">Operações</p>
+                <a href="{{ route('projects.index') }}" class="nav-item {{ request()->routeIs('projects.*') ? 'active' : '' }}">
+                    <span class="nav-icon">🏗️</span> Obras e Equipas
+                </a>
+
                 <p class="nav-section-label">Relatórios</p>
                 <a href="{{ route('reports.index') }}" class="nav-item {{ request()->routeIs('reports.*') ? 'active' : '' }}">
                     <span class="nav-icon">📊</span> Relatórios

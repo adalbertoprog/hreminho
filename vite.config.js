@@ -3,6 +3,9 @@ import laravel from 'laravel-vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+    build: {
+        emptyOutDir: false,
+    },
     plugins: [
         laravel({
             input: [
@@ -11,14 +14,10 @@ export default defineConfig({
                 'resources/js/pages/employees.js',
                 'resources/js/pages/trainings.js',
                 'resources/js/pages/reports.js',
+                'resources/js/pages/projects.js',
             ],
             refresh: true,
         }),
         tailwindcss(),
     ],
-    server: {
-        watch: {
-            ignored: ['**/storage/framework/views/**'],
-        },
-    },
 });

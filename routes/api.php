@@ -18,6 +18,9 @@ use App\Http\Controllers\MandatoryTrainingController;
 use App\Http\Controllers\TrainingSessionController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TeamController;
+use App\Http\Controllers\VehicleController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
@@ -123,6 +126,18 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
 
         // Utilizadores
         Route::apiResource('users', UserController::class);
+
+        // Obras, Equipas e Viaturas
+        Route::apiResource('vehicles', VehicleController::class);
+        Route::apiResource('projects', ProjectController::class);
+        Route::get ('projects/{project}/teams',                          [TeamController::class, 'index'])->name('projects.teams.index');
+        Route::post('projects/{project}/teams',                          [TeamController::class, 'store'])->name('projects.teams.store');
+        Route::put ('projects/{project}/teams/{team}',                   [TeamController::class, 'update'])->name('projects.teams.update');
+        Route::delete('projects/{project}/teams/{team}',                 [TeamController::class, 'destroy'])->name('projects.teams.destroy');
+        Route::post('projects/{project}/teams/{team}/employees',         [TeamController::class, 'addEmployee'])->name('projects.teams.employees.add');
+        Route::delete('projects/{project}/teams/{team}/employees',       [TeamController::class, 'removeEmployee'])->name('projects.teams.employees.remove');
+        Route::post('projects/{project}/teams/{team}/vehicles',          [TeamController::class, 'addVehicle'])->name('projects.teams.vehicles.add');
+        Route::delete('projects/{project}/teams/{team}/vehicles',        [TeamController::class, 'removeVehicle'])->name('projects.teams.vehicles.remove');
 
         // Relatórios
         Route::get('reports/completed-trainings', [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');

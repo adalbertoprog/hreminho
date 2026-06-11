@@ -81,6 +81,13 @@ class Employee extends Model
                     ->withTimestamps();
     }
 
+    public function teams()
+    {
+        return $this->belongsToMany(Team::class, 'team_employees')
+                    ->withPivot('start_date', 'end_date', 'role')
+                    ->withTimestamps();
+    }
+
     public function getFullNameAttribute(): string
     {
         return trim("{$this->first_name} {$this->last_name}");

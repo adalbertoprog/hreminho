@@ -1,13 +1,13 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Junho 2026 (rev. 09/06/2026).
+Última actualização: Junho 2026 (rev. 10/06/2026).
 
 ---
 
 ## Visão Geral
 
-**HRElectrominho** é um sistema de gestão de recursos humanos (RH) desenvolvido em Laravel 13 com Blade templating. Destina-se à empresa Electrominho e gere funcionários, departamentos, presenças, férias, formações, vídeos, questionários e documentos.
+**HRElectrominho** é um sistema de gestão de recursos humanos (RH) desenvolvido em Laravel 13 com Blade templating. Destina-se à empresa Electrominho e gere funcionários, departamentos, presenças, férias/licenças, feriados, formações, vídeos, questionários, relatórios e documentos.
 
 - **URL local**: `http://hreminho.test`
 - **Base de dados**: MySQL — `dbhreminho`
@@ -67,11 +67,12 @@ headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').con
 
 Definidos em `AppServiceProvider::boot()`:
 
-| Gate              | Roles permitidos  | Uso                                          |
-|-------------------|-------------------|----------------------------------------------|
-| `manage-hr`       | `admin`, `hr`     | Acesso ao back-office e operações de gestão  |
-| `admin-only`      | `admin`           | Administração de utilizadores                |
-| `employee-portal` | `employee`        | Acesso ao portal do funcionário              |
+| Gate                 | Roles permitidos              | Uso                                                          |
+|----------------------|-------------------------------|--------------------------------------------------------------|
+| `manage-hr`          | `admin`, `hr`                 | Acesso ao back-office e operações de gestão de RH            |
+| `admin-only`         | `admin`                       | Administração de utilizadores                                |
+| `employee-portal`    | `employee`, `manager`         | Acesso ao portal do funcionário                              |
+| `manage-attendance`  | `admin`, `hr`, `manager`      | Gestão de presenças; managers vêem só o seu dept/sector      |
 
 Usar com `Gate::authorize('manage-hr')` nos controllers ou `@can('manage-hr')` nas views.
 
@@ -85,12 +86,22 @@ Usar com `Gate::authorize('manage-hr')` nos controllers ou `@can('manage-hr')` n
 |------------|--------|
 | `admin`    | Acesso total ao back-office e todas as operações |
 | `hr`       | Mesmo acesso que admin (gestão de RH) |
+| `manager`  | Portal do funcionário + gestão de presenças do seu dept/sector + aprovação de licenças |
 | `employee` | Apenas portal do funcionário (`/employee/dashboard`) |
 
 O redirect pós-login está em `LoginController::login()`:
 ```php
-$default = $role === 'employee' ? route('employee.dashboard') : route('dashboard');
+$default = in_array($role, ['employee', 'manager']) ? route('employee.dashboard') : route('dashboard');
 ```
+
+### Role manager — comportamento específico
+
+- Acede ao portal via `can:employee-portal` (inclui `manager`)
+- Acede à gestão de presenças via `can:manage-attendance`
+- Em `/attendances`: vê apenas funcionários dos departamentos/sectores onde é `manager_id`
+- Em `/manager/leaves`: vê pedidos de licença dos seus funcionários; admin/hr vêem todos
+- `AttendanceController` e `EmployeeLeaveController::authorizeManager()` aplicam o filtro automaticamente
+- `Department` e `Sector` têm campo `manager_id` (FK para `employees.id`)
 
 ---
 
@@ -201,11 +212,58 @@ training_sessions: id, training_id, planned_date, planned_end_date (nullable),
 ### Department / Position / Sector
 Estrutura organizacional. `Department` e `Sector` podem ter foreign keys cruzadas.
 
-### Leave / LeaveAttachment
-Gestão de pedidos de férias/licenças com anexos.
+### Leave
+```
+leaves: id, employee_id, leave_type (vacation|sick|unpaid), start_date, end_date,
+        reason (text, nullable), status (pending|approved|rejected),
+        manager_comment (text, nullable), timestamps
+```
+- `belongsTo(Employee)`
+- Submetido pelo funcionário via portal; aprovado/rejeitado pelo responsável ou admin/hr
+- Ao aprovar: `LeaveAttendanceSync::sync()` cria registos `on_leave` para cada dia útil do período
+- Ao rejeitar: os registos de presença gerados por esta licença são removidos
+- `reason` é nullable (migração `2026_06_10_000004_make_leaves_reason_nullable`)
 
 ### Attendance
-Registo de presenças por funcionário.
+```
+attendances: id, employee_id, date, check_in (time), lunch_out (time), lunch_in (time),
+             check_out (time), status (present|absent|late|on_leave|holiday),
+             worked_hours (decimal), leave_id (FK nullable), notes, timestamps
+```
+- `belongsTo(Employee)`, `belongsTo(Leave)` (nullable — para registos gerados por licenças)
+- Status calculado automaticamente com base nos campos de hora e settings do sistema:
+  - `late` se `check_in > expected_check_in + late_threshold_minutes`
+  - `on_leave` se `leave_id` presente (criado por `LeaveAttendanceSync`)
+  - `holiday` se a data for feriado (verificado via `Holiday::isHoliday()`)
+- `worked_hours` = `(check_out − check_in) − (lunch_in − lunch_out)` em horas decimais
+- Accessor `worked_hours_formatted` → `"8h30m"` para exibição
+- `leave_id` permite limpar registos de uma licença ao rejeitar ou alterar datas
+
+### SystemSetting
+```
+system_settings: id, key (string unique), value (text), timestamps
+```
+- Helper: `Settings::get('key', $default)` — lê da BD com cache de 60s
+- Helper: `Settings::set('key', 'value')` — actualiza e invalida cache
+- Chaves usadas pelo sistema:
+
+| Chave                      | Tipo    | Padrão | Descrição                                  |
+|----------------------------|---------|--------|--------------------------------------------|
+| `expected_check_in`        | time    | 09:00  | Hora esperada de entrada                   |
+| `late_threshold_minutes`   | int     | 15     | Minutos de tolerância para marcar "Atrasado" |
+| `work_hours_per_day`       | decimal | 8.0    | Horas de trabalho standard                 |
+| `lunch_duration_minutes`   | int     | 60     | Duração esperada do almoço                 |
+
+### Holiday
+```
+holidays: id, name (string), date (date), type (national|local|company), repeats_yearly (bool), timestamps
+```
+- `belongsTo` nenhum — tabela independente
+- `Holiday::isHoliday($date)` — verifica se data é feriado (feriados anuais comparam só mês/dia via `DATE_FORMAT`)
+- `Holiday::nameFor($date)` — devolve nome do feriado se existir
+- Resultado em cache por 1 hora (chave `holiday_YYYY-MM-DD`)
+- `HolidaySeeder` — popula feriados nacionais portugueses de 2025 e 2026
+- Usado em `AttendanceController` para marcar status `holiday` automaticamente
 
 ---
 
@@ -352,6 +410,28 @@ O endpoint devolve `estimated_total` calculado (não existe na BD): `cost_per_pe
 
 **Nota:** A rota `compliance` está declarada **antes** de `{mandatoryTraining}` para evitar conflito.
 
+### Portal do Funcionário — Licenças
+| Método | Rota                                              | Gate                | Acção                              |
+|--------|---------------------------------------------------|---------------------|------------------------------------|
+| POST   | `/employee-portal/leaves`                         | autenticado         | Funcionário submete pedido         |
+| DELETE | `/employee-portal/leaves/{leaveId}`               | autenticado         | Funcionário cancela pedido pendente |
+| PUT    | `/employee-portal/leaves/{leaveId}/approve`       | `manage-attendance` | Manager/admin aprova               |
+| PUT    | `/employee-portal/leaves/{leaveId}/reject`        | `manage-attendance` | Manager/admin rejeita              |
+
+### Feriados (apenas `manage-hr`)
+| Método | Rota                          | Acção              |
+|--------|-------------------------------|--------------------|
+| GET    | `/holidays?year=YYYY`         | Listar feriados    |
+| POST   | `/holidays`                   | Criar feriado      |
+| PUT    | `/holidays/{holiday}`         | Actualizar feriado |
+| DELETE | `/holidays/{holiday}`         | Eliminar feriado   |
+
+### Configurações do Sistema
+| Método | Rota         | Gate                | Acção                    |
+|--------|--------------|---------------------|--------------------------|
+| GET    | `/settings`  | `manage-attendance` | Ler todas as settings    |
+| PUT    | `/settings`  | `manage-hr`         | Actualizar uma ou mais   |
+
 ### Outros
 | Método | Rota                                  | Acção                          |
 |--------|---------------------------------------|--------------------------------|
@@ -390,8 +470,11 @@ O endpoint devolve `estimated_total` calculado (não existe na BD): `cost_per_pe
 | `/reports`                        | `ReportWebController`               | `auth`, `force.password.change`   |                              |
 | `/calendar`                       | `CalendarWebController`             | `auth`, `force.password.change`   |                              |
 | `/docsem/*`                       | `DocsElectroMinhoWebController`     | `auth`, `force.password.change`   | Integração externa           |
-| `/employee/dashboard`             | `EmployeePortalController`          | `auth`, `force.password.change`   | Portal funcionário           |
-| `/employee/training/{training}`   | `EmployeePortalController`          | `auth`, `force.password.change`   | Vídeo + quiz                 |
+| `/employee/dashboard`             | `EmployeePortalController`          | `auth`, `force.password.change`, `can:employee-portal` | Portal funcionário |
+| `/employee/training/{training}`   | `EmployeePortalController`          | `auth`, `force.password.change`, `can:employee-portal` | Vídeo + quiz       |
+| `/employee/leaves`                | `EmployeePortalController`          | `auth`, `force.password.change`, `can:employee-portal` | Licenças e Férias (funcionário) |
+| `/manager/leaves`                 | `EmployeePortalController`          | `auth`, `force.password.change`, `can:manage-attendance` | Aprovação de licenças (manager/admin) |
+| `/settings`                       | `SettingsWebController`             | `auth`, `force.password.change`, `can:manage-hr` | Configurações do sistema + feriados |
 
 ---
 
@@ -434,9 +517,12 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `trainings/dashboard.blade.php`  | Dashboard de formações: KPIs, evolução, compliance obrigatórias        |
 | `trainings/plan.blade.php`       | Plano anual: vista de calendário (meses) + lista + CRUD de sessões     |
 | `users/index.blade.php`          | CRUD utilizadores do sistema                                           |
-| `employee/dashboard.blade.php`   | Portal: perfil + banner associação + cards de formações com estado     |
+| `employee/dashboard.blade.php`   | Portal: perfil + banner associação + widget licenças + cards formações |
 | `employee/training.blade.php`    | Player de vídeo + questionário                                         |
-| `reports/index.blade.php`        | Relatórios (formações, presenças, validade, etc.)                      |
+| `employee/leaves.blade.php`      | Portal: submissão e histórico de pedidos de licença                    |
+| `employee/manager-leaves.blade.php` | Aprovação/rejeição de licenças pelo manager/admin                   |
+| `reports/index.blade.php`        | Relatórios com 5 tabs; exportação Excel (SheetJS) e PDF (`window.print` + CSS) |
+| `settings/index.blade.php`       | Configurações do sistema (horário, tolerância) + CRUD feriados         |
 | `docsem/index.blade.php`         | Estado da integração DocsElectroMinho                                  |
 
 ---
@@ -463,6 +549,12 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `2026_05_31_000003_create_mandatory_trainings_table`          | Tabela de formações obrigatórias           |
 | `2026_05_31_000004_create_training_sessions_table`            | Tabela do plano anual de formações         |
 | `2026_05_31_000005_add_financial_fields_to_training_sessions` | Campos `estimated_participants` e `cost_per_person` nas sessões |
+| `2026_06_09_000001_add_lunch_fields_to_attendances_table`     | Campos `lunch_out` e `lunch_in` nas presenças                   |
+| `2026_06_09_000002_create_system_settings_table`              | Tabela `system_settings` (chave/valor)                          |
+| `2026_06_10_000001_add_manager_id_to_departments_sectors`     | Campos `manager_id` em departments e sectors (FK → employees)   |
+| `2026_06_10_000002_add_leave_id_to_attendances_table`         | Campo `leave_id` nullable em attendances                        |
+| `2026_06_10_000003_create_holidays_table`                     | Tabela `holidays` (nome, data, tipo, repeats_yearly)            |
+| `2026_06_10_000004_make_leaves_reason_nullable`               | Torna `leaves.reason` nullable                                  |
 
 ---
 
@@ -522,27 +614,126 @@ Regras que definem quais formações são obrigatórias para todos os funcionár
 
 ---
 
+## Presenças — Funcionalidades Avançadas
+
+### Campos de horário
+Além de `check_in`/`check_out`, a tabela tem `lunch_out` e `lunch_in`. O `worked_hours` deduz a duração do almoço quando ambos os campos estão preenchidos.
+
+### Status automático
+`AttendanceController` calcula o status com base nas `system_settings`:
+- `holiday` — verificado primeiro via `Holiday::isHoliday()`
+- `on_leave` — se existe registo com `leave_id` para esse dia
+- `late` — `check_in > expected_check_in + late_threshold_minutes`
+- `present` — entrou a horas
+- `absent` — sem registo
+
+### Filtros e vistas
+- Filtros rápidos: Hoje / Esta Semana / Este Mês
+- Filtro intervalo personalizado De/Até
+- Barra de resumo com contadores (presente/ausente/atrasado/licença/feriado)
+- Vista Semanal (grid Mon–Sun com cada funcionário por linha)
+- Destaque visual em registos incompletos (sem `check_out`)
+
+### Filtro por role
+`AttendanceController::index()` aplica filtro automático:
+- `admin`/`hr`: vêem todos os funcionários
+- `manager`: vê apenas funcionários dos seus departamentos/sectores (`manager_id = employee.id`)
+
+---
+
+## Configurações do Sistema (`/settings`)
+
+Página acessível a `manage-hr`. Composta por dois painéis:
+
+### Painel de Configurações de Horário
+Edita as chaves de `system_settings` relevantes para o cálculo de presenças. Alterações aplicam-se imediatamente (cache invalidada ao guardar).
+
+### Painel de Feriados
+CRUD completo de feriados com:
+- Filtro por ano
+- Tipo: nacional / local / empresa
+- Opção "repete anualmente" — feriados fixos (Natal, Ano Novo, etc.) sem precisar criar ano a ano
+- Seeder: `php artisan db:seed --class=HolidaySeeder` — feriados nacionais PT 2025 e 2026
+
+---
+
+## Portal do Funcionário — Licenças e Férias
+
+### Fluxo de pedido (funcionário)
+1. `/employee/leaves` — lista todos os seus pedidos com estado
+2. Botão "Novo Pedido" → modal com: tipo (Férias/Doença/Não remunerada), data início, data fim, motivo (opcional)
+3. POST `/api/v1/employee-portal/leaves` → cria com `status=pending`
+4. Pode cancelar pedidos `pending` (DELETE)
+
+### Fluxo de aprovação (manager/admin)
+1. `/manager/leaves` — lista pedidos pendentes e histórico recente
+2. Badge no menu lateral com contagem de pendentes
+3. Botão Aprovar / Rejeitar → modal de confirmação com campo de comentário
+4. PUT `.../approve` ou `.../reject`
+5. Ao aprovar: `LeaveAttendanceSync::sync()` cria registos `on_leave` automaticamente
+6. Ao rejeitar: registos anteriores desta licença são removidos
+
+### Controlo de acesso (`EmployeeLeaveController::authorizeManager()`)
+- `admin` e `hr`: passam sempre
+- `manager`: verificado contra `department.manager_id` e `sector.manager_id`
+
+---
+
+## Relatórios — Exportação
+
+### Excel (SheetJS)
+- Biblioteca `xlsx` (npm) bundled via Vite em `reports.js` (~313KB)
+- `window.attendanceAllRows` — global preenchido em `loadAttendance()` com todos os registos (não só os visíveis no DOM)
+- Cada tab tem colunas e formatação específicas
+- Larguras de coluna configuradas com `ws['!cols']`
+
+### PDF (`window.print()` + CSS)
+- Sem dependência server-side (sem DomPDF)
+- `exportPdf(tab)` adiciona classe ao `<body>` antes de imprimir e remove após:
+  - `printing-attendance`, `printing-employees`, `printing-trainings`, `printing-validity`, `printing-gaps`
+- `@media print` em `reports/index.blade.php`: para cada classe, esconde todos os outros tabs e mostra só o activo
+- Cada tab tem um bloco `*-print-block` com tabela pré-renderizada para impressão
+
+---
+
+## Serviço LeaveAttendanceSync
+
+`app/Services/LeaveAttendanceSync.php`
+
+Chamada: `(new LeaveAttendanceSync)->sync($leave);`
+
+- `sync()`: se aprovada → `removeAttendances()` + `createAttendances()`; senão → só `removeAttendances()`
+- `createAttendances()`: itera dias úteis (Seg–Sex) do período; cria ou actualiza para `on_leave` com `leave_id`
+- `removeAttendances()`: apaga por `leave_id` + fallback para registos `on_leave` sem `leave_id` no período (licenças pré-migração)
+
+---
+
+## Frontend — Arquitectura JS
+
+Os ficheiros JS estão extraídos das views para ficheiros dedicados em `resources/js/pages/`:
+
+| Ficheiro         | View associada              | Tamanho aprox. |
+|------------------|-----------------------------|----------------|
+| `employees.js`   | `employees/index.blade.php` | 32KB           |
+| `trainings.js`   | `trainings/index.blade.php` | 46KB           |
+| `reports.js`     | `reports/index.blade.php`   | 52KB + SheetJS |
+
+Bundled via Vite. `vite.config.js` usa `build: { emptyOutDir: false }` para evitar EPERM no Windows/Laragon (ficheiros CSS ficam bloqueados pelo browser).
+
+---
+
 ## Pendente / Trabalho Futuro
 
 Ver `docs/To do.md` para lista completa. Resumo:
 
-### Funcionalidades planeadas
-- Inscrições em `/trainings`: adicionar suporte a inscrição de múltiplos funcionários de uma vez (já implementado em `/calendar` com multiselect + tags; `/trainings` usa `<select>` simples)
 - Gestão de equipas (designação a obras)
-- Aplicativo móvel / dispositivo biométrico para controlo de presenças
-- Gestão documental de empresas subcontratadas (portal próprio)
+- Aplicativo móvel / biométrico para controlo de presenças
+- Gestão documental de subcontratadas (portal próprio)
+- Notificações por email ao submeter/aprovar/rejeitar pedidos de licença
 
 ---
 
 ## Setup Local
-
-```bash
-# Setup completo num único comando (composer.json → scripts.setup)
-composer run setup
-php artisan storage:link
-```
-
-Ou passo a passo:
 
 ```bash
 # 1. Dependências
@@ -555,11 +746,12 @@ php artisan key:generate
 
 # 3. Base de dados (MySQL — dbhreminho)
 php artisan migrate
+php artisan db:seed --class=HolidaySeeder   # feriados nacionais PT 2025/2026
 
 # 4. Assets
 npm run build
 
-# 5. Storage symlink (para fotos e uploads)
+# 5. Storage symlink
 php artisan storage:link
 ```
 

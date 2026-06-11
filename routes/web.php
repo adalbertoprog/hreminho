@@ -18,6 +18,7 @@ use App\Http\Controllers\Web\UserWebController;
 use App\Http\Controllers\Web\PasswordWebController;
 use App\Http\Controllers\Web\CalendarWebController;
 use App\Http\Controllers\Web\SettingsWebController;
+use App\Http\Controllers\Web\ProjectWebController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn() => view('home'))->name('home');
@@ -63,7 +64,8 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('/trainings/dashboard', [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
         Route::get('/trainings/plan',      [TrainingPlanWebController::class,   'index'])->name('trainings.plan');
         Route::get('/users',   [UserWebController::class,   'index'])->name('users.index');
-        Route::get('/reports', [ReportWebController::class, 'index'])->name('reports.index');
+        Route::get('/reports',  [ReportWebController::class,  'index'])->name('reports.index');
+        Route::get('/projects', [ProjectWebController::class, 'index'])->name('projects.index');
 
         Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
         Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');

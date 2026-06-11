@@ -1,3 +1,4 @@
+import * as XLSX from 'xlsx';
 /**
  * reports.js — Lógica da página de Relatórios
  * Depende de window.REPORT_CONFIG injectado pelo Blade:
@@ -159,24 +160,23 @@ function exportExcel(tab) {
         ws['!cols'] = [{wch:40},{wch:25},{wch:30},{wch:10},{wch:20},{wch:25},{wch:10},{wch:16}];
 
     } else if (tab === 'attendance') {
-        // Lê directamente as linhas da tabela DOM (dados já renderizados)
-        const rows = document.querySelectorAll('#a-tbody tr');
-        data = [['Funcionário', 'Setor', 'Data', 'Entrada', 'Saída', 'Estado']];
-        rows.forEach(tr => {
-            const cells = tr.querySelectorAll('td');
-            if (cells.length >= 6) {
-                data.push([
-                    cells[0].textContent.trim(),
-                    cells[1].textContent.trim(),
-                    cells[2].textContent.trim(),
-                    cells[3].textContent.trim(),
-                    cells[4].textContent.trim(),
-                    cells[5].textContent.trim(),
-                ]);
-            }
+        // Usa attendanceAllRows — todos os registos carregados (não apenas a página actual)
+        const statusLabel = { present:'Presente', absent:'Ausente', late:'Atrasado', on_leave:'Licença', holiday:'Feriado' };
+        data = [['Funcionário', 'Código', 'Setor', 'Data', 'Entrada', 'Saída', 'Horas', 'Estado']];
+        (window.attendanceAllRows || []).forEach(r => {
+            data.push([
+                r.employee || '—',
+                r.code     || '—',
+                r.sector   || '—',
+                r.date     || '—',
+                r.check_in  || '—',
+                r.check_out || '—',
+                r.worked_hours || '—',
+                statusLabel[r.status] || r.status || '—',
+            ]);
         });
         ws = XLSX.utils.aoa_to_sheet(data);
-        ws['!cols'] = [{wch:30},{wch:20},{wch:14},{wch:10},{wch:10},{wch:12}];
+        ws['!cols'] = [{wch:30},{wch:10},{wch:20},{wch:14},{wch:10},{wch:10},{wch:10},{wch:12}];
 
     } else if (tab === 'validity') {
         data = [['Funcionário', 'Código', 'Setor', 'Função', 'Formação', 'Fornecedor', 'Data Fim', 'Validade (meses)', 'Data Expiração', 'Estado']];
@@ -430,6 +430,7 @@ async function loadTrainings() {
     const count = document.getElementById('t-count');
     count.textContent = res.total !== 1 ? res.total + ' formações' : '1 formação';
     count.dataset.loaded = '1';
+    window.attendanceAllRows = res.data; // used by exportExcel
     if (!trainingsData.length) { list.innerHTML = '<div class="state-msg">Sem resultados.</div>'; return; }
     list.innerHTML = trainingsData.map(t => `
         <div class="table-wrap" style="margin-bottom:20px">
@@ -891,8 +892,29 @@ function exportPdf(tab) {
             setTimeout(() => { document.body.classList.remove('printing-validity'); }, 500);
         }, 300);
         return; // já chama window.print() acima
+    } else if (tab === 'attendance') {
+        ['printing-employees','printing-trainings','printing-validity','printing-gaps']
+            .forEach(c => document.body.classList.remove(c));
+        document.getElementById('printFilters').textContent = fp.length ? ' · ' + fp.join(' · ') : '';
+        document.body.classList.add('printing-attendance');
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => document.body.classList.remove('printing-attendance'), 500);
+        }, 300);
+        return;
+    } else if (tab === 'gaps') {
+        ['printing-employees','printing-trainings','printing-validity','printing-attendance']
+            .forEach(c => document.body.classList.remove(c));
+        document.getElementById('printFilters').textContent = '';
+        document.body.classList.add('printing-gaps');
+        setTimeout(() => {
+            window.print();
+            setTimeout(() => document.body.classList.remove('printing-gaps'), 500);
+        }, 300);
+        return;
     } else {
-        document.body.classList.remove('printing-employees');
+        ['printing-employees','printing-trainings','printing-validity','printing-attendance','printing-gaps']
+            .forEach(c => document.body.classList.remove(c));
     }
 
     setTimeout(() => window.print(), 300);

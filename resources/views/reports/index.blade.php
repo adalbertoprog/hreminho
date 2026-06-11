@@ -220,15 +220,51 @@ tbody td { padding: 11px 14px; color: var(--text-primary); vertical-align: middl
     body.printing-employees #e-cards-grid   { display: none  !important; }
     body.printing-employees #e-print-table  { display: table !important; }
 
-    /* Tab trainings: tabela gerada dinamicamente */
+    /* Tab trainings */
     #t-print-block { display: none !important; }
     body.printing-trainings #t-print-block { display: block !important; }
     body.printing-trainings #t-list        { display: none  !important; }
 
-    /* Tab validity: tabela gerada dinamicamente */
+    /* Tab validity */
     #v-print-block { display: none !important; }
     body.printing-validity #v-print-block { display: block !important; }
     body.printing-validity #v-table       { display: none  !important; }
+
+    /* Tab attendance: esconder todos os outros tabs, mostrar só attendance */
+    body.printing-attendance #tab-employees,
+    body.printing-attendance #tab-trainings,
+    body.printing-attendance #tab-validity,
+    body.printing-attendance #tab-gaps,
+    body.printing-attendance .summary-grid { display: none  !important; }
+    body.printing-attendance #tab-attendance { display: block !important; }
+    body.printing-attendance .filter-bar,
+    body.printing-attendance .report-header .btn-actions { display: none !important; }
+
+    /* Tab gaps: esconder os outros tabs */
+    body.printing-gaps #tab-employees,
+    body.printing-gaps #tab-trainings,
+    body.printing-gaps #tab-validity,
+    body.printing-gaps #tab-attendance { display: none !important; }
+    body.printing-gaps #tab-gaps { display: block !important; }
+
+    /* Esconder todos os tabs excepto o activo ao imprimir employees/trainings/validity */
+    body.printing-employees #tab-trainings,
+    body.printing-employees #tab-attendance,
+    body.printing-employees #tab-validity,
+    body.printing-employees #tab-gaps { display: none !important; }
+    body.printing-employees #tab-employees { display: block !important; }
+
+    body.printing-trainings #tab-employees,
+    body.printing-trainings #tab-attendance,
+    body.printing-trainings #tab-validity,
+    body.printing-trainings #tab-gaps { display: none !important; }
+    body.printing-trainings #tab-trainings { display: block !important; }
+
+    body.printing-validity #tab-employees,
+    body.printing-validity #tab-trainings,
+    body.printing-validity #tab-attendance,
+    body.printing-validity #tab-gaps { display: none !important; }
+    body.printing-validity #tab-validity { display: block !important; }
 }
 
 /* ── Validity badges (relatório) ── */

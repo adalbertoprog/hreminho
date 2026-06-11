@@ -147,13 +147,16 @@ class ReportController extends Controller
 
         return response()->json([
             'data'    => $rows->map(fn($r) => [
-                'id'        => $r->id,
-                'employee'  => $r->employee?->full_name ?? '—',
-                'sector'    => $r->employee?->sector?->sector ?? '—',
-                'date'      => $r->date?->toDateString(),
-                'check_in'  => $r->check_in ? substr($r->check_in, 0, 5) : '—',
-                'check_out' => $r->check_out ? substr($r->check_out, 0, 5) : '—',
-                'status'    => $r->status,
+                'id'           => $r->id,
+                'employee'     => $r->employee?->full_name ?? '—',
+                'code'         => $r->employee?->code ?? '—',
+                'sector'       => $r->employee?->sector?->sector ?? '—',
+                'position'     => $r->employee?->position?->position ?? '—',
+                'date'         => $r->date?->format('d/m/Y'),
+                'check_in'     => $r->check_in  ? substr($r->check_in,  0, 5) : '—',
+                'check_out'    => $r->check_out ? substr($r->check_out, 0, 5) : '—',
+                'worked_hours' => $r->worked_hours_formatted ?? '—',
+                'status'       => $r->status,
             ]),
             'summary' => $summary,
             'total'   => $rows->count(),
