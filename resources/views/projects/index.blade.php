@@ -248,7 +248,7 @@ textarea.form-input { resize:vertical; min-height:70px; }
                     <input type="text" id="proj-name" class="form-input" placeholder="Ex: Moradia Silva — Remodelação">
                 </div>
                 <div>
-                    <label class="form-label">Referência interna</label>
+                    <label class="form-label">Centro de Custos</label>
                     <input type="text" id="proj-ref" class="form-input" placeholder="OBR-2026-001">
                 </div>
                 <div>
