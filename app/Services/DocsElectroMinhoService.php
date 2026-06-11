@@ -11,8 +11,8 @@ use Illuminate\Support\Facades\Log;
 /**
  * DocsElectroMinhoService
  *
- * Encapsula todas as comunicações com a API do DocsElectro-Minho.
- * Configuração em config/services.php (chave 'docselectrominho').
+ * Encapsula todas as comunicacoes com a API do DocsElectro-Minho.
+ * Configuracao em config/services.php (chave 'docselectrominho').
  */
 class DocsElectroMinhoService
 {
@@ -27,7 +27,7 @@ class DocsElectroMinhoService
         $this->enabled = (bool) config('services.docselectrominho.enabled', true);
     }
 
-    // ── Verificar se a integração está ativa e configurada ────────────────────
+    // ── Verificar se a integracao esta ativa e configurada ────────────────────
 
     public function estaConfigurado(): bool
     {
@@ -47,10 +47,10 @@ class DocsElectroMinhoService
         }
     }
 
-    // ── Sincronização em lote ─────────────────────────────────────────────────
+    // ── Sincronizacao em lote ─────────────────────────────────────────────────
 
     /**
-     * Sincroniza uma coleção de funcionários com o DocsElectro-Minho.
+     * Sincroniza uma colecao de funcionarios com o DocsElectro-Minho.
      * Divide automaticamente em lotes de 100.
      *
      * @param Collection<Employee> $employees
@@ -59,12 +59,12 @@ class DocsElectroMinhoService
     public function sincronizarFuncionarios(Collection $employees): array
     {
         if (! $this->estaConfigurado()) {
-            return ['erro' => 'Integração não configurada. Defina DOCSEM_API_TOKEN no .env'];
+            return ['erro' => 'Integracao nao configurada. Defina DOCSEM_API_TOKEN no .env'];
         }
 
-        $totalCriados    = 0;
+        $totalCriados     = 0;
         $totalAtualizados = 0;
-        $totalErros      = [];
+        $totalErros       = [];
 
         // Dividir em lotes de 100
         foreach ($employees->chunk(100) as $lote) {
@@ -75,39 +75,39 @@ class DocsElectroMinhoService
 
                 if ($response->successful()) {
                     $data = $response->json();
-                    $totalCriados    += $data['criados']    ?? 0;
+                    $totalCriados     += $data['criados']     ?? 0;
                     $totalAtualizados += $data['atualizados'] ?? 0;
-                    $totalErros       = array_merge($totalErros, $data['erros'] ?? []);
+                    $totalErros        = array_merge($totalErros, $data['erros'] ?? []);
                 } else {
                     $totalErros[] = [
                         'mensagem' => 'HTTP ' . $response->status() . ': ' . $response->body(),
                     ];
-                    Log::error('[DocsEM] Erro na sincronização', [
+                    Log::error('[DocsEM] Erro na sincronizacao', [
                         'status' => $response->status(),
                         'body'   => $response->body(),
                     ]);
                 }
             } catch (\Exception $e) {
                 $totalErros[] = ['mensagem' => $e->getMessage()];
-                Log::error('[DocsEM] Exceção na sincronização: ' . $e->getMessage());
+                Log::error('[DocsEM] Excecao na sincronizacao: ' . $e->getMessage());
             }
         }
 
         return [
-            'sucesso'    => empty($totalErros),
-            'criados'    => $totalCriados,
-            'atualizados'=> $totalAtualizados,
-            'total'      => $totalCriados + $totalAtualizados,
-            'erros'      => $totalErros,
+            'sucesso'     => empty($totalErros),
+            'criados'     => $totalCriados,
+            'atualizados' => $totalAtualizados,
+            'total'       => $totalCriados + $totalAtualizados,
+            'erros'       => $totalErros,
         ];
     }
 
-    // ── Sincronizar um único funcionário ──────────────────────────────────────
+    // ── Sincronizar um unico funcionario ──────────────────────────────────────
 
     public function sincronizarFuncionario(Employee $employee): array
     {
         if (! $this->estaConfigurado()) {
-            return ['erro' => 'Integração não configurada.'];
+            return ['erro' => 'Integracao nao configurada.'];
         }
 
         try {
@@ -115,7 +115,7 @@ class DocsElectroMinhoService
             $response = $this->put("/funcionarios/rh:{$employee->id}", $this->mapearParaApi($employee));
 
             if ($response->status() === 404) {
-                // Não existe — criar
+                // Nao existe -- criar
                 $response = $this->post('/funcionarios', $this->mapearParaApi($employee));
             }
 
@@ -126,17 +126,17 @@ class DocsElectroMinhoService
             return ['erro' => 'HTTP ' . $response->status(), 'detalhe' => $response->json()];
 
         } catch (\Exception $e) {
-            Log::error('[DocsEM] Erro ao sincronizar funcionário ' . $employee->id . ': ' . $e->getMessage());
+            Log::error('[DocsEM] Erro ao sincronizar funcionario ' . $employee->id . ': ' . $e->getMessage());
             return ['erro' => $e->getMessage()];
         }
     }
 
-    // ── Consultar documentos de um funcionário ────────────────────────────────
+    // ── Consultar documentos de um funcionario ────────────────────────────────
 
     public function documentosDoFuncionario(int $rhEmployeeId): array
     {
         if (! $this->estaConfigurado()) {
-            return ['erro' => 'Integração não configurada.'];
+            return ['erro' => 'Integracao nao configurada.'];
         }
 
         try {
@@ -147,7 +147,7 @@ class DocsElectroMinhoService
             }
 
             if ($response->status() === 404) {
-                return ['erro' => 'Funcionário não encontrado no DocsElectro-Minho.'];
+                return ['erro' => 'Funcionario nao encontrado no DocsElectro-Minho.'];
             }
 
             return ['erro' => 'HTTP ' . $response->status()];
@@ -157,7 +157,68 @@ class DocsElectroMinhoService
         }
     }
 
-    // ── Remover funcionário do DocsElectro-Minho ──────────────────────────────
+    // ── Empresas subcontratadas ───────────────────────────────────────────────
+
+    /**
+     * Lista empresas do DocsElectro-Minho.
+     *
+     * @param array $filtros  search, tipo, estado, per_page
+     * @return array  ['data' => [...], 'meta' => [...]] ou ['erro' => '...']
+     */
+    public function getEmpresas(array $filtros = []): array
+    {
+        if (! $this->estaConfigurado()) {
+            return ['erro' => 'Integracao nao configurada.'];
+        }
+
+        try {
+            $params   = array_merge(['estado' => 'ativa', 'per_page' => 500], $filtros);
+            $response = $this->client()->get($this->baseUrl . '/empresas', $params);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::warning('[DocsEM] getEmpresas HTTP ' . $response->status());
+            return ['erro' => 'HTTP ' . $response->status(), 'data' => []];
+
+        } catch (\Exception $e) {
+            Log::error('[DocsEM] getEmpresas: ' . $e->getMessage());
+            return ['erro' => $e->getMessage(), 'data' => []];
+        }
+    }
+
+    /**
+     * Retorna uma empresa pelo ID do DocsElectro-Minho.
+     *
+     * @return array empresa ou ['erro' => '...']
+     */
+    public function getEmpresa(int $docsemEmpresaId): array
+    {
+        if (! $this->estaConfigurado()) {
+            return ['erro' => 'Integracao nao configurada.'];
+        }
+
+        try {
+            $response = $this->get("/empresas/{$docsemEmpresaId}");
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            if ($response->status() === 404) {
+                return ['erro' => 'Empresa nao encontrada.'];
+            }
+
+            return ['erro' => 'HTTP ' . $response->status()];
+
+        } catch (\Exception $e) {
+            Log::error('[DocsEM] getEmpresa: ' . $e->getMessage());
+            return ['erro' => $e->getMessage()];
+        }
+    }
+
+    // ── Remover funcionario do DocsElectro-Minho ──────────────────────────────
 
     public function removerFuncionario(int $rhEmployeeId): bool
     {
@@ -167,36 +228,36 @@ class DocsElectroMinhoService
             $response = $this->delete("/funcionarios/rh:{$rhEmployeeId}");
             return $response->successful();
         } catch (\Exception $e) {
-            Log::error('[DocsEM] Erro ao remover funcionário ' . $rhEmployeeId . ': ' . $e->getMessage());
+            Log::error('[DocsEM] Erro ao remover funcionario ' . $rhEmployeeId . ': ' . $e->getMessage());
             return false;
         }
     }
 
-    // ── Mapeamento Employee (RH) → payload da API DocsEM ─────────────────────
+    // ── Mapeamento Employee (RH) para payload da API DocsEM ───────────────────
 
     private function mapearParaApi(Employee $employee): array
     {
         return [
-            'id'          => $employee->id,
-            'code'        => $employee->code,
-            'first_name'  => $employee->first_name,
-            'last_name'   => $employee->last_name,
-            'email'       => $employee->email,
-            'phone'       => $employee->phone,
+            'id'            => $employee->id,
+            'code'          => $employee->code,
+            'first_name'    => $employee->first_name,
+            'last_name'     => $employee->last_name,
+            'email'         => $employee->email,
+            'phone'         => $employee->phone,
             'date_of_birth' => $employee->date_of_birth?->format('Y-m-d'),
-            'hire_date'   => $employee->hire_date?->format('Y-m-d'),
-            'end_date'    => $employee->end_date?->format('Y-m-d'),
-            'status'      => $employee->status,
+            'hire_date'     => $employee->hire_date?->format('Y-m-d'),
+            'end_date'      => $employee->end_date?->format('Y-m-d'),
+            'status'        => $employee->status,
             'contract_type' => $employee->contract_type,
-            'position'    => $employee->position?->position,
-            'department'  => $employee->department?->department,
-            'sector'      => $employee->sector?->sector,
+            'position'      => $employee->position?->position,
+            'department'    => $employee->department?->department,
+            'sector'        => $employee->sector?->sector,
             'work_location' => $employee->work_location ?? null,
             'profile_photo' => $employee->profile_photo ?? null,
         ];
     }
 
-    // ── Métodos HTTP internos ─────────────────────────────────────────────────
+    // ── Metodos HTTP internos ─────────────────────────────────────────────────
 
     private function client()
     {

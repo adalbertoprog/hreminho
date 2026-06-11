@@ -24,7 +24,12 @@ class Project extends Model
         return $this->hasMany(Team::class);
     }
 
-    /** Todos os funcionários afectos a qualquer equipa desta obra (distinct). */
+    public function companies(): HasMany
+    {
+        return $this->hasMany(ProjectCompany::class);
+    }
+
+    /** Todos os funcionarios afectos a qualquer equipa desta obra (distinct). */
     public function employees()
     {
         return Employee::whereHas('teams', fn($q) => $q->where('teams.project_id', $this->id));

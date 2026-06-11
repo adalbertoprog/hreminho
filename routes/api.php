@@ -19,6 +19,7 @@ use App\Http\Controllers\TrainingSessionController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\ProjectCompanyController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\VehicleController;
 use Illuminate\Support\Facades\Route;
@@ -138,6 +139,14 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
         Route::delete('projects/{project}/teams/{team}/employees',       [TeamController::class, 'removeEmployee'])->name('projects.teams.employees.remove');
         Route::post('projects/{project}/teams/{team}/vehicles',          [TeamController::class, 'addVehicle'])->name('projects.teams.vehicles.add');
         Route::delete('projects/{project}/teams/{team}/vehicles',        [TeamController::class, 'removeVehicle'])->name('projects.teams.vehicles.remove');
+
+        // Empresas subcontratadas (integração DocsElectro-Minho)
+        Route::get   ('projects/{project}/companies',           [ProjectCompanyController::class, 'index'])->name('projects.companies.index');
+        Route::post  ('projects/{project}/companies',           [ProjectCompanyController::class, 'store'])->name('projects.companies.store');
+        Route::put   ('projects/{project}/companies/{company}', [ProjectCompanyController::class, 'update'])->name('projects.companies.update');
+        Route::delete('projects/{project}/companies/{company}', [ProjectCompanyController::class, 'destroy'])->name('projects.companies.destroy');
+        // Pesquisa de empresas no DocsEM (para o picker)
+        Route::get   ('docsem/empresas',                        [ProjectCompanyController::class, 'searchDocsem'])->name('docsem.empresas.search');
 
         // Relatórios
         Route::get('reports/completed-trainings', [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');

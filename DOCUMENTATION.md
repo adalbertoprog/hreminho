@@ -1,7 +1,7 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Junho 2026 (rev. 10/06/2026).
+Última actualização: Junho 2026 (rev. 11/06/2026).
 
 ---
 
@@ -73,6 +73,8 @@ Definidos em `AppServiceProvider::boot()`:
 | `admin-only`         | `admin`                       | Administração de utilizadores                                |
 | `employee-portal`    | `employee`, `manager`         | Acesso ao portal do funcionário                              |
 | `manage-attendance`  | `admin`, `hr`, `manager`      | Gestão de presenças; managers vêem só o seu dept/sector      |
+| `view-projects`      | `admin`, `hr`, `manager`      | Leitura de obras e equipas associadas                        |
+| `manage-projects`    | `admin`, `hr`                 | CRUD de obras, equipas e empresas subcontratadas             |
 
 Usar com `Gate::authorize('manage-hr')` nos controllers ou `@can('manage-hr')` nas views.
 
@@ -432,6 +434,28 @@ O endpoint devolve `estimated_total` calculado (não existe na BD): `cost_per_pe
 | GET    | `/settings`  | `manage-attendance` | Ler todas as settings    |
 | PUT    | `/settings`  | `manage-hr`         | Actualizar uma ou mais   |
 
+### Obras e Equipas (Gate `manage-hr`)
+| Método | Rota                                                           | Acção                          |
+|--------|----------------------------------------------------------------|--------------------------------|
+| *      | `/projects` (apiResource)                                      | CRUD obras                     |
+| GET    | `/projects/{project}/teams`                                    | Listar equipas da obra         |
+| POST   | `/projects/{project}/teams`                                    | Criar equipa                   |
+| PUT    | `/projects/{project}/teams/{team}`                             | Actualizar equipa              |
+| DELETE | `/projects/{project}/teams/{team}`                             | Remover equipa                 |
+| POST   | `/projects/{project}/teams/{team}/employees`                   | Adicionar funcionário          |
+| DELETE | `/projects/{project}/teams/{team}/employees`                   | Remover funcionário            |
+| POST   | `/projects/{project}/teams/{team}/vehicles`                    | Adicionar viatura              |
+| DELETE | `/projects/{project}/teams/{team}/vehicles`                    | Remover viatura                |
+
+### Empresas Subcontratadas (Gate `manage-hr`)
+| Método | Rota                                              | Acção                                         |
+|--------|---------------------------------------------------|-----------------------------------------------|
+| GET    | `/projects/{project}/companies`                   | Listar empresas associadas à obra             |
+| POST   | `/projects/{project}/companies`                   | Associar empresa à obra                       |
+| PUT    | `/projects/{project}/companies/{company}`         | Actualizar datas/observações                  |
+| DELETE | `/projects/{project}/companies/{company}`         | Remover associação                            |
+| GET    | `/docsem/empresas?search=&tipo=`                  | Pesquisar empresas no DocsElectro-Minho       |
+
 ### Outros
 | Método | Rota                                  | Acção                          |
 |--------|---------------------------------------|--------------------------------|
@@ -480,14 +504,58 @@ O endpoint devolve `estimated_total` calculado (não existe na BD): `cost_per_pe
 
 ## Integração DocsElectroMinho
 
-Integração com sistema externo de gestão documental de subcontratadas.
+Integração com sistema externo de gestão documental (`C:\laragon\www\docselectrominho`).
 
-- **Config**: variáveis `.env` — `DOCSEM_API_URL`, `DOCSEM_API_TOKEN`, `DOCSEM_SYNC_ENABLED`
+### Configuração
+- **Variáveis `.env`**: `DOCSEM_API_URL`, `DOCSEM_API_TOKEN`, `DOCSEM_SYNC_ENABLED`
 - **Service**: `app/Services/DocsElectroMinhoService.php`
-- **Controller**: `app/Http/Controllers/Web/DocsElectroMinhoWebController.php`
-- Sincroniza funcionários activos para o sistema externo
+- **Controller de estado**: `app/Http/Controllers/Web/DocsElectroMinhoWebController.php`
+- **Página de estado**: `/docsem`
+
+### Sincronização de Funcionários
+- Sincroniza funcionários activos para o sistema externo (em lotes de 100)
 - Permite sincronização global ou por funcionário individual
-- Página de estado em `/docsem`
+- Método `sincronizarFuncionarios(Collection)` → `['criados', 'atualizados', 'erros']`
+- Método `sincronizarFuncionario(Employee)` → upsert via `PUT /funcionarios/rh:{id}`
+- Método `removerFuncionario(int $rhEmployeeId)` → `DELETE /funcionarios/rh:{id}`
+- Método `documentosDoFuncionario(int)` → `GET /funcionarios/rh:{id}/documentos`
+
+### Empresas Subcontratadas
+Módulo que liga obras do HREminho a empresas cadastradas no DocsElectroMinho.
+
+**Modelo `ProjectCompany`** (`app/Models/ProjectCompany.php`)
+- Tabela pivot `project_companies` entre obras e empresas externas
+- Campos: `project_id`, `docsem_empresa_id`, `empresa_nome` (cache), `empresa_nif` (cache), `data_entrada`, `data_saida`, `observacoes`
+- `empresa_nome` e `empresa_nif` são cached no momento da associação para evitar chamadas repetidas à API
+
+**Relações em `Project`**
+```php
+public function companies(): HasMany
+{
+    return $this->hasMany(ProjectCompany::class);
+}
+```
+
+**`DocsElectroMinhoService` — métodos de empresas**
+```php
+getEmpresas(array $filtros = []): array  // GET /empresas?estado=ativa&per_page=500
+getEmpresa(int $docsemEmpresaId): array  // GET /empresas/{id}
+```
+Por omissão só são devolvidas empresas com `estado=ativa`.
+
+**`ProjectCompanyController`** (`app/Http/Controllers/ProjectCompanyController.php`)
+- `index` — Gate `view-projects`
+- `searchDocsem` — Gate `manage-projects`; proxy para `getEmpresas()` com parâmetros `search` e `tipo`
+- `store`, `update`, `destroy` — Gate `manage-projects`
+
+**UI — Drawer de Obras (`/projects`)**
+O drawer lateral das obras tem dois painéis seleccionáveis por tabs:
+- **Equipas** — lista equipas e membros (comportamento anterior)
+- **Empresas Subcontratadas** — lista empresas associadas; modal de associação com picker live-search
+
+O picker pesquisa no DocsEM ao focar (lista todos os activos) e ao escrever (debounce 350 ms; mínimo 2 caracteres). A empresa seleccionada fica em campos `hidden` e é exibida como chip.
+
+`switchDrawerTab(tab)` gere a troca de painel e despoleta o carregamento de dados do painel activo.
 
 ---
 
@@ -524,6 +592,7 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `reports/index.blade.php`        | Relatórios com 5 tabs; exportação Excel (SheetJS) e PDF (`window.print` + CSS) |
 | `settings/index.blade.php`       | Configurações do sistema (horário, tolerância) + CRUD feriados         |
 | `docsem/index.blade.php`         | Estado da integração DocsElectroMinho                                  |
+| `projects/index.blade.php`       | Obras: lista + drawer com tabs Equipas / Empresas Subcontratadas       |
 
 ---
 
@@ -555,6 +624,8 @@ Integração com sistema externo de gestão documental de subcontratadas.
 | `2026_06_10_000002_add_leave_id_to_attendances_table`         | Campo `leave_id` nullable em attendances                        |
 | `2026_06_10_000003_create_holidays_table`                     | Tabela `holidays` (nome, data, tipo, repeats_yearly)            |
 | `2026_06_10_000004_make_leaves_reason_nullable`               | Torna `leaves.reason` nullable                                  |
+| `2026_06_11_000005_create_projects_table`                     | Tabela `projects` (obras)                                       |
+| `2026_06_11_000006_create_project_companies_table`            | Pivot `project_companies` (obras ↔ empresas DocsEM)             |
 
 ---
 
@@ -726,9 +797,8 @@ Bundled via Vite. `vite.config.js` usa `build: { emptyOutDir: false }` para evit
 
 Ver `docs/To do.md` para lista completa. Resumo:
 
-- Gestão de equipas (designação a obras)
 - Aplicativo móvel / biométrico para controlo de presenças
-- Gestão documental de subcontratadas (portal próprio)
+- Portal próprio de gestão documental de subcontratadas (no DocsElectroMinho)
 - Notificações por email ao submeter/aprovar/rejeitar pedidos de licença
 
 ---

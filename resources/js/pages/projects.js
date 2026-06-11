@@ -304,7 +304,8 @@ function openDrawer(projectId, projectName) {
     document.getElementById('drawer-proj-name').textContent = projectName;
     document.getElementById('teams-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
-    loadTeams();
+    // Always reset to teams tab
+    switchDrawerTab('teams');
 }
 
 function closeDrawer() {
@@ -536,7 +537,188 @@ async function removeVeh(teamId, vehicleId) {
     }
 }
 
-// ── Init ──────────────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════════════
+// DRAWER TABS
+// ══════════════════════════════════════════════════════════════════════════
+let currentDrawerTab  = 'teams';
+let companyEditId     = null;
+let docsemResults     = [];
+let _empSearchTimer   = null;
+
+function switchDrawerTab(tab) {
+    currentDrawerTab = tab;
+    ['teams', 'companies'].forEach(t => {
+        document.getElementById('dtab-' + t).classList.toggle('active', t === tab);
+        document.getElementById('dpanel-' + t).style.display = t === tab ? 'block' : 'none';
+    });
+    if (tab === 'teams')     loadTeams();
+    if (tab === 'companies') loadCompanies();
+}
+
+
+async function loadCompanies() {
+    const container = document.getElementById('companies-list');
+    container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem">A carregar...</p>';
+    try {
+        const res = await apiFetch('GET', `/projects/${currentProjectId}/companies`);
+        renderCompanies(res.data);
+    } catch (e) {
+        container.innerHTML = `<p style="color:#f87171;font-size:.85rem">${e.message}</p>`;
+    }
+}
+
+function renderCompanies(companies) {
+    const container = document.getElementById('companies-list');
+    if (!companies.length) {
+        container.innerHTML = '<div class="empty-state"><span class="empty-icon">&#x1F3E2;</span><p>Nenhuma empresa associada.</p></div>';
+        return;
+    }
+    container.innerHTML = companies.map(c => {
+        const dataJson = JSON.stringify(JSON.stringify(c));
+        return `
+        <div class="company-row">
+            <div class="company-row-info">
+                <div class="company-row-name">${c.empresa_nome}</div>
+                <div class="company-row-meta">
+                    ${c.empresa_nif ? 'NIF ' + c.empresa_nif : ''}
+                    ${c.data_entrada ? ' &middot; Entrada: ' + fmtDate(c.data_entrada) : ''}
+                    ${c.data_saida   ? ' &middot; Saida: '   + fmtDate(c.data_saida)   : ''}
+                    ${c.observacoes  ? '<br><span>' + c.observacoes + '</span>' : ''}
+                </div>
+            </div>
+            <div class="company-row-actions">
+                <button class="btn-sm btn-sec" onclick="openCompanyModal(${dataJson})">&#x270F;</button>
+                <button class="btn-sm btn-del" onclick="removeCompany(${c.id})">&#x1F5D1;</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function openCompanyModal(rawJson) {
+    const c = rawJson ? (typeof rawJson === 'string' ? JSON.parse(rawJson) : rawJson) : null;
+    companyEditId = c ? c.id : null;
+    document.getElementById('company-modal-title').textContent = c ? 'Editar Associacao' : 'Associar Empresa';
+    document.getElementById('company-search').value  = c ? c.empresa_nome : '';
+    document.getElementById('company-id').value      = c ? c.docsem_empresa_id : '';
+    document.getElementById('company-nif').value     = c ? (c.empresa_nif || '') : '';
+    document.getElementById('company-entrada').value = c ? (c.data_entrada || '') : '';
+    document.getElementById('company-saida').value   = c ? (c.data_saida   || '') : '';
+    document.getElementById('company-obs').value     = c ? (c.observacoes  || '') : '';
+    document.getElementById('company-picker-results').style.display = 'none';
+    if (c) {
+        document.getElementById('company-selected').style.display = 'block';
+        document.getElementById('company-selected').textContent   = c.empresa_nome + (c.empresa_nif ? ' (NIF: ' + c.empresa_nif + ')' : '');
+        document.getElementById('company-search').style.display   = 'none';
+    } else {
+        document.getElementById('company-selected').style.display = 'none';
+        document.getElementById('company-search').style.display   = '';
+    }
+    document.getElementById('company-modal').style.display = 'flex';
+}
+
+function closeCompanyModal() {
+    document.getElementById('company-modal').style.display = 'none';
+    document.getElementById('company-picker-results').style.display = 'none';
+    companyEditId = null;
+    docsemResults = [];
+}
+
+function searchEmpresas() {
+    clearTimeout(_empSearchTimer);
+    const q = document.getElementById('company-search').value.trim();
+    if (q.length === 0) {
+        // Show all on focus/empty
+        _empSearchTimer = setTimeout(() => _doSearchEmpresas(''), 200);
+        return;
+    }
+    if (q.length < 2) {
+        document.getElementById('company-picker-results').style.display = 'none';
+        return;
+    }
+    _empSearchTimer = setTimeout(() => _doSearchEmpresas(q), 350);
+}
+
+async function _doSearchEmpresas(q) {
+    const resultsEl = document.getElementById('company-picker-results');
+    resultsEl.innerHTML = '<div class="picker-item" style="color:var(--text-muted)">A pesquisar...</div>';
+    resultsEl.style.display = 'block';
+
+    try {
+        const res = await apiFetch('GET', '/docsem/empresas?search=' + encodeURIComponent(q) + '&per_page=30');
+        docsemResults = res.data || [];
+        if (!docsemResults.length) {
+            resultsEl.innerHTML = '<div class="picker-item" style="color:var(--text-muted)">Nenhuma empresa encontrada.</div>';
+            return;
+        }
+        resultsEl.innerHTML = docsemResults.map((e, i) => `
+            <div class="picker-item" onclick="selectEmpresa(${i})">
+                <div class="pi-name">${e.nome}</div>
+                <div class="pi-meta">${e.nif ? 'NIF ' + e.nif : ''}${e.localidade ? ' &middot; ' + e.localidade : ''}</div>
+            </div>`).join('');
+    } catch (err) {
+        resultsEl.innerHTML = `<div class="picker-item" style="color:#f87171">${err.message}</div>`;
+    }
+}
+
+function selectEmpresa(index) {
+    const e = docsemResults[index];
+    if (!e) return;
+    document.getElementById('company-id').value      = e.id;
+    document.getElementById('company-nif').value     = e.nif || '';
+    document.getElementById('company-search').value  = e.nome;
+    document.getElementById('company-selected').textContent   = e.nome + (e.nif ? ' (NIF: ' + e.nif + ')' : '');
+    document.getElementById('company-selected').style.display = 'block';
+    document.getElementById('company-picker-results').style.display = 'none';
+}
+
+async function saveCompany() {
+    const docsemId = parseInt(document.getElementById('company-id').value);
+    const name = document.getElementById('company-selected').style.display !== 'none'
+        ? document.getElementById('company-selected').textContent.split(' (NIF')[0]
+        : document.getElementById('company-search').value.trim();
+
+    if (!companyEditId && !docsemId) {
+        toast('Seleccione uma empresa da lista.', 'error');
+        return;
+    }
+
+    const body = {
+        data_entrada: document.getElementById('company-entrada').value || null,
+        data_saida:   document.getElementById('company-saida').value   || null,
+        observacoes:  document.getElementById('company-obs').value.trim() || null,
+    };
+
+    try {
+        if (companyEditId) {
+            await apiFetch('PUT', `/projects/${currentProjectId}/companies/${companyEditId}`, body);
+            toast('Associacao actualizada.');
+        } else {
+            await apiFetch('POST', `/projects/${currentProjectId}/companies`, Object.assign({}, body, {
+                docsem_empresa_id: docsemId,
+                empresa_nome:      name,
+                empresa_nif:       document.getElementById('company-nif').value || null,
+            }));
+            toast('Empresa associada.');
+        }
+        closeCompanyModal();
+        loadCompanies();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+}
+
+async function removeCompany(companyId) {
+    if (!confirm('Remover esta empresa da obra?')) return;
+    try {
+        await apiFetch('DELETE', `/projects/${currentProjectId}/companies/${companyId}`);
+        toast('Empresa removida.');
+        loadCompanies();
+    } catch (e) {
+        toast(e.message, 'error');
+    }
+}
+
+// -- Init --
 async function init() {
     try {
         const [empRes, vehRes] = await Promise.all([
@@ -581,3 +763,10 @@ window.saveVehTeam        = saveVehTeam;
 window.removeVeh          = removeVeh;
 window.loadVehicles       = loadVehicles;
 window.loadProjects       = loadProjects;
+window.switchDrawerTab    = switchDrawerTab;
+window.openCompanyModal   = openCompanyModal;
+window.closeCompanyModal  = closeCompanyModal;
+window.saveCompany        = saveCompany;
+window.removeCompany      = removeCompany;
+window.searchEmpresas     = searchEmpresas;
+window.selectEmpresa      = selectEmpresa;
