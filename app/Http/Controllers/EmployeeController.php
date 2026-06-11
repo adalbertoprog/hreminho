@@ -52,6 +52,12 @@ class EmployeeController extends Controller
             $query->where('sector_id', $request->sector_id);
         }
 
+        // Filtrar por role do utilizador associado (ex: ?user_roles[]=admin&user_roles[]=hr)
+        if ($request->filled('user_roles')) {
+            $roles = (array) $request->input('user_roles');
+            $query->whereHas('user', fn($q) => $q->whereIn('role', $roles));
+        }
+
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {

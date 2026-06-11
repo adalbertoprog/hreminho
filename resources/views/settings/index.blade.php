@@ -44,6 +44,45 @@
 .toast.ok  { background:#22c55e; color:#fff; }
 .toast.err { background:#ef4444; color:#fff; }
 @keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+/* ── Permissions ── */
+.perm-wrap { max-width: 900px; }
+.perm-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.perm-table th {
+    padding: 9px 14px; text-align: center; font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .6px; color: var(--text-muted);
+    border-bottom: 2px solid var(--border);
+}
+.perm-table th.lh { text-align: left; }
+.perm-table td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,.04); vertical-align: middle; }
+.perm-table tr:last-child td { border-bottom: none; }
+.perm-table tr:hover td { background: rgba(255,255,255,.02); }
+.perm-group-hd td {
+    background: rgba(99,102,241,.07); font-size: .72rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .8px; color: var(--accent-light);
+    padding: 7px 14px;
+}
+.perm-label { font-weight: 500; color: var(--text-primary); }
+.perm-toggle {
+    display: flex; align-items: center; justify-content: center;
+}
+.perm-toggle input[type=checkbox] { display: none; }
+.perm-toggle label {
+    width: 36px; height: 20px; border-radius: 10px;
+    background: rgba(255,255,255,.12); border: 1px solid var(--border);
+    cursor: pointer; transition: background .2s, border-color .2s; position: relative;
+    display: block;
+}
+.perm-toggle label::after {
+    content: ''; position: absolute; top: 3px; left: 3px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: var(--text-muted); transition: transform .2s, background .2s;
+}
+.perm-toggle input:checked + label { background: var(--accent); border-color: var(--accent); }
+.perm-toggle input:checked + label::after { transform: translateX(16px); background: #fff; }
+.perm-toggle.fixed label { cursor: not-allowed; opacity: .5; }
+.perm-role-hd { color: var(--text-primary); font-weight: 700; }
+.perm-save-bar { display: flex; align-items: center; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+.perm-dirty-msg { font-size: .82rem; color: var(--warning, #f59e0b); display: none; }
 /* Holidays */
 .holiday-table { width:100%; border-collapse:collapse; font-size:.85rem; margin-top:16px; }
 .holiday-table th { padding:8px 12px; text-align:left; font-size:.72rem; font-weight:700; text-transform:uppercase; letter-spacing:.6px; color:var(--text-muted); border-bottom:1px solid var(--border); }
@@ -90,6 +129,23 @@
         </div>
     </div>
 
+
+    @can('admin-only')
+    <div class="settings-section perm-wrap">
+        <h2>🔐 Permissões por Perfil</h2>
+        <p style="font-size:.82rem;color:var(--text-muted);margin:-10px 0 18px">
+            Define o que cada perfil pode fazer. O perfil <strong>Admin</strong> tem sempre acesso total.
+            Os perfis <strong>HR</strong> e <strong>Manager</strong> têm um conjunto base que pode ser ajustado aqui.
+        </p>
+        <div id="permTableWrap">
+            <div style="color:var(--text-muted);font-size:.85rem">A carregar permissões...</div>
+        </div>
+        <div class="perm-save-bar">
+            <span class="perm-dirty-msg" id="permDirtyMsg">⚠️ Alterações por guardar</span>
+            <button class="btn btn-primary" id="permSaveBtn" onclick="savePermissions()" disabled>💾 Guardar Permissões</button>
+        </div>
+    </div>
+    @endcan
 
     <div class="settings-section" style="max-width:900px">
         <h2>📅 Feriados</h2>
@@ -317,5 +373,123 @@ document.getElementById('holOverlay').addEventListener('click', e => {
 
 populateYearFilter();
 loadHolidays();
+
+// ── Permissões ────────────────────────────────────────────────────────────
+@can('admin-only')
+const GROUP_LABELS = {
+    employees:   '👥 Funcionários',
+    attendances: '📅 Presenças',
+    leaves:      '🏖️ Licenças',
+    projects:    '🏗️ Obras / Equipas / Viaturas',
+    reports:     '📊 Relatórios',
+    trainings:   '🎓 Formações',
+};
+const ROLE_LABELS = { hr: 'HR', manager: 'Manager' };
+let permMatrix = {};
+let permDirty  = false;
+
+async function loadPermissions() {
+    try {
+        const r = await fetch('/settings/permissions', {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+        });
+        permMatrix = await r.json();
+        renderPermTable();
+    } catch(e) {
+        document.getElementById('permTableWrap').innerHTML =
+            '<p style="color:var(--text-muted);font-size:.85rem">Erro ao carregar permissões.</p>';
+    }
+}
+
+function renderPermTable() {
+    const wrap = document.getElementById('permTableWrap');
+    if (!wrap) return;
+
+    // Agrupar permissões por grupo
+    const groups = {};
+    Object.entries(permMatrix).forEach(([key, def]) => {
+        if (!groups[def.group]) groups[def.group] = [];
+        groups[def.group].push({ key, ...def });
+    });
+
+    let html = '<table class="perm-table">';
+    html += '<thead><tr>';
+    html += '<th class="lh" style="width:50%">Permissão</th>';
+    ['hr', 'manager'].forEach(role => {
+        html += `<th class="perm-role-hd">${ROLE_LABELS[role]}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    Object.entries(groups).forEach(([group, perms]) => {
+        html += `<tr class="perm-group-hd"><td colspan="3">${GROUP_LABELS[group] || group}</td></tr>`;
+        perms.forEach(({ key, label, values, configurable }) => {
+            html += '<tr>';
+            html += `<td class="perm-label">${label}</td>`;
+            ['hr', 'manager'].forEach(role => {
+                const checked    = values[role] ? 'checked' : '';
+                const isConfig   = configurable.includes(role);
+                const fixedClass = isConfig ? '' : ' fixed';
+                const disabled   = isConfig ? '' : 'disabled';
+                const uid        = `perm_${role}_${key}`;
+                html += `<td>
+                    <div class="perm-toggle${fixedClass}">
+                        <input type="checkbox" id="${uid}" data-role="${role}" data-perm="${key}"
+                               ${checked} ${disabled} onchange="permChanged()">
+                        <label for="${uid}" title="${isConfig ? 'Clica para alterar' : 'Não configurável'}"></label>
+                    </div>
+                </td>`;
+            });
+            html += '</tr>';
+        });
+    });
+
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+}
+
+function permChanged() {
+    permDirty = true;
+    document.getElementById('permSaveBtn').disabled    = false;
+    document.getElementById('permDirtyMsg').style.display = 'inline';
+}
+
+async function savePermissions() {
+    const btn = document.getElementById('permSaveBtn');
+    btn.disabled = true;
+    btn.textContent = '⏳ A guardar...';
+
+    const permissions = {};
+    document.querySelectorAll('#permTableWrap input[type=checkbox][data-role]').forEach(el => {
+        if (!el.disabled) {
+            permissions[`${el.dataset.role}.${el.dataset.perm}`] = el.checked;
+        }
+    });
+
+    try {
+        const r = await fetch('/settings/permissions', {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+            body: JSON.stringify({ permissions }),
+        });
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.message || 'Erro');
+        permDirty = false;
+        document.getElementById('permDirtyMsg').style.display = 'none';
+        toast(json.message || 'Permissões guardadas!', 'ok');
+    } catch(e) {
+        toast('Erro ao guardar: ' + e.message, 'err');
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = '💾 Guardar Permissões';
+    }
+}
+
+loadPermissions();
+@endcan
 </script>
 @endsection

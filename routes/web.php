@@ -70,7 +70,9 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
         Route::get('/calendar',        [CalendarWebController::class, 'index'])->name('calendar.index');
         Route::get('/calendar/events', [CalendarWebController::class, 'events'])->name('calendar.events');
 
-        Route::get('/settings', [SettingsWebController::class, 'index'])->name('settings.index');
+        Route::get('/settings',              [SettingsWebController::class, 'index'])->name('settings.index');
+        Route::get('/settings/permissions',  [SettingsWebController::class, 'permissions'])->name('settings.permissions');
+        Route::post('/settings/permissions', [SettingsWebController::class, 'savePermissions'])->name('settings.permissions.save');
 
         Route::prefix('docsem')->name('docsem.')->group(function () {
             Route::get('/',                               [DocsElectroMinhoWebController::class, 'index'])->name('index');
@@ -88,9 +90,11 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
 
     // ── Portal do funcionário ─────────────────────────────────────────
     Route::middleware('can:employee-portal')->group(function () {
-        Route::get('/employee/dashboard',          [EmployeePortalController::class, 'dashboard'])->name('employee.dashboard');
-        Route::get('/employee/training/{training}', [EmployeePortalController::class, 'training'])->name('employee.training');
-        Route::get('/employee/leaves',             [EmployeePortalController::class, 'leaves'])->name('employee.leaves');
+        Route::get('/employee/dashboard',             [EmployeePortalController::class, 'dashboard'])->name('employee.dashboard');
+        Route::get('/employee/training/{training}',  [EmployeePortalController::class, 'training'])->name('employee.training');
+        Route::get('/employee/leaves',               [EmployeePortalController::class, 'leaves'])->name('employee.leaves');
+        Route::get('/employee/projects',             [EmployeePortalController::class, 'projects'])->name('employee.projects');
+        Route::get('/employee/projects/events',      [EmployeePortalController::class, 'projectEvents'])->name('employee.projects.events');
     });
 
     // ── Aprovação de licenças — manager ──────────────────────────────

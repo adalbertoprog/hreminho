@@ -232,10 +232,35 @@
                 <a href="{{ route('employee.leaves') }}" class="nav-item {{ request()->routeIs('employee.leaves') ? 'active' : '' }}">
                     <span class="nav-icon">🏖️</span> Licenças e Férias
                 </a>
+                <a href="{{ route('employee.projects') }}" class="nav-item {{ request()->routeIs('employee.projects*') ? 'active' : '' }}">
+                    <span class="nav-icon">🏗️</span> Obras e Equipas
+                </a>
             @endcan
 
             @can('manage-attendance')
-                @php $pendingCount = \App\Models\Leave::where('status','pending')->count(); @endphp
+                @php
+                    $pendingUser = auth()->user();
+                    if ($pendingUser->role === 'manager') {
+                        $mgrEmp = \App\Models\Employee::where(function($q) use ($pendingUser) {
+                            $q->where('user_id', $pendingUser->id)
+                              ->orWhere(function($q2) use ($pendingUser) {
+                                  $q2->whereNull('user_id')->where('email', $pendingUser->email);
+                              });
+                        })->first();
+                        if ($mgrEmp) {
+                            $mgrDeptIds   = \App\Models\Department::where('manager_id', $mgrEmp->id)->pluck('id');
+                            $mgrSectorIds = \App\Models\Sector::where('manager_id',     $mgrEmp->id)->pluck('id');
+                            $mgrEmpIds    = \App\Models\Employee::where(function($q) use ($mgrDeptIds, $mgrSectorIds) {
+                                $q->whereIn('department_id', $mgrDeptIds)->orWhereIn('sector_id', $mgrSectorIds);
+                            })->pluck('id');
+                            $pendingCount = \App\Models\Leave::where('status','pending')->whereIn('employee_id', $mgrEmpIds)->count();
+                        } else {
+                            $pendingCount = 0;
+                        }
+                    } else {
+                        $pendingCount = \App\Models\Leave::where('status','pending')->count();
+                    }
+                @endphp
                 @if(auth()->user()->role === 'manager' || auth()->user()->role === 'admin' || auth()->user()->role === 'hr')
                 <a href="{{ route('manager.leaves') }}" class="nav-item {{ request()->routeIs('manager.leaves') ? 'active' : '' }}">
                     <span class="nav-icon">📋</span> Pedidos de Licença

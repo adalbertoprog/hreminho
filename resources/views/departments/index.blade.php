@@ -132,7 +132,7 @@ async function api(method, path, body) {
 }
 
 async function boot() {
-    const emp = await api('GET', '/employees?per_page=200').catch(()=>({data:[]}));
+    const emp = await api('GET', '/employees?per_page=200&user_roles[]=admin&user_roles[]=hr&user_roles[]=manager').catch(()=>({data:[]}));
     employees = emp.data ?? [];
     const sel = document.getElementById('managerSel');
     employees.forEach(e => {

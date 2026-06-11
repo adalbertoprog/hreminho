@@ -10,6 +10,7 @@ use App\Models\Leave;
 use App\Models\Sector;
 use App\Models\Training;
 use App\Models\QuizAttempt;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -113,6 +114,90 @@ class EmployeePortalController extends Controller
             : collect();
 
         return view('employee.leaves', compact('user', 'employee', 'leaves'));
+    }
+
+    // ── Obras & Equipas do funcionário ───────────────────────────────────
+
+    public function projects()
+    {
+        $employee = $this->currentEmployee();
+
+        $teams = collect();
+        if ($employee) {
+            $teams = $employee->teams()
+                ->with([
+                    'project:id,name,reference,client,location,start_date,end_date,status,notes',
+                    'leader:id,first_name,last_name,code',
+                    'employees:id,first_name,last_name,code',
+                    'vehicles:id,plate,brand,model,type',
+                ])
+                ->get();
+        }
+
+        return view('employee.projects', compact('employee', 'teams'));
+    }
+
+    /**
+     * Eventos FullCalendar para o portal do funcionário (obras das suas equipas).
+     */
+    public function projectEvents(Request $request): JsonResponse
+    {
+        $employee = $this->currentEmployee();
+        if (!$employee) return response()->json([]);
+
+        $calStart = $request->input('start');
+        $calEnd   = $request->input('end');
+
+        $teams = $employee->teams()
+            ->with(['project:id,name,reference,client,location,start_date,end_date,status'])
+            ->get();
+
+        $statusColors = [
+            'active'    => ['bg' => '#059669', 'border' => '#047857'],
+            'planned'   => ['bg' => '#6366f1', 'border' => '#4f46e5'],
+            'completed' => ['bg' => '#6b7280', 'border' => '#4b5563'],
+            'cancelled' => ['bg' => '#ef4444', 'border' => '#dc2626'],
+        ];
+
+        $events = collect();
+        foreach ($teams as $team) {
+            $project = $team->project;
+            if (!$project) continue;
+
+            $start = $project->start_date?->format('Y-m-d') ?? now()->format('Y-m-d');
+            $end   = $project->end_date ? $project->end_date->copy()->addDay()->format('Y-m-d') : null;
+
+            // Skip if outside calendar range
+            if ($calEnd   && $start > $calEnd)   continue;
+            if ($calStart && $end   && $end < $calStart) continue;
+
+            $color = $statusColors[$project->status] ?? $statusColors['active'];
+
+            $events->push([
+                'id'              => 'proj-' . $project->id . '-team-' . $team->id,
+                'title'           => '🏗️ ' . $project->name . ' (' . $team->name . ')',
+                'start'           => $start,
+                'end'             => $end,
+                'backgroundColor' => $color['bg'],
+                'borderColor'     => $color['border'],
+                'textColor'       => '#ffffff',
+                'extendedProps'   => [
+                    'project_name' => $project->name,
+                    'team_name'    => $team->name,
+                    'reference'    => $project->reference,
+                    'client'       => $project->client,
+                    'location'     => $project->location,
+                    'status'       => $project->status,
+                    'start_date'   => $project->start_date?->format('d/m/Y'),
+                    'end_date'     => $project->end_date?->format('d/m/Y'),
+                    'my_role'      => $team->employees
+                                        ->where('id', $employee->id)
+                                        ->first()?->pivot?->role,
+                ],
+            ]);
+        }
+
+        return response()->json($events->values());
     }
 
     // ── Aprovação pelo manager ────────────────────────────────────────────

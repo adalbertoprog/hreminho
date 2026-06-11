@@ -382,18 +382,46 @@ async function loadTable() {
 
 async function loadSummary() {
     try {
-        // Contadores sempre referentes ao dia de hoje, independentemente do filtro activo
-        const today = new Date().toISOString().slice(0,10);
-        const q = new URLSearchParams({date_from: today, date_to: today, per_page: 500});
+        const today = new Date().toISOString().slice(0, 10);
+        // Se não há filtro de data activo, mostrar sempre os contadores de hoje
+        const summaryFilters = (filters.date_from || filters.date_to)
+            ? {...filters}
+            : {date_from: today, date_to: today};
+
+        const q = new URLSearchParams({...summaryFilters, per_page: 500, page: 1});
+        // Manter filtro de funcionário se activo
+        if (filters.employee_id) q.set('employee_id', filters.employee_id);
+
         const res = await fetch(`${API}/attendances?${q}`,{credentials:'same-origin',headers:{Accept:'application/json'}});
         const json = await res.json();
-        const rows = json.data??[];
+        const allRows = json.data ?? [];
+        const lastPage = json.meta?.last_page ?? 1;
+        if (lastPage > 1) {
+            const extra = await Promise.all(
+                Array.from({length: lastPage - 1}, (_, i) => {
+                    const qp = new URLSearchParams({...summaryFilters, per_page: 500, page: i + 2});
+                    return fetch(`${API}/attendances?${qp}`,{credentials:'same-origin',headers:{Accept:'application/json'}})
+                        .then(r => r.json()).then(j => j.data ?? []);
+                })
+            );
+            extra.forEach(batch => allRows.push(...batch));
+        }
         const counts = {present:0, late:0, absent:0, on_leave:0, holiday:0};
-        rows.forEach(r => { counts[r.status] = (counts[r.status]??0) + 1; });
+        allRows.forEach(r => { counts[r.status] = (counts[r.status]??0) + 1; });
+        const lbl = document.querySelector('.sum-today-lbl');
+        if (lbl) {
+            if (!filters.date_from && !filters.date_to) {
+                lbl.textContent = 'Hoje';
+            } else {
+                lbl.textContent = summaryFilters.date_from === summaryFilters.date_to
+                    ? summaryFilters.date_from
+                    : `${summaryFilters.date_from} – ${summaryFilters.date_to}`;
+            }
+        }
         document.getElementById('sumPresent').textContent = counts.present;
         document.getElementById('sumLate').textContent    = counts.late;
         document.getElementById('sumAbsent').textContent  = counts.absent;
-        document.getElementById('sumLeave').textContent   = counts.on_leave + counts.holiday;
+        document.getElementById('sumLeave').textContent   = counts.on_leave + (counts.holiday ?? 0);
         document.getElementById('summaryBar').style.display = 'flex';
     } catch(e){}
 }

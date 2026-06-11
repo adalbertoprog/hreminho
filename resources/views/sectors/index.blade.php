@@ -214,7 +214,7 @@ let employees   = [];
 async function boot() {
     const [dRes, eRes] = await Promise.all([
         fetch(`${API}/departments?per_page=200`, { credentials:'same-origin', headers:{ Accept:'application/json' } }),
-        fetch(`${API}/employees?per_page=500&status=active`, { credentials:'same-origin', headers:{ Accept:'application/json' } }),
+        fetch(`${API}/employees?per_page=500&status=active&user_roles[]=admin&user_roles[]=hr&user_roles[]=manager`, { credentials:'same-origin', headers:{ Accept:'application/json' } }),
     ]);
     const dJson = await dRes.json();
     const eJson = await eRes.json();
