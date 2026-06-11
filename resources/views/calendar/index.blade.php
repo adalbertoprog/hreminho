@@ -121,6 +121,19 @@
 /* Legend additions */
 .legend-dot-vacation{background:#0891b2}.legend-dot-sick{background:#d97706}.legend-dot-unpaid{background:#7c3aed}
 .legend-dot-absent{background:#ef4444}.legend-dot-late{background:#f59e0b}
+.legend-dot-project{background:#059669}.legend-dot-team{background:#10b981}
+/* Project detail */
+.proj-detail-teams{margin-top:14px}
+.proj-team-card{background:var(--bg-dark);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.proj-team-name{font-weight:700;font-size:.9rem;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.proj-team-leader{font-size:.78rem;color:var(--text-muted);margin-bottom:8px}
+.proj-members{display:flex;flex-direction:column;gap:4px}
+.proj-member{display:flex;justify-content:space-between;align-items:center;font-size:.81rem;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.04)}
+.proj-member-name{font-weight:600}
+.proj-member-role{font-size:.74rem;color:var(--text-muted);margin-top:1px}
+.proj-member-code{font-family:monospace;font-size:.74rem;color:var(--text-muted)}
+.proj-veh-row{display:flex;align-items:center;gap:8px;font-size:.81rem;padding:4px 8px;border-radius:6px;background:rgba(255,255,255,.04);margin-top:4px}
+.section-mini-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted);margin:8px 0 4px}
 /* Leave detail */
 .leave-type-badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:.76rem;font-weight:700}
 .badge-vacation{background:rgba(8,145,178,.15);color:#22d3ee}
@@ -129,59 +142,92 @@
 .badge-pending{background:rgba(245,158,11,.15);color:#f59e0b}
 .badge-approved{background:rgba(34,197,94,.15);color:#22c55e}
 .badge-rejected{background:rgba(239,68,68,.12);color:#ef4444}
+/* project status badges */
+.badge{display:inline-block;padding:3px 10px;border-radius:6px;font-size:.76rem;font-weight:700}
+.badge-active{background:rgba(5,150,105,.15);color:#34d399}
+.badge-planned{background:rgba(99,102,241,.15);color:#a5b4fc}
+.badge-completed{background:rgba(107,114,128,.18);color:#9ca3af}
+.badge-cancelled{background:rgba(239,68,68,.12);color:#ef4444}
 </style>
 @endsection
 
 @section('content')
 <div class="toolbar">
     <h2>📅 Calendário</h2>
-    <button class="btn-primary" onclick="openCreateForm(null)">+ Nova Inscrição</button>
+    <button class="btn-primary" id="calCreateBtn">+ Nova Inscrição</button>
 </div>
 
 <div class="type-filters">
     <span style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">Mostrar:</span>
-    <span class="type-chip type-chip-training active" data-type="trainings" onclick="toggleType(this)">📚 Formações</span>
-    <span class="type-chip type-chip-leave active" data-type="leaves" onclick="toggleType(this)">🏖️ Licenças</span>
-    <span class="type-chip type-chip-attendance active" data-type="attendances" onclick="toggleType(this)">⚠️ Ausências/Atrasos</span>
+    <span class="type-chip type-chip-training"   data-type="trainings"   onclick="toggleType(this)">📚 Formações</span>
+    <span class="type-chip type-chip-leave"      data-type="leaves"      onclick="toggleType(this)">🏖️ Licenças</span>
+    <span class="type-chip type-chip-attendance" data-type="attendances" onclick="toggleType(this)">⚠️ Ausências/Atrasos</span>
+    <span class="type-chip type-chip-project active" data-type="projects" onclick="toggleType(this)" style="background:rgba(5,150,105,.15);color:#34d399">🏗️ Obras/Equipas</span>
 </div>
 
 <div class="filters">
-    <select id="fStatus" class="f-input" style="min-width:160px" onchange="reloadEvents()">
-        <option value="">Todos os status</option>
-        <option value="enrolled">Inscrito</option>
-        <option value="completed">Concluído</option>
-        <option value="failed">Reprovado</option>
-    </select>
-    <select id="fTraining" class="f-input" style="min-width:200px;max-width:280px" onchange="reloadEvents()">
-        <option value="">Todas as formações</option>
-        @foreach($trainings as $t)
-            <option value="{{ $t->id }}">{{ $t->title }}</option>
-        @endforeach
-    </select>
-    <select id="fEmployee" class="f-input" style="min-width:200px;max-width:280px" onchange="reloadEvents()">
-        <option value="">Todos os funcionários</option>
-        @foreach($employees as $e)
-            <option value="{{ $e->id }}">{{ $e->first_name }} {{ $e->last_name }} ({{ $e->code }})</option>
-        @endforeach
-    </select>
+    {{-- Formações --}}
+    <span id="fStatusWrap">
+        <select id="fStatus" class="f-input" style="min-width:160px" onchange="reloadEvents()">
+            <option value="">Todos os status</option>
+            <option value="enrolled">Inscrito</option>
+            <option value="completed">Concluído</option>
+            <option value="failed">Reprovado</option>
+        </select>
+    </span>
+    <span id="fTrainingWrap">
+        <select id="fTraining" class="f-input" style="min-width:200px;max-width:280px" onchange="reloadEvents()">
+            <option value="">Todas as formações</option>
+            @foreach($trainings as $t)
+                <option value="{{ $t->id }}">{{ $t->title }}</option>
+            @endforeach
+        </select>
+    </span>
+    {{-- Funcionários (partilhado: formações + licenças + presenças) --}}
+    <span id="fEmployeeWrap">
+        <select id="fEmployee" class="f-input" style="min-width:200px;max-width:280px" onchange="reloadEvents()">
+            <option value="">Todos os funcionários</option>
+            @foreach($employees as $e)
+                <option value="{{ $e->id }}">{{ $e->first_name }} {{ $e->last_name }} ({{ $e->code }})</option>
+            @endforeach
+        </select>
+    </span>
+    {{-- Obras --}}
+    <span id="fProjectWrap">
+        <select id="fProject" class="f-input" style="min-width:200px;max-width:280px" onchange="reloadEvents()">
+            <option value="">Todas as obras</option>
+            @foreach($projects as $p)
+                <option value="{{ $p->id }}">{{ $p->name }}{{ $p->reference ? ' ('.$p->reference.')' : '' }}</option>
+            @endforeach
+        </select>
+    </span>
     <button class="btn-reset" onclick="clearFilters()">✕ Limpar</button>
 </div>
 
 <div class="legend">
     <span style="font-size:.78rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.6px">Legenda:</span>
-    <div class="legend-item"><div class="legend-dot legend-dot-enrolled"></div> Inscrito</div>
-    <div class="legend-item"><div class="legend-dot legend-dot-completed"></div> Concluído</div>
-    <div class="legend-item"><div class="legend-dot legend-dot-failed"></div> Reprovado</div>
-    <div class="legend-item" style="margin-left:8px"><div class="legend-dot legend-dot-vacation"></div> Férias</div>
-    <div class="legend-item"><div class="legend-dot legend-dot-sick"></div> Doença</div>
-    <div class="legend-item"><div class="legend-dot legend-dot-unpaid"></div> N.Rem.</div>
-    <div class="legend-item" style="margin-left:8px"><div class="legend-dot legend-dot-absent"></div> Ausente</div>
-    <div class="legend-item"><div class="legend-dot legend-dot-late"></div> Atrasado</div>
-    <span class="cal-hint">💡 Clica num dia para criar uma inscrição</span>
+    {{-- trainings --}}
+    <div class="legend-item" data-type="trainings"><div class="legend-dot legend-dot-enrolled"></div> Inscrito</div>
+    <div class="legend-item" data-type="trainings"><div class="legend-dot legend-dot-completed"></div> Concluído</div>
+    <div class="legend-item" data-type="trainings"><div class="legend-dot legend-dot-failed"></div> Reprovado</div>
+    {{-- leaves --}}
+    <span class="legend-sep" data-type="leaves" style="margin-left:4px"></span>
+    <div class="legend-item" data-type="leaves"><div class="legend-dot legend-dot-vacation"></div> Férias</div>
+    <div class="legend-item" data-type="leaves"><div class="legend-dot legend-dot-sick"></div> Doença</div>
+    <div class="legend-item" data-type="leaves"><div class="legend-dot legend-dot-unpaid"></div> N.Rem.</div>
+    {{-- attendances --}}
+    <span class="legend-sep" data-type="attendances" style="margin-left:4px"></span>
+    <div class="legend-item" data-type="attendances"><div class="legend-dot legend-dot-absent"></div> Ausente</div>
+    <div class="legend-item" data-type="attendances"><div class="legend-dot legend-dot-late"></div> Atrasado</div>
+    {{-- projects --}}
+    <span class="legend-sep" data-type="projects" style="margin-left:4px"></span>
+    <div class="legend-item" data-type="projects"><div class="legend-dot legend-dot-project"></div> Obra</div>
+    <div class="legend-item" data-type="projects"><div class="legend-dot legend-dot-team"></div> Equipa</div>
+    <span class="cal-hint" id="calHint">💡 Clica num dia para criar uma inscrição</span>
 </div>
 
 <div class="cal-meta" id="calMeta" style="display:none">
-    A mostrar <strong id="eventCount">0</strong> formação(ões) no período visível.
+    A mostrar <strong id="eventCount">0</strong><span class="meta-noun"> evento(s) no período visível.</span>
 </div>
 
 <div class="cal-card"><div id="calendar"></div></div>
@@ -361,340 +407,32 @@
 </div>
 </div>
 
+{{-- Modal Detalhe Obra/Equipa --}}
+<div class="overlay" id="projDetailOverlay">
+<div class="modal" style="max-width:560px">
+    <div class="modal-header">
+        <div class="modal-title" id="pdTitle">—</div>
+        <button class="modal-close" onclick="closeOverlay('projDetailOverlay')">✕</button>
+    </div>
+    <div class="detail-grid" id="pdMeta">
+        <div class="detail-item"><label>Cliente</label><span id="pdClient">—</span></div>
+        <div class="detail-item"><label>Localização</label><span id="pdLocation">—</span></div>
+        <div class="detail-item"><label>Início</label><span id="pdStart">—</span></div>
+        <div class="detail-item"><label>Fim Previsto</label><span id="pdEnd">—</span></div>
+        <div class="detail-item" id="pdRefRow"><label>Centro de Custos</label><span id="pdRef">—</span></div>
+        <div class="detail-item"><label>Estado</label><span id="pdStatus">—</span></div>
+    </div>
+    <div class="proj-detail-teams" id="pdTeams"></div>
+    <div class="detail-actions">
+        <button class="btn-edit-detail" onclick="window.location.href='/projects'">🏗️ Ver em Obras e Equipas</button>
+    </div>
+</div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 @endsection
 
 @section('scripts')
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-<script>
-const API  = '/api/v1';
-const CSRF = document.querySelector('meta[name="csrf-token"]').content;
-let calendar, currentEnrollId = null, pendingDeleteId = null, currentDetailId = null, _lastEventProps = {};
-const statusLabel = {enrolled:'Inscrito',completed:'Concluído',failed:'Reprovado'};
-const statusPill  = {enrolled:'pill-enrolled',completed:'pill-completed',failed:'pill-failed'};
-const validLabel  = {valid:'✅ Válida',expiring:'🔔 A expirar (30 dias)',expired:'⚠️ Expirada'};
-const validPill   = {valid:'validity-valid',expiring:'validity-expiring',expired:'validity-expired'};
-
-function openOverlay(id)  { document.getElementById(id).classList.add('open'); }
-function closeOverlay(id) { document.getElementById(id).classList.remove('open'); }
-
-function toast(msg, type='ok') {
-    const w=document.getElementById('toastWrap'), t=document.createElement('div');
-    t.className=`toast toast-${type}`; t.textContent=msg; w.appendChild(t);
-    setTimeout(()=>t.remove(), 3500);
-}
-
-async function apiFetch(method, path, body) {
-    const opts={method,credentials:'same-origin',headers:{'Content-Type':'application/json','X-CSRF-TOKEN':CSRF,'Accept':'application/json'}};
-    if(body) opts.body=JSON.stringify(body);
-    const r=await fetch(API+path,opts);
-    if(!r.ok){const e=await r.json().catch(()=>({message:'Erro'}));throw e;}
-    return r.status===204?null:r.json();
-}
-
-/* ── Multi-select funcionários ── */
-let selectedEmps={}, empFocusIdx=-1;
-
-function openEmpDropdown() {
-    document.getElementById('empDropdown').classList.add('open');
-    filterEmpOptions();
-}
-function closeEmpDropdown() {
-    document.getElementById('empDropdown').classList.remove('open');
-    document.getElementById('empSearch').value='';
-    document.querySelectorAll('#empDropdown .emp-opt').forEach(o=>o.style.display='');
-    document.getElementById('empEmpty').style.display='none';
-    empFocusIdx=-1;
-}
-function filterEmpOptions() {
-    const q=document.getElementById('empSearch').value.toLowerCase().trim();
-    const opts=document.querySelectorAll('#empDropdown .emp-opt');
-    let visible=0;
-    opts.forEach(o=>{const m=!q||o.dataset.label.toLowerCase().includes(q);o.style.display=m?'':'none';if(m)visible++;});
-    document.getElementById('empEmpty').style.display=visible===0?'':'none';
-    empFocusIdx=-1;
-}
-function toggleEmp(optEl) {
-    const id=optEl.dataset.id, label=optEl.dataset.label;
-    if(selectedEmps[id]){delete selectedEmps[id];optEl.classList.remove('selected');}
-    else{selectedEmps[id]=label;optEl.classList.add('selected');}
-    renderEmpChips();
-    document.getElementById('empSearch').focus();
-}
-function removeEmp(id) {
-    delete selectedEmps[id];
-    const opt=document.querySelector(`#empDropdown .emp-opt[data-id="${id}"]`);
-    if(opt) opt.classList.remove('selected');
-    renderEmpChips();
-}
-function renderEmpChips() {
-    const container=document.getElementById('empChips');
-    container.querySelectorAll('.emp-chip').forEach(c=>c.remove());
-    const search=document.getElementById('empSearch');
-    Object.entries(selectedEmps).forEach(([id,label])=>{
-        const chip=document.createElement('span');
-        chip.className='emp-chip'; chip.dataset.id=id;
-        chip.innerHTML=`${label} <button type="button" onclick="removeEmp('${id}')" title="Remover">✕</button>`;
-        container.insertBefore(chip, search);
-    });
-    const count=Object.keys(selectedEmps).length;
-    document.getElementById('empCountLabel').textContent=count>0?`(${count} selecionado${count>1?'s':''})`:'';
-}
-function empSearchKeydown(e) {
-    const dd=document.getElementById('empDropdown');
-    const opts=[...dd.querySelectorAll('.emp-opt:not([style*="display: none"])')];
-    if(e.key==='ArrowDown'){e.preventDefault();empFocusIdx=Math.min(empFocusIdx+1,opts.length-1);opts.forEach((o,i)=>o.classList.toggle('focused',i===empFocusIdx));if(opts[empFocusIdx])opts[empFocusIdx].scrollIntoView({block:'nearest'});}
-    else if(e.key==='ArrowUp'){e.preventDefault();empFocusIdx=Math.max(empFocusIdx-1,0);opts.forEach((o,i)=>o.classList.toggle('focused',i===empFocusIdx));if(opts[empFocusIdx])opts[empFocusIdx].scrollIntoView({block:'nearest'});}
-    else if(e.key==='Enter'){e.preventDefault();if(empFocusIdx>=0&&opts[empFocusIdx])toggleEmp(opts[empFocusIdx]);}
-    else if(e.key==='Escape'){closeEmpDropdown();}
-    else if(e.key==='Backspace'&&e.target.value===''){const ids=Object.keys(selectedEmps);if(ids.length)removeEmp(ids[ids.length-1]);}
-}
-function resetEmpPicker() {
-    selectedEmps={};
-    document.querySelectorAll('#empDropdown .emp-opt').forEach(o=>o.classList.remove('selected','focused'));
-    renderEmpChips(); closeEmpDropdown();
-}
-function setEmpPickerSingle(id, label) {
-    resetEmpPicker();
-    if(!id) return;
-    selectedEmps[id]=label;
-    const opt=document.querySelector(`#empDropdown .emp-opt[data-id="${id}"]`);
-    if(opt) opt.classList.add('selected');
-    renderEmpChips();
-}
-document.addEventListener('click', function(e){
-    const picker=document.getElementById('empPicker');
-    if(picker&&!picker.contains(e.target)) closeEmpDropdown();
-});
-
-/* ── Filtros calendário ── */
-let activeTypes=new Set(['trainings','leaves','attendances']);
-
-function toggleType(chip){
-    const t=chip.dataset.type;
-    if(activeTypes.has(t)){if(activeTypes.size>1){activeTypes.delete(t);chip.classList.remove('active');}}
-    else{activeTypes.add(t);chip.classList.add('active');}
-    reloadEvents();
-}
-
-function buildParams() {
-    const p=new URLSearchParams();
-    const s=document.getElementById('fStatus').value, t=document.getElementById('fTraining').value, e=document.getElementById('fEmployee').value;
-    if(s)p.set('status',s); if(t)p.set('training_id',t); if(e)p.set('employee_id',e);
-    p.set('types',[...activeTypes].join(','));
-    return p;
-}
-function reloadEvents(){if(calendar)calendar.refetchEvents();}
-function clearFilters(){['fStatus','fTraining','fEmployee'].forEach(id=>document.getElementById(id).value='');reloadEvents();}
-
-/* ── Form helpers ── */
-function toggleScoreField(){
-    const st=document.getElementById('fStatusForm').value;
-    document.getElementById('scoreFieldWrap').style.display=(st==='completed'||st==='failed')?'':'none';
-}
-function updateExpiryHint(){
-    const endVal=document.getElementById('fEndDate').value, months=parseInt(document.getElementById('fValidity').value), hint=document.getElementById('expiryHint');
-    if(!endVal||!months||months<1){hint.textContent='— preencha fim e validade';hint.className='validity-hint';return;}
-    const expiry=new Date(endVal); expiry.setMonth(expiry.getMonth()+months);
-    const today=new Date();today.setHours(0,0,0,0);
-    const diff=Math.round((expiry-today)/864e5), fmt=expiry.toLocaleDateString('pt-PT');
-    if(diff<0){hint.textContent=`Expirou em ${fmt}`;hint.className='validity-hint expired';}
-    else if(diff<=30){hint.textContent=`Expira em ${fmt} (faltam ${diff} dias)`;hint.className='validity-hint expiring';}
-    else{hint.textContent=`Válida até ${fmt}`;hint.className='validity-hint valid';}
-}
-
-/* ── Abrir form criar ── */
-function openCreateForm(dateStr) {
-    currentEnrollId=null;
-    document.getElementById('enrollForm').reset();
-    document.getElementById('formTitle').textContent='➕ Nova Inscrição';
-    document.getElementById('formSubmitBtn').textContent='Inscrever';
-    document.getElementById('expiryHint').textContent='— preencha fim e validade';
-    document.getElementById('expiryHint').className='validity-hint';
-    document.getElementById('scoreFieldWrap').style.display='none';
-    resetEmpPicker();
-    if(dateStr) document.getElementById('fStartDate').value=dateStr;
-    openOverlay('formOverlay');
-    setTimeout(()=>document.getElementById('empSearch').focus(), 120);
-}
-
-/* ── Abrir form editar ── */
-function openEditForm(enrollment) {
-    currentEnrollId=enrollment.id;
-    document.getElementById('enrollForm').reset();
-    document.getElementById('formTitle').textContent='✏️ Editar Inscrição';
-    document.getElementById('formSubmitBtn').textContent='Guardar';
-    setEmpPickerSingle(String(enrollment.employee_id), enrollment.employee_label??'');
-    const form=document.getElementById('enrollForm');
-    const set=(n,v)=>{const el=form.querySelector(`[name="${n}"]`);if(el)el.value=v??'';};
-    set('training_id',enrollment.training_id); set('status',enrollment.status);
-    set('score',enrollment.score); set('start_date',enrollment.start_date);
-    set('end_date',enrollment.end_date); set('validity_months',enrollment.validity_months);
-    set('notes',enrollment.notes);
-    toggleScoreField(); setTimeout(updateExpiryHint,30);
-    openOverlay('formOverlay');
-}
-
-/* ── Submeter form ── */
-async function submitEnroll(ev) {
-    ev.preventDefault();
-    const empIds=Object.keys(selectedEmps);
-    if(empIds.length===0){toast('Seleciona pelo menos um funcionário.','err');document.getElementById('empSearch').focus();return;}
-    const btn=document.getElementById('formSubmitBtn'); btn.disabled=true;
-    const base={};
-    new FormData(document.getElementById('enrollForm')).forEach((v,k)=>{if(v!=='')base[k]=v;});
-    try {
-        if(currentEnrollId) {
-            base.employee_id=empIds[0]; btn.textContent='A guardar...';
-            await apiFetch('PUT',`/enrollments/${currentEnrollId}`,base);
-            toast('Inscrição atualizada!','ok');
-        } else {
-            btn.textContent=empIds.length>1?`A inscrever ${empIds.length}...`:'A inscrever...';
-            const results=await Promise.allSettled(empIds.map(id=>apiFetch('POST','/enrollments',{...base,employee_id:id})));
-            const ok=results.filter(r=>r.status==='fulfilled').length;
-            const err=results.filter(r=>r.status==='rejected').length;
-            if(ok>0&&err===0) toast(`${ok} inscrição(ões) criada(s) com sucesso!`,'ok');
-            else if(ok>0)     toast(`${ok} criada(s), ${err} com erro.`,'ok');
-            else              toast('Erro ao criar inscrições.','err');
-        }
-        closeOverlay('formOverlay'); closeOverlay('detailOverlay'); reloadEvents();
-    } catch(err){toast(err.message??'Erro ao guardar.','err');}
-    finally{btn.disabled=false;btn.textContent=currentEnrollId?'Guardar':'Inscrever';}
-}
-
-/* ── Modal detalhe ── */
-function openDetail(info) {
-    const p=info.event.extendedProps; currentDetailId=info.event.id;
-    document.getElementById('detailTraining').textContent=p.training||info.event.title;
-    document.getElementById('detailEmployee').textContent=p.employee||'—';
-    document.getElementById('detailCode').textContent=p.employeeCode||'—';
-    document.getElementById('detailProvider').textContent=p.provider||'—';
-    document.getElementById('detailStart').textContent=p.start_date||'—';
-    document.getElementById('detailEnd').textContent=p.end_date||'—';
-    document.getElementById('detailStatus').innerHTML=`<span class="status-pill ${statusPill[p.status]??''}">${statusLabel[p.status]??p.status}</span>`;
-    const scoreRow=document.getElementById('detailScoreRow');
-    if(p.score!=null){scoreRow.style.display='';document.getElementById('detailScore').textContent=p.score+'%';const fill=document.getElementById('detailScoreFill');fill.style.width=p.score+'%';fill.style.background=p.score>=70?'#22c55e':p.score>=40?'#f59e0b':'#ef4444';}
-    else scoreRow.style.display='none';
-    const valRow=document.getElementById('detailValidityRow');
-    if(p.validity_months){valRow.style.display='';document.getElementById('detailValidity').textContent=p.validity_months+' mês'+(p.validity_months>1?'es':'');}
-    else valRow.style.display='none';
-    const expRow=document.getElementById('detailExpiryRow');
-    if(p.expiry_date){expRow.style.display='';const vs=p.validity_status;document.getElementById('detailExpiry').innerHTML=`${p.expiry_date} <span class="validity-pill ${validPill[vs]??''}">${validLabel[vs]??''}</span>`;}
-    else expRow.style.display='none';
-    const notesRow=document.getElementById('detailNotesRow');
-    if(p.notes){notesRow.style.display='';document.getElementById('detailNotes').textContent=p.notes;}
-    else notesRow.style.display='none';
-    openOverlay('detailOverlay');
-}
-function editFromDetail(){if(!currentDetailId)return;closeOverlay('detailOverlay');openEditForm(_lastEventProps);}
-function deleteFromDetail(){if(!currentDetailId)return;pendingDeleteId=currentDetailId;closeOverlay('detailOverlay');openOverlay('confirmOverlay');}
-async function confirmDelete(){
-    if(!pendingDeleteId)return;
-    try{await apiFetch('DELETE',`/enrollments/${pendingDeleteId}`);toast('Inscrição eliminada.','ok');closeOverlay('confirmOverlay');reloadEvents();}
-    catch(err){toast(err.message??'Erro ao eliminar.','err');}
-    finally{pendingDeleteId=null;}
-}
-
-/* ── FullCalendar ── */
-document.addEventListener('DOMContentLoaded', function(){
-    calendar=new FullCalendar.Calendar(document.getElementById('calendar'),{
-        locale:'pt', initialView:'dayGridMonth', height:'auto', firstDay:1,
-        headerToolbar:{left:'prev,next today',center:'title',right:'dayGridMonth,timeGridWeek,listMonth'},
-        buttonText:{today:'Hoje',month:'Mês',week:'Semana',list:'Lista'},
-        noEventsText:'Nenhuma formação neste período.',
-        eventDisplay:'block', dayMaxEvents:3, moreLinkText:n=>`+${n} mais`,
-        selectable:true, selectMirror:true,
-
-        events:function(fetchInfo,successCallback,failureCallback){
-            const params=buildParams();
-            params.set('start',fetchInfo.startStr.substring(0,10));
-            params.set('end',fetchInfo.endStr.substring(0,10));
-            fetch('/calendar/events?'+params.toString(),{headers:{'Accept':'application/json',credentials:'same-origin','X-Requested-With':'XMLHttpRequest'}})
-            .then(r=>r.json())
-            .then(data=>{
-                const meta=document.getElementById('calMeta');
-                document.getElementById('eventCount').textContent=data.length;
-                meta.style.display=data.length>0?'flex':'none';
-                successCallback(data);
-            })
-            .catch(err=>{console.error(err);failureCallback(err);});
-        },
-
-        dateClick:function(info){openCreateForm(info.dateStr);},
-
-        select:function(info){
-            openCreateForm(info.startStr);
-            const endDate=new Date(info.endStr); endDate.setDate(endDate.getDate()-1);
-            setTimeout(()=>{document.getElementById('fEndDate').value=endDate.toISOString().substring(0,10);updateExpiryHint();},50);
-        },
-
-        eventClick:function(info){
-            const p=info.event.extendedProps;
-            if(p.type==='leave'){
-                openLeaveDetail(p); return;
-            }
-            if(p.type==='attendance'){
-                openAttDetail(p); return;
-            }
-            // training
-            _lastEventProps={
-                id:p.enrollment_id||info.event.id, employee_id:p.employee_id,
-                employee_label:(p.employee||'')+(p.employeeCode?` (${p.employeeCode})`:''),
-                training_id:p.training_id, status:p.status, score:p.score,
-                start_date:info.event.startStr?.substring(0,10), end_date:p.end_date_raw,
-                validity_months:p.validity_months, notes:p.notes,
-            };
-            openDetail(info);
-        },
-
-        eventMouseEnter:function(info){info.el.style.transform='translateY(-1px)';info.el.style.boxShadow='0 4px 16px rgba(0,0,0,.3)';},
-        eventMouseLeave:function(info){info.el.style.transform='';info.el.style.boxShadow='';},
-    });
-    calendar.render();
-});
-
-/* ── Leave detail ── */
-const leaveTypeLabel={vacation:'Férias',sick:'Doença',unpaid:'Não remunerada'};
-const leaveStatusLabel={pending:'Pendente',approved:'Aprovado',rejected:'Rejeitado'};
-const leaveStatusClass={pending:'badge-pending',approved:'badge-approved',rejected:'badge-rejected'};
-const leaveTypeBadge={vacation:'badge-vacation',sick:'badge-sick',unpaid:'badge-unpaid'};
-
-function openLeaveDetail(p){
-    document.getElementById('ldTitle').textContent=(p.leave_type_label||'Licença')+' — '+p.employee;
-    document.getElementById('ldEmployee').textContent=p.employee||'—';
-    document.getElementById('ldCode').textContent=p.employeeCode||'—';
-    document.getElementById('ldType').innerHTML=`<span class="leave-type-badge ${leaveTypeBadge[p.leave_type]??''}">${leaveTypeLabel[p.leave_type]??p.leave_type}</span>`;
-    document.getElementById('ldStatus').innerHTML=`<span class="leave-type-badge ${leaveStatusClass[p.status]??''}">${leaveStatusLabel[p.status]??p.status}</span>`;
-    document.getElementById('ldStart').textContent=p.start_date||'—';
-    document.getElementById('ldEnd').textContent=p.end_date||'—';
-    document.getElementById('ldReason').textContent=p.reason||'—';
-    const cmtRow=document.getElementById('ldCommentRow');
-    if(p.manager_comment){cmtRow.style.display='';document.getElementById('ldComment').textContent=p.manager_comment;}
-    else cmtRow.style.display='none';
-    openOverlay('leaveDetailOverlay');
-}
-function goToLeave(){window.location.href='/leaves';}
-
-/* ── Attendance detail ── */
-const attStatusLabel={absent:'Ausente',late:'Atrasado'};
-const attStatusClass={absent:'badge-rejected',late:'badge-pending'};
-
-function openAttDetail(p){
-    document.getElementById('adTitle').textContent=(attStatusLabel[p.status]||p.status)+' — '+p.employee;
-    document.getElementById('adEmployee').textContent=p.employee||'—';
-    document.getElementById('adCode').textContent=p.employeeCode||'—';
-    document.getElementById('adDate').textContent=p.date||'—';
-    document.getElementById('adStatus').innerHTML=`<span class="leave-type-badge ${attStatusClass[p.status]??''}">${attStatusLabel[p.status]??p.status}</span>`;
-    document.getElementById('adCheckIn').textContent=p.check_in||'—';
-    document.getElementById('adCheckOut').textContent=p.check_out||'—';
-    const notesRow=document.getElementById('adNotesRow');
-    if(p.notes){notesRow.style.display='';document.getElementById('adNotes').textContent=p.notes;}
-    else notesRow.style.display='none';
-    openOverlay('attDetailOverlay');
-}
-function goToAttendances(){window.location.href='/attendances';}
-
-document.querySelectorAll('.overlay').forEach(o=>{o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});});
-document.addEventListener('keydown',e=>{if(e.key==='Escape')document.querySelectorAll('.overlay.open').forEach(o=>o.classList.remove('open'));});
-</script>
+@vite('resources/js/pages/calendar.js')
 @endsection

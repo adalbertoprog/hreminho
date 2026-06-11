@@ -15,6 +15,7 @@ export default defineConfig({
                 'resources/js/pages/trainings.js',
                 'resources/js/pages/reports.js',
                 'resources/js/pages/projects.js',
+                'resources/js/pages/calendar.js',
             ],
             refresh: true,
         }),
