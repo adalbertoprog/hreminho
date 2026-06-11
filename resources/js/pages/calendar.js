@@ -591,6 +591,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
         locale: 'pt', initialView: 'dayGridMonth', height: 'auto', firstDay: 1,
+        hiddenDays: [0, 6], // ocultar sábado e domingo
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,listMonth' },
         buttonText: { today: 'Hoje', month: 'Mês', week: 'Semana', list: 'Lista' },
         noEventsText: 'Nenhum evento neste período.',
