@@ -26,7 +26,7 @@ class AppServiceProvider extends ServiceProvider
         Gate::before(fn($user) => $user->role === 'admin' ? true : null);
 
         // Gates fixos
-        Gate::define('employee-portal', fn($user) => $user->role === 'employee');
+        Gate::define('employee-portal', fn($user) => in_array($user->role, ['employee', 'manager']));
         Gate::define('admin-only',      fn($user) => $user->role === 'admin');
 
         // Gates compostos (compatibilidade com rotas existentes)

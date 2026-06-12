@@ -63,7 +63,7 @@ class LoginController extends Controller
         $request->session()->regenerate();
 
         $role    = $user->role;
-        $default = $role === 'employee'
+        $default = in_array($role, ['employee', 'manager'])
             ? route('employee.dashboard')
             : route('dashboard');
 

@@ -12,11 +12,13 @@ class Project extends Model
     protected $fillable = [
         'name', 'reference', 'client', 'location',
         'start_date', 'end_date', 'status', 'notes',
+        'docsem_obra_id', 'docsem_synced_at',
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date'   => 'date',
+        'start_date'       => 'date',
+        'end_date'         => 'date',
+        'docsem_synced_at' => 'datetime',
     ];
 
     public function teams(): HasMany

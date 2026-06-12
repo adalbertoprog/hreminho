@@ -17,6 +17,7 @@ class ProjectCompany extends Model
         'data_entrada',
         'data_saida',
         'observacoes',
+        'employees_count',
     ];
 
     protected $casts = [

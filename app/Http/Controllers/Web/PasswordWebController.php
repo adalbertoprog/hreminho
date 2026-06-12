@@ -19,7 +19,7 @@ class PasswordWebController extends Controller
         // Se não precisar de mudar, redirecionar para dashboard
         if (!Auth::user()->must_change_password) {
             return redirect()->intended(
-                Auth::user()->role === 'employee'
+                in_array(Auth::user()->role, ['employee', 'manager'])
                     ? route('employee.dashboard')
                     : route('dashboard')
             );
@@ -64,7 +64,7 @@ class PasswordWebController extends Controller
 
         // Se era uma mudança obrigatória, redirecionar para dashboard
         if ($request->boolean('forced')) {
-            $redirect = $user->role === 'employee'
+            $redirect = in_array($user->role, ['employee', 'manager'])
                 ? route('employee.dashboard')
                 : route('dashboard');
             return redirect($redirect)->with('success_password', 'Palavra-passe alterada com sucesso!');

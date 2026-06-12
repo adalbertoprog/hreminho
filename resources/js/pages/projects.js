@@ -63,9 +63,11 @@ function switchTab(tab) {
 // ══════════════════════════════════════════════════════════════════════════
 // OBRAS
 // ══════════════════════════════════════════════════════════════════════════
-let projEditId = null;
-let allEmployees = [];
-let allVehicles  = [];
+let projEditId       = null;
+let allEmployees     = [];
+let allVehicles      = [];
+let _obraResults     = [];
+let _obraSearchTimer = null;
 
 async function loadProjects() {
     const search = document.getElementById('proj-search').value;
@@ -103,8 +105,14 @@ function renderProjects(projects) {
     container.innerHTML = projects.map(p => {
         const s = STATUS_PROJ[p.status] || STATUS_PROJ.planned;
         const teamsInfo = p.teams_count === 1 ? '1 equipa' : `${p.teams_count} equipas`;
+        const companiesInfo = p.companies_count > 0
+            ? `<span>&#x1F3E2; ${p.companies_count} empresa${p.companies_count === 1 ? '' : 's'} subcontratada${p.companies_count === 1 ? '' : 's'}</span>`
+            : '';
         const nameEsc = p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         const dataAttr = encodeURIComponent(JSON.stringify(p));
+        const docsemBadge = p.docsem_obra_id
+            ? `<span class="badge" style="background:#6366f122;color:#818cf8;border-color:#6366f144;font-size:.7rem">&#x1F517; DocsEM</span>`
+            : '';
         return `
         <div class="proj-card">
             <div class="proj-card-head">
@@ -113,17 +121,19 @@ function renderProjects(projects) {
                         <span class="proj-card-title">${p.name}</span>
                         ${p.reference ? `<span class="proj-card-ref">${p.reference}</span>` : ''}
                         ${badge(s.label, s.color)}
+                        ${docsemBadge}
                     </div>
                     <div class="proj-card-meta">
                         ${p.client    ? `<span>👤 ${p.client}</span>` : ''}
                         ${p.location  ? `<span>📍 ${p.location}</span>` : ''}
                         ${p.start_date ? `<span>📅 ${fmtDate(p.start_date)}${p.end_date ? ' → ' + fmtDate(p.end_date) : ''}</span>` : ''}
-                        <span>👥 ${teamsInfo}</span>
+                        <span>&#x1F465; ${teamsInfo}</span>
+                        ${companiesInfo}
                     </div>
                     ${p.notes ? `<div class="proj-card-notes">${p.notes}</div>` : ''}
                 </div>
                 <div class="proj-card-actions">
-                    <button class="btn-sm btn-teams" onclick="openDrawer(${p.id}, '${nameEsc}')">👥 Equipas</button>
+                    <button class="btn-sm btn-teams" onclick="openDrawer(${p.id}, '${nameEsc}', ${p.docsem_obra_id || 'null'})">&#x1F465; Equipas</button>
                     <button class="btn-sm btn-sec" onclick="openProjectModal(decodeURIComponent('${dataAttr}'))">✏️</button>
                     <button class="btn-sm btn-del" onclick="deleteProject(${p.id})">🗑</button>
                 </div>
@@ -144,23 +154,112 @@ function openProjectModal(raw = null) {
     document.getElementById('proj-end').value            = p?.end_date    || '';
     document.getElementById('proj-status-modal').value   = p?.status      || 'planned';
     document.getElementById('proj-notes').value          = p?.notes       || '';
+    // Picker DocsEM
+    document.getElementById('proj-docsem-id').value      = p?.docsem_obra_id || '';
+    document.getElementById('obra-search').value         = '';
+    document.getElementById('obra-picker-results').style.display = 'none';
+    const selEl = document.getElementById('obra-selected');
+    const noticeEl = document.getElementById('obra-docsem-notice');
+    if (p?.docsem_obra_id) {
+        document.getElementById('obra-selected-label').textContent = p.name + (p.reference ? ' (' + p.reference + ')' : '');
+        selEl.style.display    = 'flex';
+        noticeEl.style.display = 'none';
+    } else {
+        selEl.style.display    = 'none';
+        noticeEl.style.display = 'none';
+    }
     document.getElementById('proj-modal').style.display  = 'flex';
 }
 
 function closeProjectModal() {
     document.getElementById('proj-modal').style.display = 'none';
+    _obraResults = [];
+    document.getElementById('obra-picker-results').style.display = 'none';
+}
+
+// ── Picker de obras DocsEM ────────────────────────────────────────────────
+
+function searchObrasDocsem() {
+    clearTimeout(_obraSearchTimer);
+    const q = document.getElementById('obra-search').value.trim();
+    if (q.length === 0) {
+        _obraSearchTimer = setTimeout(() => _doSearchObras(''), 200);
+        return;
+    }
+    if (q.length < 2) {
+        document.getElementById('obra-picker-results').style.display = 'none';
+        return;
+    }
+    _obraSearchTimer = setTimeout(() => _doSearchObras(q), 350);
+}
+
+async function _doSearchObras(q) {
+    const resultsEl = document.getElementById('obra-picker-results');
+    resultsEl.innerHTML = '<div class="picker-item" style="color:var(--text-muted)">A pesquisar...</div>';
+    resultsEl.style.display = 'block';
+    try {
+        const url = '/docsem/obras?per_page=50' + (q ? '&search=' + encodeURIComponent(q) : '');
+        const res = await apiFetch('GET', url);
+        _obraResults = res.data || [];
+        if (!_obraResults.length) {
+            resultsEl.innerHTML = '<div class="picker-item" style="color:var(--text-muted)">Nenhuma obra encontrada.</div>';
+            return;
+        }
+        const STATUS_DOCSEM = { em_curso: 'Em Curso', planeamento: 'Planeamento', concluida: 'Concluída', suspensa: 'Suspensa' };
+        resultsEl.innerHTML = _obraResults.map((o, i) => `
+            <div class="picker-item" onclick="selectObraDocsem(${i})">
+                <div class="pi-name">${o.nome}${o.codigo ? ' <span style="color:var(--text-muted);font-size:.8em">(${o.codigo})</span>' : ''}</div>
+                <div class="pi-meta">${o.localidade || ''}${o.area_servico ? ' &middot; ' + o.area_servico : ''} &middot; ${STATUS_DOCSEM[o.estado] || o.estado}</div>
+            </div>`).join('');
+    } catch (err) {
+        resultsEl.innerHTML = `<div class="picker-item" style="color:#f87171">${err.message}</div>`;
+    }
+}
+
+function selectObraDocsem(index) {
+    const o = _obraResults[index];
+    if (!o) return;
+
+    const STATUS_MAP = { em_curso: 'active', planeamento: 'planned', concluida: 'completed', suspensa: 'cancelled', cancelada: 'cancelled' };
+
+    // Preencher campos automaticamente
+    document.getElementById('proj-docsem-id').value        = o.id;
+    document.getElementById('proj-name').value             = o.nome;
+    document.getElementById('proj-location').value         = [o.localidade, o.distrito].filter(Boolean).join(', ');
+    document.getElementById('proj-start').value            = o.data_inicio       || '';
+    document.getElementById('proj-end').value              = o.data_fim_prevista || '';
+    document.getElementById('proj-status-modal').value     = STATUS_MAP[o.estado] || 'planned';
+    if (o.codigo) document.getElementById('proj-ref').value = o.codigo;
+
+    // Mostrar chip seleccionado
+    document.getElementById('obra-selected-label').textContent = o.nome + (o.codigo ? ' (' + o.codigo + ')' : '');
+    document.getElementById('obra-selected').style.display     = 'flex';
+    document.getElementById('obra-picker-results').style.display = 'none';
+    document.getElementById('obra-search').value               = '';
+    document.getElementById('obra-docsem-notice').style.display = 'block';
+}
+
+function clearObraDocsem() {
+    document.getElementById('proj-docsem-id').value            = '';
+    document.getElementById('obra-selected').style.display     = 'none';
+    document.getElementById('obra-docsem-notice').style.display = 'none';
+    document.getElementById('obra-search').value               = '';
+    document.getElementById('obra-picker-results').style.display = 'none';
+    _obraResults = [];
 }
 
 async function saveProject() {
+    const docsemId = parseInt(document.getElementById('proj-docsem-id').value) || null;
     const body = {
-        name:       document.getElementById('proj-name').value.trim(),
-        reference:  document.getElementById('proj-ref').value.trim()      || null,
-        client:     document.getElementById('proj-client').value.trim()   || null,
-        location:   document.getElementById('proj-location').value.trim() || null,
-        start_date: document.getElementById('proj-start').value           || null,
-        end_date:   document.getElementById('proj-end').value             || null,
-        status:     document.getElementById('proj-status-modal').value,
-        notes:      document.getElementById('proj-notes').value.trim()    || null,
+        name:            document.getElementById('proj-name').value.trim(),
+        reference:       document.getElementById('proj-ref').value.trim()      || null,
+        client:          document.getElementById('proj-client').value.trim()   || null,
+        location:        document.getElementById('proj-location').value.trim() || null,
+        start_date:      document.getElementById('proj-start').value           || null,
+        end_date:        document.getElementById('proj-end').value             || null,
+        status:          document.getElementById('proj-status-modal').value,
+        notes:           document.getElementById('proj-notes').value.trim()    || null,
+        docsem_obra_id:  docsemId,
     };
     if (!body.name) { toast('O nome da obra é obrigatório.', 'error'); return; }
 
@@ -298,12 +397,18 @@ let currentProjectId   = null;
 let currentProjectName = '';
 let teamEditId         = null;
 
-function openDrawer(projectId, projectName) {
+function openDrawer(projectId, projectName, docsemObraId) {
     currentProjectId   = projectId;
     currentProjectName = projectName;
     document.getElementById('drawer-proj-name').textContent = projectName;
     document.getElementById('teams-drawer').classList.add('open');
     document.getElementById('drawer-overlay').classList.add('open');
+    // Mostrar botao sync apenas se obra ligada ao DocsEM
+    const btnSync = document.getElementById('btn-sync-docsem');
+    if (btnSync) {
+        btnSync.style.display = docsemObraId ? 'inline-flex' : 'none';
+        btnSync.dataset.docsemId = docsemObraId || '';
+    }
     // Always reset to teams tab
     switchDrawerTab('teams');
 }
@@ -544,6 +649,7 @@ let currentDrawerTab  = 'teams';
 let companyEditId     = null;
 let docsemResults     = [];
 let _empSearchTimer   = null;
+let _companyCache     = {}; // id -> company object
 
 function switchDrawerTab(tab) {
     currentDrawerTab = tab;
@@ -569,29 +675,29 @@ async function loadCompanies() {
 
 function renderCompanies(companies) {
     const container = document.getElementById('companies-list');
+    _companyCache = {};
     if (!companies.length) {
         container.innerHTML = '<div class="empty-state"><span class="empty-icon">&#x1F3E2;</span><p>Nenhuma empresa associada.</p></div>';
         return;
     }
-    container.innerHTML = companies.map(c => {
-        const dataJson = JSON.stringify(JSON.stringify(c));
-        return `
+    companies.forEach(c => { _companyCache[c.id] = c; });
+    container.innerHTML = companies.map(c => `
         <div class="company-row">
             <div class="company-row-info">
                 <div class="company-row-name">${c.empresa_nome}</div>
                 <div class="company-row-meta">
                     ${c.empresa_nif ? 'NIF ' + c.empresa_nif : ''}
                     ${c.data_entrada ? ' &middot; Entrada: ' + fmtDate(c.data_entrada) : ''}
-                    ${c.data_saida   ? ' &middot; Saida: '   + fmtDate(c.data_saida)   : ''}
+                    ${c.data_saida   ? ' &middot; Sa&iacute;da: ' + fmtDate(c.data_saida) : ''}
+                    ${c.employees_count > 0 ? ' &middot; &#x1F477; ' + c.employees_count + ' t&eacute;cnico' + (c.employees_count === 1 ? '' : 's') : ''}
                     ${c.observacoes  ? '<br><span>' + c.observacoes + '</span>' : ''}
                 </div>
             </div>
             <div class="company-row-actions">
-                <button class="btn-sm btn-sec" onclick="openCompanyModal(${dataJson})">&#x270F;</button>
-                <button class="btn-sm btn-del" onclick="removeCompany(${c.id})">&#x1F5D1;</button>
+                <button class="btn-sm btn-sec" onclick="openCompanyModal(getCompanyCache(${c.id}))" title="Editar datas e observa&ccedil;&otilde;es">&#x270F;</button>
+                <button class="btn-sm btn-del" onclick="removeCompany(${c.id})" title="Remover empresa">&#x1F5D1;</button>
             </div>
-        </div>`;
-    }).join('');
+        </div>`).join('');
 }
 
 function openCompanyModal(rawJson) {
@@ -642,18 +748,18 @@ async function _doSearchEmpresas(q) {
     const resultsEl = document.getElementById('company-picker-results');
     resultsEl.innerHTML = '<div class="picker-item" style="color:var(--text-muted)">A pesquisar...</div>';
     resultsEl.style.display = 'block';
-
     try {
-        const res = await apiFetch('GET', '/docsem/empresas?search=' + encodeURIComponent(q) + '&per_page=30');
-        docsemResults = res.data || [];
-        if (!docsemResults.length) {
+        const res = await apiFetch('GET', `/docsem/empresas?search=${encodeURIComponent(q)}`);
+        const list = res.data || [];
+        docsemResults = list;
+        if (!list.length) {
             resultsEl.innerHTML = '<div class="picker-item" style="color:var(--text-muted)">Nenhuma empresa encontrada.</div>';
             return;
         }
-        resultsEl.innerHTML = docsemResults.map((e, i) => `
+        resultsEl.innerHTML = list.map((e, i) => `
             <div class="picker-item" onclick="selectEmpresa(${i})">
-                <div class="pi-name">${e.nome}</div>
-                <div class="pi-meta">${e.nif ? 'NIF ' + e.nif : ''}${e.localidade ? ' &middot; ' + e.localidade : ''}</div>
+                <strong>${e.nome}</strong>
+                ${e.nif ? `<span style="color:var(--text-muted);font-size:.8rem"> NIF ${e.nif}</span>` : ''}
             </div>`).join('');
     } catch (err) {
         resultsEl.innerHTML = `<div class="picker-item" style="color:#f87171">${err.message}</div>`;
@@ -663,41 +769,44 @@ async function _doSearchEmpresas(q) {
 function selectEmpresa(index) {
     const e = docsemResults[index];
     if (!e) return;
-    document.getElementById('company-id').value      = e.id;
-    document.getElementById('company-nif').value     = e.nif || '';
-    document.getElementById('company-search').value  = e.nome;
-    document.getElementById('company-selected').textContent   = e.nome + (e.nif ? ' (NIF: ' + e.nif + ')' : '');
+    document.getElementById('company-id').value     = e.id;
+    document.getElementById('company-nif').value    = e.nif || '';
+    document.getElementById('company-search').style.display = 'none';
     document.getElementById('company-selected').style.display = 'block';
+    document.getElementById('company-selected').textContent  = e.nome + (e.nif ? ` (NIF: ${e.nif})` : '');
     document.getElementById('company-picker-results').style.display = 'none';
+    // Pre-fill name field for new entries
+    if (!companyEditId) {
+        document.getElementById('company-search').value = e.nome;
+    }
 }
 
 async function saveCompany() {
-    const docsemId = parseInt(document.getElementById('company-id').value);
-    const name = document.getElementById('company-selected').style.display !== 'none'
-        ? document.getElementById('company-selected').textContent.split(' (NIF')[0]
-        : document.getElementById('company-search').value.trim();
+    const docsemId = parseInt(document.getElementById('company-id').value) || null;
+    const nif      = document.getElementById('company-nif').value.trim()     || null;
+    const entrada  = document.getElementById('company-entrada').value         || null;
+    const saida    = document.getElementById('company-saida').value           || null;
+    const obs      = document.getElementById('company-obs').value.trim()      || null;
 
-    if (!companyEditId && !docsemId) {
+    if (!docsemId && !companyEditId) {
         toast('Seleccione uma empresa da lista.', 'error');
         return;
     }
 
-    const body = {
-        data_entrada: document.getElementById('company-entrada').value || null,
-        data_saida:   document.getElementById('company-saida').value   || null,
-        observacoes:  document.getElementById('company-obs').value.trim() || null,
-    };
-
     try {
         if (companyEditId) {
-            await apiFetch('PUT', `/projects/${currentProjectId}/companies/${companyEditId}`, body);
-            toast('Associacao actualizada.');
+            await apiFetch('PUT', `/projects/${currentProjectId}/companies/${companyEditId}`, {
+                data_entrada: entrada, data_saida: saida, observacoes: obs,
+            });
+            toast('Empresa actualizada.');
         } else {
-            await apiFetch('POST', `/projects/${currentProjectId}/companies`, Object.assign({}, body, {
+            await apiFetch('POST', `/projects/${currentProjectId}/companies`, {
                 docsem_empresa_id: docsemId,
-                empresa_nome:      name,
-                empresa_nif:       document.getElementById('company-nif').value || null,
-            }));
+                empresa_nif:       nif,
+                data_entrada:      entrada,
+                data_saida:        saida,
+                observacoes:       obs,
+            });
             toast('Empresa associada.');
         }
         closeCompanyModal();
@@ -718,55 +827,70 @@ async function removeCompany(companyId) {
     }
 }
 
-// -- Init --
-async function init() {
+// ── Sincronizar obra com DocsEM ──────────────────────────────────────────
+
+async function syncDocsemObra() {
+    const btn = document.getElementById('btn-sync-docsem');
+    const origText = btn ? btn.innerHTML : '';
+    if (btn) { btn.disabled = true; btn.innerHTML = '&#x23F3; A sincronizar...'; }
     try {
-        const [empRes, vehRes] = await Promise.all([
-            apiFetch('GET', '/employees-for-attendance'),
-            apiFetch('GET', '/vehicles'),
-        ]);
-        allEmployees = empRes.data || [];
-        allVehicles  = vehRes.data || [];
+        const res = await apiFetch('POST', `/projects/${currentProjectId}/sync-docsem`);
+        const n = res.empresas_sincronizadas ?? 0;
+        toast(`Sincronizado: ${n} empresa(s) importada(s).`, 'success');
+        // Reload companies tab to show newly imported ones
+        loadCompanies();
+        // Reload project list so card updates
+        loadProjects();
     } catch (e) {
-        // silently continue
+        toast(e.message, 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origText; }
     }
-    loadProjects();
 }
 
-document.addEventListener('DOMContentLoaded', init);
+// ══════════════════════════════════════════════════════════════════════════
+// window.* exports — necessário para Vite ESM + onclick inline
+// ══════════════════════════════════════════════════════════════════════════
+window.loadProjects          = loadProjects;
+window.openProjectModal      = openProjectModal;
+window.closeProjectModal     = closeProjectModal;
+window.saveProject           = saveProject;
+window.deleteProject         = deleteProject;
+window.openDrawer            = openDrawer;
+window.closeDrawer           = closeDrawer;
+window.switchDrawerTab       = switchDrawerTab;
+window.openTeamModal         = openTeamModal;
+window.closeTeamModal        = closeTeamModal;
+window.saveTeam              = saveTeam;
+window.deleteTeam            = deleteTeam;
+window.openEmpModal          = openEmpModal;
+window.closeEmpModal         = closeEmpModal;
+window.saveEmployee          = saveEmployee;
+window.removeEmp             = removeEmp;
+window.openVehTeamModal      = openVehTeamModal;
+window.closeVehTeamModal     = closeVehTeamModal;
+window.saveVehTeam           = saveVehTeam;
+window.removeVeh             = removeVeh;
+window.loadVehicles          = loadVehicles;
+window.openVehicleModal      = openVehicleModal;
+window.closeVehicleModal     = closeVehicleModal;
+window.saveVehicle           = saveVehicle;
+window.deleteVehicle         = deleteVehicle;
+window.openCompanyModal      = openCompanyModal;
+window.closeCompanyModal     = closeCompanyModal;
+window.saveCompany           = saveCompany;
+window.removeCompany         = removeCompany;
+window.searchEmpresas        = searchEmpresas;
+window.selectEmpresa         = selectEmpresa;
+window.getCompanyCache       = (id) => _companyCache[id];
+window.searchObrasDocsem     = searchObrasDocsem;
+window.selectObraDocsem      = selectObraDocsem;
+window.clearObraDocsem       = clearObraDocsem;
+window.syncDocsemObra        = syncDocsemObra;
 
-// Export para onclick no HTML
-window.switchTab          = switchTab;
-window.debounceProjects   = debounceProjects;
-window.debounceVehicles   = debounceVehicles;
-window.openProjectModal   = openProjectModal;
-window.closeProjectModal  = closeProjectModal;
-window.saveProject        = saveProject;
-window.deleteProject      = deleteProject;
-window.openDrawer         = openDrawer;
-window.closeDrawer        = closeDrawer;
-window.openTeamModal      = openTeamModal;
-window.closeTeamModal     = closeTeamModal;
-window.saveTeam           = saveTeam;
-window.deleteTeam         = deleteTeam;
-window.openEmpModal       = openEmpModal;
-window.closeEmpModal      = closeEmpModal;
-window.saveEmployee       = saveEmployee;
-window.removeEmp          = removeEmp;
-window.openVehicleModal   = openVehicleModal;
-window.closeVehicleModal  = closeVehicleModal;
-window.saveVehicle        = saveVehicle;
-window.deleteVehicle      = deleteVehicle;
-window.openVehTeamModal   = openVehTeamModal;
-window.closeVehTeamModal  = closeVehTeamModal;
-window.saveVehTeam        = saveVehTeam;
-window.removeVeh          = removeVeh;
-window.loadVehicles       = loadVehicles;
-window.loadProjects       = loadProjects;
-window.switchDrawerTab    = switchDrawerTab;
-window.openCompanyModal   = openCompanyModal;
-window.closeCompanyModal  = closeCompanyModal;
-window.saveCompany        = saveCompany;
-window.removeCompany      = removeCompany;
-window.searchEmpresas     = searchEmpresas;
-window.selectEmpresa      = selectEmpresa;
+// Inicialização — compatível com defer e módulos
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadProjects);
+} else {
+    loadProjects();
+}

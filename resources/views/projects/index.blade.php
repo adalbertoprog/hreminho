@@ -234,7 +234,12 @@ textarea.form-input { resize:vertical; min-height:70px; }
             <p style="font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin:0 0 2px">Obra</p>
             <h2 id="drawer-proj-name">&#x2014;</h2>
         </div>
-        <button onclick="closeDrawer()" class="modal-close" style="font-size:1.4rem">&#x2715;</button>
+        <div style="display:flex;align-items:center;gap:8px">
+            <button id="btn-sync-docsem" onclick="syncDocsemObra()" class="btn btn-secondary" style="display:none;font-size:.78rem;padding:5px 10px" title="Sincronizar dados e empresas com o DocsElectroMinho">
+                &#x1F504; Sincronizar
+            </button>
+            <button onclick="closeDrawer()" class="modal-close" style="font-size:1.4rem">&#x2715;</button>
+        </div>
     </div>
     <div class="drawer-tabs">
         <button class="drawer-tab active" id="dtab-teams" onclick="switchDrawerTab('teams')">&#x1F465; Equipas</button>
@@ -266,6 +271,23 @@ textarea.form-input { resize:vertical; min-height:70px; }
     <div class="modal-box" style="max-width:560px">
         <div class="modal-hdr"><h3 id="proj-modal-title">Nova Obra</h3><button class="modal-close" onclick="closeProjectModal()">&#x2715;</button></div>
         <div class="modal-body">
+            {{-- Picker DocsEM --}}
+            <div class="form-row-full" style="margin-bottom:16px">
+                <label class="form-label">Ligar a obra do DocsElectroMinho <span style="color:var(--text-muted);font-weight:400">(opcional)</span></label>
+                <div class="picker-wrap">
+                    <input type="text" id="obra-search" class="form-input" placeholder="Pesquisar obra por nome ou c&#243;digo..."
+                           autocomplete="off" oninput="searchObrasDocsem()" onfocus="searchObrasDocsem()">
+                    <div id="obra-picker-results" class="picker-results" style="display:none"></div>
+                </div>
+                <input type="hidden" id="proj-docsem-id">
+                <div id="obra-selected" style="display:none;margin-top:6px;padding:8px 12px;background:var(--bg-input);border:1px solid var(--border);border-radius:8px;font-size:.85rem;align-items:center;gap:8px">
+                    <span style="flex:1" id="obra-selected-label"></span>
+                    <button type="button" onclick="clearObraDocsem()" style="background:none;border:none;cursor:pointer;color:var(--text-muted);font-size:1rem;line-height:1">&#x2715;</button>
+                </div>
+                <div id="obra-docsem-notice" style="display:none;margin-top:6px;font-size:.8rem;color:var(--text-muted)">
+                    &#x2139;&#xFE0F; Os campos abaixo foram preenchidos automaticamente. Pode edit&#225;-los antes de guardar.
+                </div>
+            </div>
             <div class="form-row form-row-2" style="margin-bottom:14px">
                 <div class="form-row-full">
                     <label class="form-label">Nome da Obra *</label>

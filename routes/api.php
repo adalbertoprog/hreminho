@@ -147,6 +147,10 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
         Route::delete('projects/{project}/companies/{company}', [ProjectCompanyController::class, 'destroy'])->name('projects.companies.destroy');
         // Pesquisa de empresas no DocsEM (para o picker)
         Route::get   ('docsem/empresas',                        [ProjectCompanyController::class, 'searchDocsem'])->name('docsem.empresas.search');
+        // Pesquisa de obras no DocsEM (para o picker de ligacao)
+        Route::get   ('docsem/obras',                           [ProjectController::class, 'searchDocsemObras'])->name('docsem.obras.search');
+        // Sincronizar obra com DocsEM (actualiza dados + importa empresas)
+        Route::post  ('projects/{project}/sync-docsem',         [ProjectController::class, 'syncDocsem'])->name('projects.sync-docsem');
 
         // Relatórios
         Route::get('reports/completed-trainings', [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');

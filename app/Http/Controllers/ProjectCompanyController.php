@@ -139,6 +139,7 @@ class ProjectCompanyController extends Controller
             'data_entrada'      => $c->data_entrada?->format('Y-m-d'),
             'data_saida'        => $c->data_saida?->format('Y-m-d'),
             'observacoes'       => $c->observacoes,
+            'employees_count'   => $c->employees_count ?? 0,
         ];
     }
 }

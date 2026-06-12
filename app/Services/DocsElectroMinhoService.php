@@ -157,6 +157,67 @@ class DocsElectroMinhoService
         }
     }
 
+    // ── Obras ─────────────────────────────────────────────────────────────────
+
+    /**
+     * Lista obras do DocsElectro-Minho.
+     *
+     * @param array $filtros  search, estado, per_page, with_empresas
+     * @return array  ['data' => [...], 'meta' => [...]] ou ['erro' => '...']
+     */
+    public function getObras(array $filtros = []): array
+    {
+        if (! $this->estaConfigurado()) {
+            return ['erro' => 'Integracao nao configurada.'];
+        }
+
+        try {
+            $params   = array_merge(['estado' => 'ativas', 'per_page' => 500, 'with_empresas' => '1'], $filtros);
+            $response = $this->client()->get($this->baseUrl . '/obras', $params);
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            Log::warning('[DocsEM] getObras HTTP ' . $response->status());
+            return ['erro' => 'HTTP ' . $response->status(), 'data' => []];
+
+        } catch (\Exception $e) {
+            Log::error('[DocsEM] getObras: ' . $e->getMessage());
+            return ['erro' => $e->getMessage(), 'data' => []];
+        }
+    }
+
+    /**
+     * Retorna uma obra pelo ID do DocsElectro-Minho (com empresas associadas).
+     *
+     * @return array obra ou ['erro' => '...']
+     */
+    public function getObra(int $docsemObraId): array
+    {
+        if (! $this->estaConfigurado()) {
+            return ['erro' => 'Integracao nao configurada.'];
+        }
+
+        try {
+            $response = $this->get("/obras/{$docsemObraId}");
+
+            if ($response->successful()) {
+                return $response->json();
+            }
+
+            if ($response->status() === 404) {
+                return ['erro' => 'Obra nao encontrada no DocsElectro-Minho.'];
+            }
+
+            return ['erro' => 'HTTP ' . $response->status()];
+
+        } catch (\Exception $e) {
+            Log::error('[DocsEM] getObra: ' . $e->getMessage());
+            return ['erro' => $e->getMessage()];
+        }
+    }
+
     // ── Empresas subcontratadas ───────────────────────────────────────────────
 
     /**
