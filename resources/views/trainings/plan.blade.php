@@ -110,7 +110,7 @@ tbody tr:hover td { background:rgba(255,255,255,.025); }
         <button class="btn-ghost active" id="btnViewYear" onclick="setView('year')">📅 Anual</button>
         <button class="btn-ghost"        id="btnViewList" onclick="setView('list')">☰ Lista</button>
         {{-- Nova sessão --}}
-        <button class="btn-primary" onclick="openSessionModal()">+ Nova Sessão</button>
+        <button class="btn-primary" onclick="openSessionModal(null, new Date().getFullYear()===currentYear ? new Date().getMonth()+1 : null)">+ Nova Sessão</button>
     </div>
 </div>
 
@@ -204,7 +204,7 @@ tbody tr:hover td { background:rgba(255,255,255,.025); }
         <tbody id="monthDetailBody"></tbody>
     </table>
     <div style="margin-top:14px;display:flex;justify-content:space-between;align-items:center">
-        <button class="btn-primary" style="font-size:.8rem;padding:7px 14px" onclick="closeOverlay('monthOverlay');openSessionModal()">+ Nova Sessão</button>
+        <button class="btn-primary" style="font-size:.8rem;padding:7px 14px" onclick="closeOverlay('monthOverlay');openSessionModal(null,_currentDetailMonth)">+ Nova Sessão</button>
         <button class="btn-cancel" onclick="closeOverlay('monthOverlay')">Fechar</button>
     </div>
 </div>
@@ -287,6 +287,7 @@ let currentYear = {{ $currentYear }};
 let currentView = 'year';
 let annualData  = null;
 let allSessions = [];
+let _currentDetailMonth = null;
 
 const statusLabel = { planned:'Planeada', ongoing:'Em curso', completed:'Concluída', cancelled:'Cancelada' };
 const statusColor = { planned:'var(--accent-light)', ongoing:'#f59e0b', completed:'#22c55e', cancelled:'#ef4444' };
@@ -404,6 +405,7 @@ function renderYearGrid(months) {
 
 /* ── Detalhe do mês ── */
 function openMonthDetail(month) {
+    _currentDetailMonth = month;
     const m = annualData?.by_month?.find(x => x.month === month);
     if (!m) return;
     document.getElementById('monthModalTitle').textContent = `${m.label} ${currentYear}`;
@@ -524,11 +526,12 @@ function recalcTotal() {
     document.getElementById('sEstimatedTotal').value = total !== null ? fmtEur(total) : '—';
 }
 
-function openSessionModal(session = null) {
+function openSessionModal(session = null, defaultMonth = null) {
     document.getElementById('sessionId').value          = session?.id ?? '';
     document.getElementById('sessionModalTitle').textContent = session ? '✏️ Editar Sessão' : '➕ Nova Sessão de Formação';
     document.getElementById('sTrainingId').value        = session?.training_id ?? '';
-    document.getElementById('sPlannedDate').value       = session?.planned_date ?? `${currentYear}-01-01`;
+    const _defMonth = defaultMonth ? String(defaultMonth).padStart(2,'0') : '01';
+    document.getElementById('sPlannedDate').value       = session?.planned_date ?? `${currentYear}-${_defMonth}-01`;
     document.getElementById('sPlannedEndDate').value    = session?.planned_end_date ?? '';
     document.getElementById('sLocation').value          = session?.location ?? '';
     document.getElementById('sMaxParticipants').value   = session?.max_participants ?? '';
