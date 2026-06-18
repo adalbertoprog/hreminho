@@ -163,8 +163,8 @@ async function loadTable() {
                 <td><span class="badge-count">${count}</span></td>
                 <td style="color:var(--text-muted)">${created}</td>
                 <td style="white-space:nowrap">
-                    <button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(d)})'>✏️ Editar</button>
-                    <button class="btn-sm btn-del"  onclick="openDelete(${d.id},'${d.department.replace(/'/g,"\\'")}')">🗑</button>
+                    <button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(d)})' title="Editar departamento">✏️ Editar</button>
+                    <button class="btn-sm btn-del"  onclick="openDelete(${d.id},'${d.department.replace(/'/g,"\\'")}')" title="Eliminar departamento">🗑</button>
                 </td>
             </tr>`;
         }).join('');

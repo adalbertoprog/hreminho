@@ -661,12 +661,14 @@ function openDelete(type,id){
 async function confirmDelete(){
     const {type,id}=deleteTarget;
     try{
-        if(type==='training') await apiFetch('DELETE',`/trainings/${id}`);
-        else                  await apiFetch('DELETE',`/enrollments/${id}`);
+        if(type==='training')        await apiFetch('DELETE',`/trainings/${id}`);
+        else if(type==='mandatory')  await apiFetch('DELETE',`/mandatory-trainings/${id}`);
+        else                         await apiFetch('DELETE',`/enrollments/${id}`);
         toast('Excluído com sucesso.','ok');
         closeOverlay('delOverlay');
-        if(type==='training') loadCatalog(); else loadEnrollments();
-        loadAlerts();
+        if(type==='training')       { loadCatalog(); loadAlerts(); }
+        else if(type==='mandatory')   loadMandatory();
+        else                        { loadEnrollments(); loadAlerts(); }
     }catch(err){toast(err.message??'Erro.','err');}
 }
 
@@ -1427,14 +1429,10 @@ async function submitMandatory(e) {
 
 async function deleteMandatory(id) {
     const rule = mandatoryRules.find(r => r.id === id);
-    if (!confirm(`Remover obrigatoriedade de "${rule?.training_title}"?`)) return;
-    try {
-        await apiFetch('DELETE', `/mandatory-trainings/${id}`);
-        toast('Regra removida.', 'ok');
-        loadMandatory();
-    } catch(e) {
-        toast('Erro ao remover.', 'err');
-    }
+    deleteTarget = { type: 'mandatory', id, label: rule?.training_title };
+    document.getElementById('delMsg').textContent =
+        `Remover a regra de obrigatoriedade "${rule?.training_title ?? ''}"? Esta acção não pode ser desfeita.`;
+    openOverlay('delOverlay');
 }
 
 async function openGaps(ruleId) {
@@ -1555,4 +1553,9 @@ Object.assign(window, {
     updateScoreState,
     onCertFileChange,
     removeCertificate,
+    openDelete,
+    openEditTraining,
+    editMandatory,
+    deleteMandatory,
+    openContentModal,
 });

@@ -440,8 +440,8 @@ function renderTable(rows) {
         const leaveTag = fromLeave ? '<span class="leave-tag" title="Gerado automaticamente por licença">📋 Licença</span>' : '';
         const actions = fromLeave
             ? `<span style="font-size:.75rem;color:var(--text-muted);font-style:italic">Auto</span>`
-            : `<button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(a)})'>✏️ Editar</button>
-               <button class="btn-sm btn-del"  onclick="openDelete(${a.id})">🗑</button>`;
+            : `<button class="btn-sm btn-edit" onclick='openEdit(${JSON.stringify(a)})' title="Editar registo">✏️ Editar</button>
+               <button class="btn-sm btn-del"  onclick="openDelete(${a.id})" title="Eliminar registo">🗑</button>`;
         return `<tr class="${rowCls}">
             <td style="font-weight:600">${a.employee?.full_name??'—'}<br><span style="font-size:.74rem;color:var(--text-muted)">${a.employee?.code??''}</span></td>
             <td style="color:var(--text-muted)">${d}</td>

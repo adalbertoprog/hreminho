@@ -133,9 +133,9 @@ function renderProjects(projects) {
                     ${p.notes ? `<div class="proj-card-notes">${p.notes}</div>` : ''}
                 </div>
                 <div class="proj-card-actions">
-                    <button class="btn-sm btn-teams" onclick="openDrawer(${p.id}, '${nameEsc}', ${p.docsem_obra_id || 'null'})">&#x1F465; Equipas</button>
-                    <button class="btn-sm btn-sec" onclick="openProjectModal(decodeURIComponent('${dataAttr}'))">✏️</button>
-                    <button class="btn-sm btn-del" onclick="deleteProject(${p.id})">🗑</button>
+                    <button class="btn-sm btn-teams" onclick="openDrawer(${p.id}, '${nameEsc}', ${p.docsem_obra_id || 'null'})" title="Ver equipas da obra">&#x1F465; Equipas</button>
+                    <button class="btn-sm btn-sec" onclick="openProjectModal(decodeURIComponent('${dataAttr}'))" title="Editar obra">✏️</button>
+                    <button class="btn-sm btn-del" onclick="deleteProject(${p.id})" title="Eliminar obra">🗑</button>
                 </div>
             </div>
         </div>`;
@@ -327,8 +327,8 @@ function renderVehicles(vehicles) {
             <td>${badge(s.label, s.color)}</td>
             <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-muted);font-size:.82rem">${v.notes || '—'}</td>
             <td>
-                <button class="btn-sm btn-sec" onclick="openVehicleModal(decodeURIComponent('${dataAttr}'))">✏️</button>
-                <button class="btn-sm btn-del" onclick="deleteVehicle(${v.id})">🗑</button>
+                <button class="btn-sm btn-sec" onclick="openVehicleModal(decodeURIComponent('${dataAttr}'))" title="Editar viatura">✏️</button>
+                <button class="btn-sm btn-del" onclick="deleteVehicle(${v.id})" title="Eliminar viatura">🗑</button>
             </td>
         </tr>`;
     }).join('');
@@ -445,7 +445,7 @@ function renderTeams(teams) {
                     ${e.role ? `<span style="font-size:.74rem;color:var(--text-muted)"> · ${e.role}</span>` : ''}
                     ${e.start_date ? `<div class="member-meta">${fmtDate(e.start_date)}${e.end_date ? ' → ' + fmtDate(e.end_date) : ' →'}</div>` : ''}
                 </div>
-                <button class="btn-sm btn-del" onclick="removeEmp(${t.id}, ${e.id})">✕</button>
+                <button class="btn-sm btn-del" onclick="removeEmp(${t.id}, ${e.id})" title="Remover funcionário da equipa">✕</button>
             </div>`).join('');
 
         const vehRows = t.vehicles.map(v => `
@@ -455,7 +455,7 @@ function renderTeams(teams) {
                     <span class="member-meta">${[v.brand, v.model].filter(Boolean).join(' ')}</span>
                     ${v.start_date ? `<div class="member-meta">${fmtDate(v.start_date)}${v.end_date ? ' → ' + fmtDate(v.end_date) : ' →'}</div>` : ''}
                 </div>
-                <button class="btn-sm btn-del" onclick="removeVeh(${t.id}, ${v.id})">✕</button>
+                <button class="btn-sm btn-del" onclick="removeVeh(${t.id}, ${v.id})" title="Remover viatura da equipa">✕</button>
             </div>`).join('');
 
         return `
@@ -463,8 +463,8 @@ function renderTeams(teams) {
             <div class="team-card-hdr">
                 <span class="team-card-name">${t.name}</span>
                 <div style="display:flex;gap:6px">
-                    <button class="btn-sm btn-sec" onclick="openTeamModal(decodeURIComponent('${tData}'))">✏️</button>
-                    <button class="btn-sm btn-del" onclick="deleteTeam(${t.id})">🗑</button>
+                    <button class="btn-sm btn-sec" onclick="openTeamModal(decodeURIComponent('${tData}'))" title="Editar equipa">✏️</button>
+                    <button class="btn-sm btn-del" onclick="deleteTeam(${t.id})" title="Eliminar equipa">🗑</button>
                 </div>
             </div>
             ${t.leader ? `<div style="font-size:.8rem;color:var(--text-muted);margin-bottom:10px">👷 <strong>${t.leader.name}</strong></div>` : ''}
@@ -695,7 +695,7 @@ function renderCompanies(companies) {
             </div>
             <div class="company-row-actions">
                 <button class="btn-sm btn-sec" onclick="openCompanyModal(getCompanyCache(${c.id}))" title="Editar datas e observa&ccedil;&otilde;es">&#x270F;</button>
-                <button class="btn-sm btn-del" onclick="removeCompany(${c.id})" title="Remover empresa">&#x1F5D1;</button>
+                <button class="btn-sm btn-del" onclick="removeCompany(${c.id})" title="Remover empresa da obra">&#x1F5D1;</button>
             </div>
         </div>`).join('');
 }

@@ -434,8 +434,8 @@ function openMonthDetail(month) {
                 <span class="badge status-${s.status}">${statusLabel[s.status]}</span>
             </td>
             <td style="text-align:center">
-                <button class="btn-sm btn-edit" onclick="closeOverlay('monthOverlay');editSession(${s.id})">✏️</button>
-                <button class="btn-sm btn-del"  onclick="closeOverlay('monthOverlay');deleteSession(${s.id})" style="margin-left:4px">🗑️</button>
+                <button class="btn-sm btn-edit" onclick="closeOverlay('monthOverlay');editSession(${s.id})" title="Editar sessão">✏️</button>
+                <button class="btn-sm btn-del"  onclick="closeOverlay('monthOverlay');deleteSession(${s.id})" style="margin-left:4px" title="Eliminar sessão">🗑️</button>
             </td>
         </tr>`;
         }).join('');
@@ -488,8 +488,8 @@ async function loadList() {
             </td>
             <td style="text-align:center"><span class="badge status-${s.status}">${statusLabel[s.status]}</span></td>
             <td style="text-align:center">
-                <button class="btn-sm btn-edit" onclick="editSession(${s.id})">✏️</button>
-                <button class="btn-sm btn-del"  onclick="deleteSession(${s.id})" style="margin-left:4px">🗑️</button>
+                <button class="btn-sm btn-edit" onclick="editSession(${s.id})" title="Editar sessão">✏️</button>
+                <button class="btn-sm btn-del"  onclick="deleteSession(${s.id})" style="margin-left:4px" title="Eliminar sessão">🗑️</button>
             </td>
         </tr>`;
         }).join('');

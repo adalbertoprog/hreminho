@@ -208,11 +208,11 @@ function renderTable(rows){
             <td><span class="badge ${statusClass[l.status]??''}">${statusLabel[l.status]??l.status}</span></td>
             <td style="white-space:nowrap">
                 ${l.status==='pending'?`
-                    <button class="btn-sm btn-approve" onclick="quickStatus(${l.id},'approved')">✅</button>
-                    <button class="btn-sm btn-reject"  onclick="quickStatus(${l.id},'rejected')">❌</button>
+                    <button class="btn-sm btn-approve" onclick="quickStatus(${l.id},'approved')" title="Aprovar pedido">✅</button>
+                    <button class="btn-sm btn-reject"  onclick="quickStatus(${l.id},'rejected')" title="Rejeitar pedido">❌</button>
                 `:''}
-                <button class="btn-sm btn-edit" onclick="openEdit(leaveCache[${l.id}])">✏️</button>
-                <button class="btn-sm btn-del"  onclick="openDelete(${l.id})">🗑</button>
+                <button class="btn-sm btn-edit" onclick="openEdit(leaveCache[${l.id}])" title="Editar pedido">✏️</button>
+                <button class="btn-sm btn-del"  onclick="openDelete(${l.id})" title="Eliminar pedido">🗑</button>
             </td>
         </tr>`;
     }).join('');
