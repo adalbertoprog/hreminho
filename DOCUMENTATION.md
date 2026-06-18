@@ -702,7 +702,172 @@ Além de `check_in`/`check_out`, a tabela tem `lunch_out` e `lunch_in`. O `worke
 - Filtros rápidos: Hoje / Esta Semana / Este Mês
 - Filtro intervalo personalizado De/Até
 - Barra de resumo com contadores (presente/ausente/atrasado/licença/feriado)
-- Vista Semanal (grid Mon–Sun com cada funcionário por linha)
+- Vista Semanal (grid Seg–Dom com cada funcionário por linha)
+- Destaque visual em registos incompletos (sem `check_out`)
+
+### Filtro por role
+`AttendanceController::index()` aplica filtro automático:
+- `admin` / `hr` — vêem todos os funcionários
+- `manager` — filtrado para funcionários dos departamentos/sectores onde o utilizador é `manager_id`
+
+---
+
+## Obras, Equipas e Viaturas
+
+Módulo de gestão de obras de construção/instalação com designação de equipas e viaturas.
+
+### Modelos
+
+**Project**
+```
+projects: id, name, reference, client, location, start_date, end_date,
+          status (planning|active|completed|cancelled), notes,
+          docsem_obra_id (nullable), docsem_synced_at (datetime nullable), timestamps
+```
+- `hasMany(Team)`
+- `hasMany(ProjectCompany)`
+- `employees()` — funcionários distintos afectos a qualquer equipa da obra
+
+**Team**
+```
+teams: id, project_id, name, leader_id (FK → employees.id nullable), notes, timestamps
+```
+- `belongsTo(Project)`
+- `belongsTo(Employee, 'leader_id')` — líder da equipa
+- `belongsToMany(Employee)` via `team_employees` com pivot `start_date`, `end_date`, `role`
+- `belongsToMany(Vehicle)` via `team_vehicles` com pivot `start_date`, `end_date`
+- `activeEmployees()` — apenas membros sem `end_date` ou com `end_date >= hoje`
+
+**Vehicle**
+```
+vehicles: id, plate, brand, model, year, type, status (available|in_use|maintenance), notes, timestamps
+```
+- `belongsToMany(Team)` via `team_vehicles`
+
+**Tabelas pivot**
+```
+team_employees: team_id, employee_id, start_date, end_date, role, timestamps
+team_vehicles:  team_id, vehicle_id, start_date, end_date, timestamps
+```
+
+### Portal do Funcionário — Obras
+- `/employee/projects` — funcionário vê as obras e equipas a que pertence
+- `EmployeePortalController::projects()` filtra por `team_employees.employee_id`
+
+---
+
+## Sistema de Permissões Configuráveis
+
+`app/Services/PermissionService.php` — sistema de permissões por role com overrides persistentes.
+
+### Arquitectura
+- Permissões definidas como constante `PERMISSIONS` (array estático)
+- Defaults hardcoded por role para cada permissão
+- Overrides configuráveis guardados em `system_settings` com chave `perm.{role}.{permission}`
+- Cache em memória por request (`static $resolved`)
+- Admin tem sempre acesso total (sem override possível)
+- Employee tem acesso fixo ao portal (sem override possível)
+
+### Permissões disponíveis
+
+| Chave                | Label                            | Grupo        | hr default | manager default | Configurável por |
+|----------------------|----------------------------------|--------------|------------|-----------------|-----------------|
+| `view_employees`     | Funcionários — Ver lista         | employees    | true       | false           | manager          |
+| `edit_employees`     | Funcionários — Criar / Editar    | employees    | true       | false           | manager          |
+| `delete_employees`   | Funcionários — Eliminar          | employees    | false      | false           | hr               |
+| `view_attendances`   | Presenças — Ver                  | attendances  | true       | true            | manager          |
+| `manage_attendances` | Presenças — Registar / Editar    | attendances  | true       | true            | hr, manager      |
+| `approve_leaves`     | Licenças — Aprovar / Rejeitar    | leaves       | true       | true            | hr, manager      |
+| `view_all_leaves`    | Licenças — Ver todos             | leaves       | true       | false           | manager          |
+| `view_projects`      | Obras — Ver                      | projects     | true       | true            | hr, manager      |
+| `manage_projects`    | Obras — Criar / Editar / Eliminar| projects     | true       | false           | hr, manager      |
+| `view_reports`       | Relatórios — Ver / Exportar      | reports      | true       | false           | manager          |
+| `manage_trainings`   | Formações — Gerir / Inscrever    | trainings    | true       | false           | manager          |
+
+### API de uso
+
+```php
+// Verificar permissão
+PermissionService::allows('manager', 'view_projects'); // bool
+
+// Gravar overrides (chamado por SettingsController)
+PermissionService::save(['manager.view_projects' => true, 'hr.delete_employees' => false]);
+
+// Matriz completa para UI
+PermissionService::matrix(); // array com valores actuais e configurabilidade
+
+// Limpar cache após gravar
+PermissionService::clearCache();
+```
+
+### UI de permissões
+- `/settings/permissions` (GET) — tabela com checkboxes por role/permissão
+- `POST /settings/permissions` — grava overrides via `PermissionService::save()`
+- Apenas permissões marcadas como `configurable` para aquele role são alteráveis
+- Admin e employee não aparecem na UI (não configuráveis)
+
+---
+
+## Testes
+
+### Cobertura actual (~2800 linhas)
+
+**Feature tests** (`tests/Feature/`):
+| Ficheiro             | Linhas | O que testa                                                  |
+|----------------------|--------|--------------------------------------------------------------|
+| `AuthTest.php`       | 201    | Login (email e código), logout, mudança obrigatória de password |
+| `EmployeeApiTest.php`| 305    | CRUD employees, autorização por role, associação user_id     |
+| `ProjectApiTest.php` | 478    | CRUD obras, equipas, viaturas, empresas subcontratadas       |
+| `ReportApiTest.php`  | 281    | Todos os endpoints de relatórios, filtros e exportação       |
+| `TrainingApiTest.php`| 305    | CRUD formações, vídeos, quiz, inscrições, tentativas         |
+
+**Unit tests** (`tests/Unit/`):
+| Ficheiro                    | Linhas | O que testa                                          |
+|-----------------------------|--------|------------------------------------------------------|
+| `EmployeeTest.php`          | 153    | Modelo Employee: accessors, relações, soft deletes   |
+| `EmployeeTrainingTest.php`  | 174    | Pivot EmployeeTraining: status, certificado, score   |
+| `MandatoryTrainingTest.php` | 224    | Compliance: affectedEmployeeIds, doneEmployeeIds     |
+| `ProjectTest.php`           | 181    | Modelo Project: relações, employees(), status        |
+| `TrainingSessionTest.php`   | 163    | Sessões: duration_days, computed_status, estimated_total |
+| `TrainingTest.php`          | 131    | Modelo Training: relações, has_video, has_quiz       |
+| `UserTest.php`              | 150    | Modelo User: roles, must_change_password, relações   |
+
+### Executar testes
+```bash
+composer run test
+# ou
+php artisan test
+```
+
+---
+
+## Migrações — Adicional (Junho 2026)
+
+| Ficheiro                                                      | Descrição                                           |
+|---------------------------------------------------------------|-----------------------------------------------------|
+| `2026_06_11_000001_create_projects_table`                     | Tabela `projects` (obras)                           |
+| `2026_06_11_000002_create_vehicles_table`                     | Tabela `vehicles` (viaturas)                        |
+| `2026_06_11_000003_create_teams_table`                        | Tabela `teams` (equipas de obra)                    |
+| `2026_06_11_000004_create_team_employees_table`               | Pivot `team_employees`                              |
+| `2026_06_11_000005_create_team_vehicles_table`                | Pivot `team_vehicles`                               |
+| `2026_06_11_000006_create_project_companies_table`            | Pivot `project_companies` (obras ↔ empresas DocsEM) |
+| `2026_06_11_000007_seed_permission_settings`                  | Seeder de permissões iniciais em `system_settings`  |
+| `2026_06_12_000001_add_docsem_obra_id_to_projects_table`      | Campo `docsem_obra_id` para sincronização com DocsEM |
+| `2026_06_12_000002_add_employees_count_to_project_companies`  | Campo `employees_count` em `project_companies`      |
+
+---
+
+## Notas de Desenvolvimento
+
+- O `CLAUDE.md` foi substituído por este `DOCUMENTATION.md`
+- O ficheiro `resources/views/layouts/app.blade.php.bak` está no `.gitignore` — não versionar
+- O `docs/To do.md` deve ser mantido actualizado; o módulo de equipas/obras está implementado
+- Para limpar assets antigos do Vite: `npm run build` apaga o manifesto anterior automaticamente via `emptyOutDir: true` em `vite.config.js`
+- `PermissionService::$resolved` é cache de memória por request — thread-safe para o modelo single-threaded do PHP-FPM
+
+---
+
+*Última actualização: Junho 2026 (rev. 18/06/2026 — obras/equipas/viaturas, PermissionService, testes, feriados)*n–Sun com cada funcionário por linha)
 - Destaque visual em registos incompletos (sem `check_out`)
 
 ### Filtro por role

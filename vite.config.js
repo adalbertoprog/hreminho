@@ -4,7 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
     build: {
-        emptyOutDir: false,
+        emptyOutDir: true,
     },
     plugins: [
         laravel({

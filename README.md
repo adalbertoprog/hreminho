@@ -73,15 +73,25 @@ Sistema de gestão de RH desenvolvido para a empresa **Electrominho**. Cobre a g
 - **Exportação Excel** via SheetJS (client-side, inclui todos os registos)
 - **Exportação PDF** via `window.print()` com CSS dedicado por tab
 
+### Obras, Equipas e Viaturas
+- Gestão de obras/projectos com referência, cliente, localização e datas
+- Criação de equipas por obra com designação de líder
+- Associação de funcionários a equipas com datas e papel (role) por membro
+- Registo de viaturas (matrícula, marca, modelo, tipo, estado) e afectação a equipas
+- Empresas subcontratadas por obra com sincronização via `docsem_empresa_id`
+- Portal do funcionário: secção "As Minhas Obras" com equipas activas (`/employee/projects`)
+
 ### Integração DocsElectroMinho
 - Sincronização de funcionários activos com sistema externo de gestão documental
 - Sincronização global ou individual por funcionário
+- Obras sincronizadas via `docsem_obra_id` e empresas via `docsem_empresa_id`
 - Página de estado e ping em `/docsem`
 
 ### Configurações do Sistema
-- Página `/settings` (admin/hr) com dois painéis:
+- Página `/settings` (admin/hr) com três painéis:
   - **Horário**: hora de entrada esperada, tolerância de atraso, horas diárias, duração do almoço
   - **Feriados**: CRUD completo com filtro por ano e opção de repetição anual
+  - **Permissões**: matriz de permissões configuráveis por role (admin configura o que hr e manager podem fazer)
 
 ### Autenticação
 - Login por e-mail **ou** código de funcionário (ex.: `FUN0777`)
@@ -97,7 +107,7 @@ Sistema de gestão de RH desenvolvido para a empresa **Electrominho**. Cobre a g
 |------------|-------------------------------------------------------------------------------------|
 | `admin`    | Back-office completo — todas as operações                                           |
 | `hr`       | Mesmo acesso que admin                                                              |
-| `manager`  | Portal do funcionário + gestão de presenças e aprovação de licenças da sua equipa   |
+| `manager`  | Portal do funcionário + gestão de presenças + aprovação de licenças da sua equipa + obras |
 | `employee` | Portal do funcionário (`/employee/dashboard`) apenas                                |
 
 ---
@@ -202,9 +212,12 @@ app/
 │   │   └── Web/             # Controllers Web (Blade) + EmployeeLeaveController
 │   ├── Middleware/          # ForcePasswordChange
 │   └── Requests/            # Form Requests com validação
-├── Models/                  # Eloquent models (Employee, Leave, Attendance, Holiday, SystemSetting, ...)
+├── Models/                  # Employee, Leave, Attendance, Holiday, SystemSetting,
+│                            # Training, TrainingVideo, Quiz, QuizAttempt, MandatoryTraining,
+│                            # Project, Team, Vehicle, ProjectCompany, ...
 ├── Providers/               # AppServiceProvider (Gates de autorização)
-└── Services/                # DocsElectroMinhoService, LeaveAttendanceSync
+└── Services/                # DocsElectroMinhoService, LeaveAttendanceSync,
+│                            # PermissionService (permissões configuráveis por role)
 routes/
 ├── web.php                  # Rotas Blade (auth + force.password.change + portal + manager)
 └── api.php                  # Rotas API /api/v1/ (auth:web)
@@ -216,18 +229,18 @@ resources/
     ├── dashboard/           # back-office
     ├── employees/           # CRUD + associação + geração em massa
     ├── trainings/           # CRUD + conteúdo + dashboard + plano anual
-    ├── employee/            # portal: dashboard, leaves, manager-leaves, training
+    ├── employee/            # portal: dashboard, leaves, manager-leaves, training, projects
     ├── reports/             # relatórios com exportação Excel/PDF
-    ├── settings/            # configurações + feriados
+    ├── settings/            # configurações + feriados + permissões
     └── docsem/              # integração DocsElectroMinho
 docs/
 ├── DEPLOY.md                # Guia de deploy para produção
 └── To do.md                 # Backlog e bugs conhecidos
-database/migrations/         # 32 migrações desde Jan 2024 a Jun 2026
+database/migrations/         # 41 migrações desde Jan 2024 a Jun 2026
 ```
 
 ---
 
 **Autor**: Adalberto Filipe  
 **Criado**: Abril 2026  
-**Última actualização**: Junho 2026 (rev. 11/06/2026)
+**Última actualização**: Junho 2026 (rev. 18/06/2026)
