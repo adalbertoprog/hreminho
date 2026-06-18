@@ -851,6 +851,7 @@ async function syncDocsemObra() {
 // ══════════════════════════════════════════════════════════════════════════
 // window.* exports — necessário para Vite ESM + onclick inline
 // ══════════════════════════════════════════════════════════════════════════
+window.switchTab             = switchTab;
 window.loadProjects          = loadProjects;
 window.openProjectModal      = openProjectModal;
 window.closeProjectModal     = closeProjectModal;
