@@ -520,4 +520,9 @@ textarea.form-input { resize:vertical; min-height:70px; }
 
 @section('scripts')
 @vite(['resources/js/pages/projects.js'])
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    if (typeof loadProjects === 'function') loadProjects();
+});
+</script>
 @endsection

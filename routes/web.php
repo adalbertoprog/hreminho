@@ -60,9 +60,10 @@ Route::middleware(['auth', 'force.password.change'])->group(function () {
 
         Route::get('/sectors',     [SectorWebController::class,     'index'])->name('sectors.index');
         Route::get('/leaves',      [LeaveWebController::class,      'index'])->name('leaves.index');
-        Route::get('/trainings',           [TrainingWebController::class,       'index'])->name('trainings.index');
-        Route::get('/trainings/dashboard', [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
-        Route::get('/trainings/plan',      [TrainingPlanWebController::class,   'index'])->name('trainings.plan');
+        Route::get('/trainings',                [TrainingWebController::class,       'index'])->name('trainings.index');
+        Route::get('/trainings/dashboard',     [TrainingDashboardController::class, 'index'])->name('trainings.dashboard');
+        Route::get('/trainings/plan',          [TrainingPlanWebController::class,   'index'])->name('trainings.plan');
+        Route::get('/trainings/staffing-check', [\App\Http\Controllers\Web\StaffingCheckWebController::class, 'index'])->name('trainings.staffing-check');
         Route::get('/users',   [UserWebController::class,   'index'])->name('users.index');
         Route::get('/reports',  [ReportWebController::class,  'index'])->name('reports.index');
         Route::get('/projects', [ProjectWebController::class, 'index'])->name('projects.index');

@@ -1,7 +1,7 @@
 # CLAUDE.md — HRElectrominho
 
 Documentação técnica do sistema para uso por agentes de IA e desenvolvedores.
-Última actualização: Junho 2026 (rev. 11/06/2026).
+Última actualização: Junho 2026 (rev. 18/06/2026 — Simulador de Disponibilidade Técnica, exportação PDF, integração Obras↔Simulador, testes StaffingCheck, PermissionService, obras/equipas/viaturas).
 
 ---
 
@@ -813,13 +813,14 @@ PermissionService::clearCache();
 ### Cobertura actual (~2800 linhas)
 
 **Feature tests** (`tests/Feature/`):
-| Ficheiro             | Linhas | O que testa                                                  |
-|----------------------|--------|--------------------------------------------------------------|
-| `AuthTest.php`       | 201    | Login (email e código), logout, mudança obrigatória de password |
-| `EmployeeApiTest.php`| 305    | CRUD employees, autorização por role, associação user_id     |
-| `ProjectApiTest.php` | 478    | CRUD obras, equipas, viaturas, empresas subcontratadas       |
-| `ReportApiTest.php`  | 281    | Todos os endpoints de relatórios, filtros e exportação       |
-| `TrainingApiTest.php`| 305    | CRUD formações, vídeos, quiz, inscrições, tentativas         |
+| Ficheiro                    | Linhas | O que testa                                                  |
+|-----------------------------|--------|--------------------------------------------------------------|
+| `AuthTest.php`              | 201    | Login (email e código), logout, mudança obrigatória de password |
+| `EmployeeApiTest.php`       | 305    | CRUD employees, autorização por role, associação user_id     |
+| `ProjectApiTest.php`        | 478    | CRUD obras, equipas, viaturas, empresas subcontratadas       |
+| `ReportApiTest.php`         | 281    | Todos os endpoints de relatórios, filtros e exportação       |
+| `StaffingCheckApiTest.php`  | 367    | Simulador de disponibilidade: autorização, validação, 9 cenários de negócio |
+| `TrainingApiTest.php`       | 305    | CRUD formações, vídeos, quiz, inscrições, tentativas         |
 
 **Unit tests** (`tests/Unit/`):
 | Ficheiro                    | Linhas | O que testa                                          |
@@ -867,29 +868,84 @@ php artisan test
 
 ---
 
-*Última actualização: Junho 2026 (rev. 18/06/2026 — obras/equipas/viaturas, PermissionService, testes, feriados)*n–Sun com cada funcionário por linha)
-- Destaque visual em registos incompletos (sem `check_out`)
-
-### Filtro por role
-`AttendanceController::index()` aplica filtro automático:
-- `admin`/`hr`: vêem todos os funcionários
-- `manager`: vê apenas funcionários dos seus departamentos/sectores (`manager_id = employee.id`)
-
 ---
 
-## Configurações do Sistema (`/settings`)
+## Simulador de Disponibilidade Técnica
 
-Página acessível a `manage-hr`. Composta por dois painéis:
+Ferramenta que permite ao gestor verificar se a empresa tem técnicos certificados suficientes para uma empreitada, e identificar lacunas com tempo para as colmatar.
 
-### Painel de Configurações de Horário
-Edita as chaves de `system_settings` relevantes para o cálculo de presenças. Alterações aplicam-se imediatamente (cache invalidada ao guardar).
+### Acesso
+- GET `/trainings/staffing-check` — vista (Gate: `manage-hr`)
+- POST `/api/v1/staffing-check` — endpoint de verificação (Gate: `manage-hr`)
 
-### Painel de Feriados
-CRUD completo de feriados com:
-- Filtro por ano
-- Tipo: nacional / local / empresa
-- Opção "repete anualmente" — feriados fixos (Natal, Ano Novo, etc.) sem precisar criar ano a ano
-- Seeder: `php artisan db:seed --class=HolidaySeeder` — feriados nacionais PT 2025 e 2026
+### Controllers
+- `App\Http\Controllers\Web\StaffingCheckWebController` — serve a view com a lista de formações
+- `App\Http\Controllers\StaffingCheckController::check()` — lógica principal
+
+### Inputs da simulação
+| Campo | Tipo | Descrição |
+|-------|------|-----------|
+| `start_date` | date | Início da empreitada |
+| `end_date` | date | Fim da empreitada |
+| `requirements[]` | array | Lista de `{training_id, quantity}` |
+
+### Lógica de negócio
+Para cada requisito, o sistema consulta `EmployeeTraining` (status `enrolled`/`completed`) de funcionários activos e categoriza cada inscrição:
+
+| Categoria | Condição | Conta como disponível? |
+|-----------|----------|------------------------|
+| `qualified` | `expiry >= end_date` | ✅ Sim |
+| `no_expiry` | `expiry == null` | ✅ Sim |
+| `expiring_during` | `expiry >= start AND expiry < end` | ✅ Sim (com aviso) |
+| `expired_before` | `expiry < start` | ❌ Não |
+
+`available = count(qualified) + count(no_expiry) + count(expiring_during)`
+
+O status por requisito é:
+- `ok` — `available >= needed` e sem `expiring_during`
+- `warning` — `available >= needed` mas existe pelo menos um `expiring_during`
+- `gap` — `available < needed`
+
+### Resposta da API
+```json
+{
+  "start_date": "2026-09-01",
+  "end_date": "2026-09-30",
+  "duration_days": 30,
+  "global_status": "ok|warning|gap",
+  "total_gap": 0,
+  "results": [{
+    "training_id": 1,
+    "training_title": "...",
+    "needed": 3,
+    "available": 3,
+    "gap": 0,
+    "status": "ok",
+    "days_until_start": 75,
+    "qualified": [...],
+    "no_expiry": [...],
+    "expiring_during": [...],
+    "expired_before": [...]
+  }]
+}
+```
+
+### Vista (`trainings/staffing-check.blade.php`)
+- Layout duas colunas: formulário (sticky) + resultados
+- Banner global com estado (✅ ok / ⚠️ warning / 🚨 gap)
+- Cards por formação com barra de progresso de disponibilidade, chips de técnicos e alertas de renovação
+- **Exportar PDF**: botão "📄 Exportar PDF" (activado após simulação) — usa `window.print()` com `@media print` CSS dedicado; sem dependência server-side
+- Banner de contexto quando pré-preenchido a partir de uma obra
+
+### Integração com Obras
+Cada card de obra tem um botão **"🔍 Disponibilidade"** que navega para `/trainings/staffing-check?start=YYYY-MM-DD&end=YYYY-MM-DD&name=NomeObra`. A vista lê estes parâmetros via `URLSearchParams` e pré-preenche os campos de data, exibindo um banner roxo com o nome da obra.
+
+### Testes
+`tests/Feature/StaffingCheckApiTest.php` — 17 testes cobrindo:
+- Autorização (guest 401, employee 403, admin/hr 200)
+- Validação (start_date, end_date, requirements)
+- Cenários: ok, gap, warning (expiry durante obra), expirado antes, sem validade, inactivos, múltiplas formações
+- Estrutura de resposta e cálculo de `duration_days`
 
 ---
 
@@ -954,7 +1010,7 @@ Os ficheiros JS estão extraídos das views para ficheiros dedicados em `resourc
 | `trainings.js`   | `trainings/index.blade.php` | 46KB           |
 | `reports.js`     | `reports/index.blade.php`   | 52KB + SheetJS |
 
-Bundled via Vite. `vite.config.js` usa `build: { emptyOutDir: false }` para evitar EPERM no Windows/Laragon (ficheiros CSS ficam bloqueados pelo browser).
+Bundled via Vite. `vite.config.js` usa `build: { emptyOutDir: false }` para evitar EPERM no Windows/Laragon (ficheiros CSS ficam bloqueados pelo browser). Cada view Blade inclui um `DOMContentLoaded` inline como fallback para garantir que a função de init é chamada mesmo com cache do browser a servir um bundle antigo.
 
 ---
 

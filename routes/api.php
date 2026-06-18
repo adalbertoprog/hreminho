@@ -152,6 +152,9 @@ Route::prefix('v1')->name('api.')->middleware('auth:web')->group(function () {
         // Sincronizar obra com DocsEM (actualiza dados + importa empresas)
         Route::post  ('projects/{project}/sync-docsem',         [ProjectController::class, 'syncDocsem'])->name('projects.sync-docsem');
 
+        // Simulador de disponibilidade de pessoal certificado
+        Route::post('staffing-check', [\App\Http\Controllers\StaffingCheckController::class, 'check'])->name('staffing-check');
+
         // Relatórios
         Route::get('reports/completed-trainings', [ReportController::class, 'completedTrainings'])->name('reports.completed-trainings');
         Route::get('reports/employees-trainings', [ReportController::class, 'employeesWithTrainings'])->name('reports.employees-trainings');

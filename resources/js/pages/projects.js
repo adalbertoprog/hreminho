@@ -110,6 +110,8 @@ function renderProjects(projects) {
             : '';
         const nameEsc = p.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
         const dataAttr = encodeURIComponent(JSON.stringify(p));
+        const pStart = p.start_date || '';
+        const pEnd   = p.end_date   || '';
         const docsemBadge = p.docsem_obra_id
             ? `<span class="badge" style="background:#6366f122;color:#818cf8;border-color:#6366f144;font-size:.7rem">&#x1F517; DocsEM</span>`
             : '';
@@ -134,6 +136,7 @@ function renderProjects(projects) {
                 </div>
                 <div class="proj-card-actions">
                     <button class="btn-sm btn-teams" onclick="openDrawer(${p.id}, '${nameEsc}', ${p.docsem_obra_id || 'null'})" title="Ver equipas da obra">&#x1F465; Equipas</button>
+                    <button class="btn-sm" onclick="openStaffingCheck('${pStart}','${pEnd}',encodeURIComponent('${nameEsc}'))" title="Simular disponibilidade de técnicos para esta obra" style="background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.25)">🔍 Disponibilidade</button>
                     <button class="btn-sm btn-sec" onclick="openProjectModal(decodeURIComponent('${dataAttr}'))" title="Editar obra">✏️</button>
                     <button class="btn-sm btn-del" onclick="deleteProject(${p.id})" title="Eliminar obra">🗑</button>
                 </div>
@@ -851,7 +854,14 @@ async function syncDocsemObra() {
 // ══════════════════════════════════════════════════════════════════════════
 // window.* exports — necessário para Vite ESM + onclick inline
 // ══════════════════════════════════════════════════════════════════════════
+function openStaffingCheck(startDate, endDate, encodedName = '') {
+    const params = new URLSearchParams({ start: startDate, end: endDate });
+    if (encodedName) params.set('name', encodedName);
+    window.location.href = '/trainings/staffing-check?' + params.toString();
+}
+
 window.switchTab             = switchTab;
+window.openStaffingCheck      = openStaffingCheck;
 window.loadProjects          = loadProjects;
 window.openProjectModal      = openProjectModal;
 window.closeProjectModal     = closeProjectModal;
@@ -895,3 +905,5 @@ if (document.readyState === 'loading') {
 } else {
     loadProjects();
 }
+te === 'loading') {
+    document.addEventListener('DOMContentLoaded', load

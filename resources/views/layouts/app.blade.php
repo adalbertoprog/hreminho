@@ -308,6 +308,9 @@
                 <a href="{{ route('trainings.plan') }}" class="nav-item {{ request()->routeIs('trainings.plan') ? 'active' : '' }}">
                     <span class="nav-icon">📅</span> Plano Anual
                 </a>
+                <a href="{{ route('trainings.staffing-check') }}" class="nav-item {{ request()->routeIs('trainings.staffing-check') ? 'active' : '' }}">
+                    <span class="nav-icon">🔍</span> Disponibilidade
+                </a>
                 <a href="{{ route('calendar.index') }}" class="nav-item {{ request()->routeIs('calendar.*') ? 'active' : '' }}">
                     <span class="nav-icon">📆</span> Calendário
                 </a>
