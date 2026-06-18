@@ -102,6 +102,11 @@
 /* Tooltip */
 [title] { cursor:help; }
 
+/* Toast de validação inline */
+.sc-toast { display:flex; align-items:center; gap:10px; background:rgba(239,68,68,.1); border:1px solid rgba(239,68,68,.3); border-radius:10px; padding:10px 14px; font-size:.83rem; color:#ef4444; font-weight:500; margin-top:10px; animation:fadeIn .2s ease; }
+.sc-toast.hidden { display:none; }
+@keyframes fadeIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+
 /* Botão exportar PDF */
 .btn-export-pdf { display:inline-flex; align-items:center; gap:7px; background:rgba(99,102,241,.12); border:1px solid rgba(99,102,241,.3); border-radius:9px; padding:8px 14px; color:var(--accent-light); font-size:.82rem; font-weight:600; cursor:pointer; transition:.15s; }
 .btn-export-pdf:hover { background:rgba(99,102,241,.22); }
@@ -142,8 +147,13 @@
             <button class="btn-add-req" onclick="addRequirement()">+ Adicionar formação</button>
         </div>
 
+        <div class="sc-toast hidden" id="sc-toast"><span>⚠️</span><span id="sc-toast-msg"></span></div>
+
         <button class="btn-check" id="btn-check" onclick="runCheck()">
             <span id="btn-check-text">🔍 Verificar Disponibilidade</span>
+        </button>
+        <button id="btn-clear" onclick="clearResults()" style="display:none;width:100%;margin-top:8px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:9px;font-size:.85rem;font-weight:600;color:#ef4444;cursor:pointer;transition:.15s" onmouseover="this.style.background='rgba(239,68,68,.15)'" onmouseout="this.style.background='rgba(239,68,68,.08)'">
+            ✕ Limpar resultados
         </button>
     </div>
 
@@ -199,14 +209,27 @@ function getRequirements() {
     })).filter(r => r.training_id);
 }
 
+// ── Validação inline ──────────────────────────────────────────────────────
+function showFormError(msg) {
+    const toast = document.getElementById('sc-toast');
+    document.getElementById('sc-toast-msg').textContent = msg;
+    toast.classList.remove('hidden');
+    clearTimeout(showFormError._t);
+    showFormError._t = setTimeout(() => toast.classList.add('hidden'), 4000);
+}
+function clearFormError() {
+    document.getElementById('sc-toast').classList.add('hidden');
+}
+
 // ── Verificação ───────────────────────────────────────────────────────────
 async function runCheck() {
     const start = document.getElementById('f-start').value;
     const end   = document.getElementById('f-end').value;
     const reqs  = getRequirements();
 
-    if (!start || !end) { alert('Indique as datas de início e fim.'); return; }
-    if (!reqs.length)   { alert('Adicione pelo menos uma formação.'); return; }
+    if (!start || !end) { showFormError('Indique as datas de início e fim da empreitada.'); return; }
+    if (!reqs.length)   { showFormError('Adicione pelo menos uma formação aos requisitos.'); return; }
+    clearFormError();
 
     const btn  = document.getElementById('btn-check');
     const btnT = document.getElementById('btn-check-text');
@@ -241,6 +264,19 @@ function fmtDate(d) {
 
 function escHtml(s) {
     return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Limpar resultados ─────────────────────────────────────────────────────
+function clearResults() {
+    _lastData = null;
+    document.getElementById('results').innerHTML = `
+        <div class="sc-empty">
+            <span class="empty-icon">📋</span>
+            <p style="font-size:.9rem;font-weight:600;margin-bottom:6px">Configure os parâmetros e clique em verificar</p>
+            <p style="font-size:.8rem">O sistema irá analisar a disponibilidade de técnicos certificados para o período indicado.</p>
+        </div>`;
+    document.getElementById('btn-pdf').disabled = true;
+    document.getElementById('btn-clear').style.display = 'none';
 }
 
 // ── Exportar PDF ──────────────────────────────────────────────────────────
@@ -377,6 +413,7 @@ function exportPDF() {
 function renderResults(data) {
     _lastData = data;
     document.getElementById('btn-pdf').disabled = false;
+    document.getElementById('btn-clear').style.display = 'block';
 
     const { global_status, total_gap, start_date, end_date, duration_days, results } = data;
 

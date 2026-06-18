@@ -25,12 +25,13 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'role' => 'employee',
-            'remember_token' => Str::random(10),
+            'name'                 => fake()->name(),
+            'email'                => fake()->unique()->safeEmail(),
+            'email_verified_at'    => now(),
+            'password'             => static::$password ??= Hash::make('password'),
+            'role'                 => 'employee',
+            'must_change_password' => false,
+            'remember_token'       => Str::random(10),
         ];
     }
 
@@ -51,6 +52,6 @@ class UserFactory extends Factory
 
     public function hr(): static
     {
-        return $this->state(fn () => ['role' => 'hr']);
+        return $this->state(fn () => ['role' => 'hr', 'must_change_password' => false]);
     }
 }

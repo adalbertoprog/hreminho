@@ -46,10 +46,9 @@ class TrainingTest extends TestCase
     {
         $training = Training::factory()->create();
 
-        TrainingVideo::factory()->count(3)->create([
-            'training_id' => $training->id,
-            'order'       => fn ($seq) => $seq,
-        ]);
+        TrainingVideo::factory()->count(3)
+            ->sequence(fn ($seq) => ['order' => $seq->index + 1])
+            ->create(['training_id' => $training->id]);
 
         $this->assertCount(3, $training->videos);
     }

@@ -143,7 +143,10 @@ class TrainingApiTest extends TestCase
 
     public function test_admin_can_update_enrollment(): void
     {
-        $enrollment = EmployeeTraining::factory()->create(['status' => 'enrolled']);
+        $enrollment = EmployeeTraining::factory()->create([
+            'status'   => 'enrolled',
+            'end_date' => now()->subDay()->toDateString(), // formação já terminou
+        ]);
 
         $this->actingAs($this->admin())
              ->putJson("/api/v1/enrollments/{$enrollment->id}", [
